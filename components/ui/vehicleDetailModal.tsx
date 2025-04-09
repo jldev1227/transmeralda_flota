@@ -9,7 +9,7 @@ import { useFlota } from "@/context/FlotaContext";
 import DocumentUploadForm from "../documentUpload";
 
 // Función para formatear fechas
-const formatDate = (dateString) => {
+const formatDate = (dateString : Date | string) => {
   if (!dateString) return "No registrada";
 
   const date = new Date(dateString);
@@ -22,7 +22,7 @@ const formatDate = (dateString) => {
 };
 
 // Función para verificar el estado de los documentos
-const checkDocumentStatus = (date: Date) => {
+const checkDocumentStatus = (date: Date | string) => {
   if (!date) return "NA";
 
   const today = new Date();
@@ -78,6 +78,11 @@ const StatusIcon = ({ status }: { status: string }) => {
   }
 };
 
+interface Doc {
+  name: string
+  date: Date | string
+}
+
 export default function vehiculoActualDetailModal() {
   const { vehiculoActual, showDetalleModal, cerrarModales } = useFlota();
   const [activeTab, setActiveTab] = useState("info");
@@ -105,18 +110,18 @@ export default function vehiculoActualDetailModal() {
       name: "Póliza Todo Riesgo",
       date: vehiculoActual.polizaTodoRiesgoVencimiento,
     },
-  ].map((doc) => ({
+  ].map((doc : Doc) => ({
     ...doc,
     status: checkDocumentStatus(doc.date),
     formattedDate: formatDate(doc.date),
   }));
 
   // Imágenes de galería (si existen)
-  let galeria = [];
+  let galeria : string[] = [];
 
   try {
-    if (vehiculoActual.galeria && vehiculoActual.galeria !== "[]") {
-      galeria = JSON.parse(vehiculoActual.galeria);
+    if (vehiculoActual.galeria && vehiculoActual.galeria.length > 0) {
+      galeria = vehiculoActual.galeria;
     }
   } catch (e) {
     console.error("Error al parsear la galería:", e);
@@ -379,7 +384,7 @@ export default function vehiculoActualDetailModal() {
 
               {/* Vista de actualización de documentos si está activada */}
               {activeTab === "documents" && actualizarDocumentos && (
-                <DocumentUploadForm vehiculoActual={vehiculoActual} />
+                <DocumentUploadForm vehiculoActual={vehiculoActual} onSubmit={()=>console.log('update')} />
               )}
 
               {/* Pestaña de galería */}
@@ -391,7 +396,7 @@ export default function vehiculoActualDetailModal() {
 
                   {galeria.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {galeria.map((imagen, index) => (
+                      {galeria.map((imagen : string, index : number) => (
                         <div
                           key={index}
                           className="aspect-square bg-gray-100 rounded-md overflow-hidden"

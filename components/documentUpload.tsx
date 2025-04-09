@@ -1,368 +1,459 @@
-import { DocumentTextIcon, XCircleIcon } from "@heroicons/react/24/outline";
-import { CloudUploadIcon } from "lucide-react";
-import React, { useState, useEffect } from "react";
-import { useDropzone } from "react-dropzone";
+"use client"
 
-// Definimos los tipos de documentos requeridos
-const documentTypes = [
-  { id: "soat", name: "SOAT", key: "soatVencimiento" },
-  {
-    id: "tecnomecanica",
-    name: "Técnico-mecánica",
-    key: "tecnomecanicaVencimiento",
-  },
-  {
-    id: "tarjetaOperacion",
-    name: "Tarjeta de Operación",
-    key: "tarjetaDeOperacionVencimiento",
-  },
-  {
-    id: "polizaContractual",
-    name: "Póliza Contractual",
-    key: "polizaContractualVencimiento",
-  },
-  {
-    id: "polizaExtraContractual",
-    name: "Póliza Extra-Contractual",
-    key: "polizaExtraContractualVencimiento",
-  },
-  {
-    id: "polizaTodoRiesgo",
-    name: "Póliza Todo Riesgo",
-    key: "polizaTodoRiesgoVencimiento",
-  },
+// VehiculoDocumentUploader.jsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Button, 
+} from "@heroui/button";
+import { Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Alert } from '@heroui/alert';
+import { apiClient } from '@/config/apiClient';
+import { io } from 'socket.io-client';
+
+// Lista de tipos de documentos requeridos
+const DOCUMENTOS_REQUERIDOS = [
+  { id: 'TARJETA_DE_PROPIEDAD', nombre: 'Tarjeta de Propiedad', isRequired: true },
+  { id: 'SOAT', nombre: 'SOAT', isRequired: true },
+  { id: 'TECNOMECANICA', nombre: 'Tecnomecánica', isRequired: true },
+  { id: 'TARJETA_DE_OPERACION', nombre: 'Tarjeta de Operación', isRequired: true },
+  { id: 'POLIZA_CONTRACTUAL', nombre: 'Póliza Contractual', isRequired: true },
+  { id: 'POLIZA_EXTRACONTRACTUAL', nombre: 'Póliza Extracontractual', isRequired: true },
+  { id: 'POLIZA_TODO_RIESGO', nombre: 'Póliza Todo Riesgo', isRequired: true }
 ];
 
-const DocumentUploader = ({
-  docType,
-  file,
-  onChange,
-  onRemove,
-  isRequired,
-  isNew,
-  isPending,
-}) => {
-  const { getRootProps, getInputProps } = useDropzone({
-    accept: {
-      "application/pdf": [".pdf"],
-    },
-    maxFiles: 1,
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        onChange(docType.id, acceptedFiles[0]);
-      }
-    },
-  });
+const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPending, processingStatus }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  // Función para manejar el arrastrar y soltar
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onChange(docType.id, e.dataTransfer.files[0]);
+    }
+  };
+
+  // Manejar selección de archivo
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onChange(docType.id, e.target.files[0]);
+    }
+  };
+
+  // Obtener color y estado según el estado de procesamiento
+  const getStatusInfo = () => {
+    if (!file) return { color: 'gray', text: 'Pendiente' };
+    
+    if (!processingStatus) return { color: 'emerald', text: 'Listo para enviar' };
+    
+    console.log(processingStatus)
+    switch (processingStatus) {
+      case 'procesando':
+        return { color: 'warning', text: 'Procesando...' };
+      case 'completado':
+        return { color: 'emerald', text: 'Procesado correctamente' };
+      case 'error':
+        return { color: 'danger', text: 'Error al procesar' };
+      default:
+        return { color: 'primary', text: 'Pendiente de procesar' };
+    }
+  };
+
+  const { color, text } = getStatusInfo();
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="font-medium text-gray-900">
-              {docType.name}
-              {isRequired && <span className="text-red-500 ml-1">*</span>}
-            </h3>
-          </div>
-          {isPending && (
-            <span className="bg-gray-100 text-gray-800 px-2 py-1 text-xs rounded-full font-medium">
-              Pendiente
-            </span>
-          )}
+    <div className={`border rounded-lg p-4 ${isDragging ? 'border-primary bg-blue-50' : 'border-gray-300'}`}>
+      <div className="flex justify-between items-start mb-2">
+        <h4>
+          {docType.nombre} {isRequired && <span className="text-red-500">*</span>}
+        </h4>
+        
+        <div className={`px-2 py-1 rounded text-sm bg-${color}-100 text-${color}-800`}>
+          {text}
         </div>
-
-        {!file ? (
-          <div
-            {...getRootProps({
-              className:
-                "border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-emerald-500 transition-colors text-center",
-            })}
-          >
-            <input {...getInputProps()} />
-            <CloudUploadIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">
-              Arrastra y suelta un archivo PDF aquí o haz clic para
-              seleccionarlo
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Sólo archivos PDF</p>
-          </div>
-        ) : (
-          <div className="bg-gray-50 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <DocumentTextIcon className="h-5 w-5 text-emerald-500 mr-2" />
-                <div>
-                  <p
-                    className="text-sm font-medium text-gray-900 truncate"
-                    style={{ maxWidth: "200px" }}
-                  >
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-              <button
-                className="text-red-500 hover:text-red-700"
-                type="button"
-                onClick={() => onRemove(docType.id)}
-              >
-                <XCircleIcon className="h-5 w-5" />
-              </button>
+      </div>
+      
+      {!file ? (
+        <div
+          className="border-2 border-dashed rounded p-4 text-center cursor-pointer transition-colors hover:bg-gray-50"
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileChange}
+            accept=".pdf,.jpg,.jpeg,.png"
+            disabled={isPending}
+          />
+          
+          <Upload className="mx-auto h-8 w-8 text-emerald-600 mb-2" />
+          <p className="text-gray-600">
+            Arrastra y suelta o haz clic para seleccionar
+          </p>
+          <p className="text-gray-500">
+            PDF, JPG o PNG (Máx. 10MB)
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex items-center">
+            <FileText className="h-5 w-5 text-emerald-600 mr-2" />
+            <div>
+              <p className="font-medium">{file.name}</p>
+              <p className="text-gray-500">
+                {(file.size / 1024).toFixed(2)} KB
+              </p>
             </div>
           </div>
-        )}
-      </div>
+          
+          {!isPending && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onPress={() => onRemove(docType.id)}
+              className="text-red-500 border-0"
+            >
+              <XCircle className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-// Componente principal del formulario
-const DocumentUploadForm = ({ vehiculoActual, onSubmit } : {
-    vehiculoActual: Vehiculpi,
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [files, setFiles] = useState({});
-  const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  const isNewVehicle = !vehiculoActual || !vehiculoActual.id;
-
-  // Inicializar estados basados en documentos pendientes
+const VehiculoDocumentUploader = () => {
+  // Estado para almacenar los archivos
+  const [documentos, setDocumentos] = useState({});
+  
+  // Estado para el procesamiento de documentos
+  const [procesamiento, setProcesamiento] = useState({
+    sessionId: null,
+    estado: null, // 'iniciando', 'en_proceso', 'completado', 'fallido'
+    progreso: 0,
+    procesados: 0,
+    total: 0,
+    mensaje: '',
+    estadosPorDocumento: {}
+  });
+  
+  // Estado para mensajes de error/éxito
+  const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+  
+  // Estado de carga
+  const [cargando, setCargando] = useState(false);
+  
+  // Socket para comunicación en tiempo real
+  const [socket, setSocket] = useState(null);
+  
+  // Conectar al socket al montar el componente
   useEffect(() => {
-    if (vehiculoActual) {
-      // Para cada tipo de documento, verificamos si está pendiente (NA/no registrado)
-      const pendingDocs = {};
-
-      documentTypes.forEach((docType) => {
-        const value = vehiculoActual[docType.key];
-
-        pendingDocs[docType.id] =
-          !value || value === "NA" || value === "No registrada";
-      });
-
-      setErrors(pendingDocs);
-    }
-  }, [vehiculoActual]);
-
-  const handleFileChange = (docId, file) => {
-    setFiles((prev) => ({
-      ...prev,
-      [docId]: file,
-    }));
-
-    // Eliminar error si se ha añadido un archivo
-    if (errors[docId]) {
-      setErrors((prev) => ({
-        ...prev,
-        [docId]: false,
-      }));
-    }
-  };
-
-  const handleFileRemove = (docId) => {
-    setFiles((prev) => {
-      const newFiles = { ...prev };
-
-      delete newFiles[docId];
-
-      return newFiles;
+    const nuevoSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
+    
+    nuevoSocket.on('connect', () => {
+      console.log('Socket conectado:', nuevoSocket.id);
+      setSocket(nuevoSocket);
     });
-
-    // Si es un nuevo vehículo, marcar como error al eliminar
-    if (isNewVehicle) {
-      setErrors((prev) => ({
+    
+    nuevoSocket.on('disconnect', () => {
+      console.log('Socket desconectado');
+    });
+    
+    return () => {
+      nuevoSocket.disconnect();
+    };
+  }, []);
+  
+  // Suscribirse a actualizaciones de procesamiento cuando hay un sessionId
+  useEffect(() => {
+    if (!socket || !procesamiento.sessionId) return;
+    
+    // Suscribirse al canal de la sesión
+    socket.emit('suscribir-proceso', procesamiento.sessionId);
+    
+    // Configurar manejadores de eventos
+    const onDocumentoProcesado = (data) => {
+      console.log('Documento procesado:', data);
+      setProcesamiento(prev => ({
         ...prev,
-        [docId]: true,
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    // Si es un nuevo vehículo, todos los documentos son requeridos
-    if (isNewVehicle) {
-      const newErrors = {};
-      let isValid = true;
-
-      documentTypes.forEach((docType) => {
-        if (!files[docType.id]) {
-          newErrors[docType.id] = true;
-          isValid = false;
-        } else {
-          newErrors[docType.id] = false;
+        progreso: data.progreso,
+        procesados: data.procesados || prev.procesados,
+        estadosPorDocumento: {
+          ...prev.estadosPorDocumento,
+          [data.categoria]: 'completado'
         }
+      }));
+    };
+    
+    const onErrorProcesamiento = (data) => {
+      console.error('Error de procesamiento:', data);
+      
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'fallido',
+        mensaje: data.mensaje,
+        estadosPorDocumento: {
+          ...prev.estadosPorDocumento,
+          [data.categoria]: 'error'
+        }
+      }));
+      
+      setMensaje({
+        tipo: 'error',
+        texto: `Error al procesar ${data.categoria}: ${data.mensaje}`
       });
+    };
+    
+    const onVehiculoCreado = (data) => {
+      console.log('Vehículo creado:', data);
+      
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'completado',
+        progreso: 100,
+        procesados: prev.total
+      }));
+      
+      setMensaje({
+        tipo: 'success',
+        texto: 'Vehículo registrado correctamente'
+      });
+      
+      // Redirigir a la página de detalles o hacer algo con el vehículo creado
+      // navigate(`/vehiculos/${data.vehiculo.id}`);
+    };
+    
+    // Registrar eventos
+    socket.on('documento-procesado', onDocumentoProcesado);
+    socket.on('error-procesamiento', onErrorProcesamiento);
+    socket.on('vehiculo-creado', onVehiculoCreado);
+    
+    // Limpiar eventos al desmontar
+    return () => {
+      socket.off('documento-procesado', onDocumentoProcesado);
+      socket.off('error-procesamiento', onErrorProcesamiento);
+      socket.off('vehiculo-creado', onVehiculoCreado);
+    };
+  }, [socket, procesamiento.sessionId]);
+  
+  // Verificar estado periódicamente como respaldo si los websockets fallan
+  useEffect(() => {
+    if (!procesamiento.sessionId) return;
+    
+    const verificarEstado = async () => {
+      try {
+        const response = await apiClient.get(`/api/flota/progreso/${procesamiento.sessionId}`);
+        
+        if (response && response.data) {
+          const { procesados, total, progreso, completado } = response.data;
 
-      setErrors(newErrors);
-
-      return isValid;
-    }
-
-    // Si es actualización, solo validamos que haya al menos un archivo
-    return Object.keys(files).length > 0;
+          
+          setProcesamiento(prev => ({
+            ...prev,
+            progreso: progreso || prev.progreso,
+            procesados: procesados || prev.procesados,
+            total: total || prev.total,
+            estado: completado ? 'completado' : 'en_proceso'
+          }));
+          
+          if (completado) {
+            setMensaje({
+              tipo: 'success',
+              texto: 'Vehículo registrado correctamente'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error al verificar estado:', error);
+      }
+    };
+    
+    const intervalo = setInterval(verificarEstado, 5000);
+    return () => clearInterval(intervalo);
+  }, [procesamiento.sessionId]);
+  
+  // Manejar cambio de archivo
+  const handleDocumentoChange = (docId, file) => {
+    setDocumentos(prev => ({
+      ...prev,
+      [docId]: file
+    }));
   };
-
+  
+  // Manejar eliminación de archivo
+  const handleDocumentoRemove = (docId) => {
+    setDocumentos(prev => {
+      const newDocs = { ...prev };
+      delete newDocs[docId];
+      return newDocs;
+    });
+  };
+  
+  // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitAttempted(true);
-
-    const isValid = validateForm();
-
-    if (!isValid) {
-      console.log("Formulario inválido");
-
+    
+    // Verificar que todos los documentos requeridos estén presentes
+    const documentosFaltantes = DOCUMENTOS_REQUERIDOS
+      .filter(doc => doc.isRequired && !documentos[doc.id])
+      .map(doc => doc.nombre);
+    
+    if (documentosFaltantes.length > 0) {
+      setMensaje({
+        tipo: 'error',
+        texto: `Faltan documentos requeridos: ${documentosFaltantes.join(', ')}`
+      });
       return;
     }
-
-    setLoading(true);
-
+    
+    setCargando(true);
+    setMensaje({ tipo: '', texto: '' });
+    
     try {
-      // Para depuración
-      if (isNewVehicle) {
-        console.log("Registrando nuevo vehículo con documentos:", files);
-      } else {
-        console.log(
-          "Actualizando documentos del vehículo:",
-          vehiculoActual.id,
-          files,
-        );
-      }
-
-      // Procesamiento real de los archivos (comentado por ahora)
-      // Crear FormData y añadir archivos
+      // Preparar FormData
       const formData = new FormData();
-
-      // Añadir ID del vehículo si estamos actualizando
-      if (!isNewVehicle && vehiculoActual.id) {
-        formData.append("vehiculoId", vehiculoActual.id);
-      }
-
-      // Añadir cada archivo con su tipo de documento
-      Object.entries(files).forEach(([docId, file]) => {
-        formData.append(docId, file);
+      
+      // Añadir archivos
+      Object.entries(documentos).forEach(([docId, file]) => {
+        formData.append('documentos', file);
       });
-
-      // Llamada a la función de envío proporcionada por el componente padre
-      if (onSubmit) {
-        await onSubmit(formData);
+      
+      // Añadir categorías
+      formData.append('categorias', JSON.stringify(Object.keys(documentos)));
+      
+      // Añadir ID del socket si está disponible
+      if (socket) {
+        formData.append('socketId', socket.id);
       }
-
-      // Éxito (simulado)
-      console.log("Documentos procesados correctamente");
-      // Resetear el formulario después del éxito
-      if (!isNewVehicle) {
-        setFiles({});
-        setSubmitAttempted(false);
+      
+      // Configurar headers para el socketId
+      const headers = socket ? { 'socket-id': socket.id } : {};
+      
+      // Enviar solicitud
+      const response = await apiClient.post('/api/flota', formData, {
+        headers: {
+          ...headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.success) {
+        // Iniciar seguimiento del procesamiento
+        setProcesamiento({
+          sessionId: response.data.sessionId,
+          estado: 'iniciando',
+          progreso: 0,
+          procesados: 0,
+          total: Object.keys(documentos).length,
+          mensaje: '',
+          estadosPorDocumento: Object.keys(documentos).reduce((acc, docId) => {
+            acc[docId] = 'procesando';
+            return acc;
+          }, {})
+        });
+        
+        setMensaje({
+          tipo: 'info',
+          texto: 'Procesando documentos. Esto puede tomar algunos minutos...'
+        });
+      } else {
+        setMensaje({
+          tipo: 'error',
+          texto: response.data.message || 'Error al iniciar el procesamiento'
+        });
       }
     } catch (error) {
-      console.error("Error al procesar los documentos:", error);
+      console.error('Error al enviar documentos:', error);
+      
+      setMensaje({
+        tipo: 'error',
+        texto: error.response?.data?.message || 'Error al procesar la solicitud'
+      });
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   };
-
+  
+  // Verificar si está en proceso
+  const enProceso = procesamiento.estado === 'iniciando' || procesamiento.estado === 'en_proceso';
+  
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <div className="bg-white p-4 rounded-lg shadow-sm">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          {isNewVehicle
-            ? "Carga de Documentos Requeridos"
-            : "Actualización de Documentos"}
-        </h2>
-
-        {isNewVehicle ? (
-          <p className="mb-4 text-sm text-gray-600">
-            Por favor sube todos los documentos requeridos para registrar el
-            vehículo. Todos los campos marcados con * son obligatorios.
-          </p>
-        ) : (
-          <p className="mb-4 text-sm text-gray-600">
-            Selecciona los documentos que deseas actualizar. Solo se procesarán
-            los documentos que hayas subido.
-          </p>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {documentTypes.map((docType) => (
+    <div className="container mx-auto py-6">
+      <h1 className="font-bold mb-6">Registro de Nuevo Vehículo</h1>
+      
+      {mensaje.texto && (
+        <Alert 
+          color={mensaje.tipo === 'error' ? 'danger' : mensaje.tipo === 'info' ? 'info' : 'success'} 
+          className="mb-4"
+        >
+          {mensaje.texto}
+        </Alert>
+      )}
+      
+      {procesamiento.sessionId && (
+        <div className="mb-6">
+          <div className="flex justify-between mb-2">
+            <p>Progreso del procesamiento</p>
+            <p>{procesamiento.procesados || 0} de {procesamiento.total || 0} ({procesamiento.progreso || 0}%)</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div 
+              className="bg-blue-600 h-2.5 rounded-full transition-width ease-in-out duration-300" 
+              style={{ width: `${procesamiento.progreso || 0}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {DOCUMENTOS_REQUERIDOS.map(docType => (
             <DocumentUploader
               key={docType.id}
               docType={docType}
-              file={files[docType.id]}
-              isNew={isNewVehicle}
-              isPending={!isNewVehicle && errors[docType.id]}
-              isRequired={isNewVehicle}
-              onChange={handleFileChange}
-              onRemove={handleFileRemove}
+              file={documentos[docType.id]}
+              onChange={handleDocumentoChange}
+              onRemove={handleDocumentoRemove}
+              isRequired={docType.isRequired}
+              isPending={enProceso}
+              processingStatus={procesamiento.estadosPorDocumento?.[docType.id]}
             />
           ))}
         </div>
-
-        {submitAttempted &&
-          isNewVehicle &&
-          Object.values(errors).some((error) => error) && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">
-                Por favor, sube todos los documentos requeridos para continuar.
-              </p>
-            </div>
-          )}
-
-        {submitAttempted &&
-          !isNewVehicle &&
-          Object.keys(files).length === 0 && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-sm text-yellow-700">
-                Debes seleccionar al menos un documento para actualizar.
-              </p>
-            </div>
-          )}
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          className={`px-4 py-2 rounded-md text-white font-medium ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-emerald-600 hover:bg-emerald-700"
-          } transition-colors`}
-          disabled={loading}
-          type="submit"
-        >
-          {loading ? (
-            <span className="flex items-center">
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  fill="currentColor"
-                />
-              </svg>
-              Procesando...
-            </span>
-          ) : isNewVehicle ? (
-            "Registrar Vehículo"
-          ) : (
-            "Actualizar Documentos"
-          )}
-        </button>
-      </div>
-    </form>
+        
+        <div className="mt-6 flex justify-end gap-4">
+          <Button 
+            variant='none'
+            disabled={enProceso || procesamiento.estado === 'completado'}
+            className="text-red-600 hover:text-red-900 transition-colors"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            className={`bg-emerald-600 text-white rounded-md ${cargando ? 'opacity-70 cursor-not-allowed' : ''}`}
+          >
+            {cargando ? 'Enviando...' : 'Registrar Vehículo'}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 
-export default DocumentUploadForm;
+export default VehiculoDocumentUploader;

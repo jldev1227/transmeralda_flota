@@ -31,15 +31,12 @@ const FlotaNavbar = () => {
     null,
   );
 
-  console.log(user);
-
   const router = useRouter();
   const pathname = usePathname();
 
   // Simular el path actual (en una app real vendría del router)
   const [currentPath, setCurrentPath] = useState<string | null>(pathname);
 
-  console.log(currentPath);
   const navigation: NavigationItem[] = [
     {
       name: "Inicio",

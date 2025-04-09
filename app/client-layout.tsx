@@ -17,8 +17,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     // Buscar elementos específicos que solo existen en tu página 404
     // Por ejemplo, si tu página 404 tiene un elemento con id="not-found-page"
     const is404 = document.getElementById("not-found-page") !== null;
-
-    console.log(is404);
     setIs404Page(is404);
   }, [pathname]);
 

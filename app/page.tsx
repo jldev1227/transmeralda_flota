@@ -11,6 +11,7 @@ import {
 
 import { SearchIcon } from "@/components/icons";
 import { useFlota, Vehiculo } from "@/context/FlotaContext";
+import Link from "next/link";
 
 // Función para verificar el estado de documentos
 const checkDocumentStatus = (date: string) => {
@@ -131,13 +132,13 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold text-gray-900">Vehiculos</h1>
-          <button
+          <Link
+            href={"agregar"}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-colors"
-            onClick={() => console.log("Agregar nuevo vehículo")}
           >
             <PlusIcon className="h-5 w-5" />
             <span>Nuevo Vehículo</span>
-          </button>
+          </Link>
         </div>
         {/* Filtros y búsqueda */}
         <div className="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
@@ -226,9 +227,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                            "PRÓXIMO" ||
+                          "PRÓXIMO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "PRÓXIMO" ||
+                          "PRÓXIMO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "PRÓXIMO",
@@ -255,9 +256,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                            "VENCIDO" ||
+                          "VENCIDO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "VENCIDO" ||
+                          "VENCIDO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "VENCIDO",
@@ -367,7 +368,7 @@ export default function Dashboard() {
   );
 }
 
-const DocumentInfo = ({ vehicle }) => {
+const DocumentInfo = ({ vehicle }: { vehicle: Vehiculo }) => {
   const { pendientes, vencidos, proximos, priorityDoc } =
     getDocumentStatus(vehicle);
 
@@ -419,14 +420,14 @@ const DocumentInfo = ({ vehicle }) => {
       {(pendientes.length > 0 ||
         vencidos.length > 0 ||
         proximos.length > 0) && (
-        <div className="flex items-center mb-2">
-          <span
-            className={`text-xs font-medium p-1 rounded-md ${statusColor} w-full text-center`}
-          >
-            {statusText}
-          </span>
-        </div>
-      )}
+          <div className="flex items-center mb-2">
+            <span
+              className={`text-xs font-medium p-1 rounded-md ${statusColor} w-full text-center`}
+            >
+              {statusText}
+            </span>
+          </div>
+        )}
 
       {/* Documento prioritario */}
       {priorityDoc && (
