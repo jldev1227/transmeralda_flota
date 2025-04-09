@@ -2,10 +2,10 @@
 
 // VehiculoDocumentUploader.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Button, 
+import {
+  Button,
 } from "@heroui/button";
-import { Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Upload, FileText, XCircle } from 'lucide-react';
 import { Alert } from '@heroui/alert';
 import { apiClient } from '@/config/apiClient';
 import { io } from 'socket.io-client';
@@ -38,7 +38,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       onChange(docType.id, e.dataTransfer.files[0]);
     }
@@ -54,10 +54,8 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
   // Obtener color y estado según el estado de procesamiento
   const getStatusInfo = () => {
     if (!file) return { color: 'gray', text: 'Pendiente' };
-    
+
     if (!processingStatus) return { color: 'emerald', text: 'Listo para enviar' };
-    
-    console.log(processingStatus)
     switch (processingStatus) {
       case 'procesando':
         return { color: 'warning', text: 'Procesando...' };
@@ -78,15 +76,15 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
         <h4>
           {docType.nombre} {isRequired && <span className="text-red-500">*</span>}
         </h4>
-        
+
         <div className={`px-2 py-1 rounded text-sm bg-${color}-100 text-${color}-800`}>
           {text}
         </div>
       </div>
-      
+
       {!file ? (
         <div
-          className="border-2 border-dashed rounded p-4 text-center cursor-pointer transition-colors hover:bg-gray-50"
+          className="border-2 border-dashed rounded p-4 text-center text-sm cursor-pointer transition-colors hover:bg-gray-50"
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -100,7 +98,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
             accept=".pdf,.jpg,.jpeg,.png"
             disabled={isPending}
           />
-          
+
           <Upload className="mx-auto h-8 w-8 text-emerald-600 mb-2" />
           <p className="text-gray-600">
             Arrastra y suelta o haz clic para seleccionar
@@ -111,7 +109,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
         </div>
       ) : (
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-          <div className="flex items-center">
+          <div className="flex items-center text-sm">
             <FileText className="h-5 w-5 text-emerald-600 mr-2" />
             <div>
               <p className="font-medium">{file.name}</p>
@@ -120,7 +118,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
               </p>
             </div>
           </div>
-          
+
           {!isPending && (
             <Button
               variant="ghost"
@@ -140,7 +138,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
 const VehiculoDocumentUploader = () => {
   // Estado para almacenar los archivos
   const [documentos, setDocumentos] = useState({});
-  
+
   // Estado para el procesamiento de documentos
   const [procesamiento, setProcesamiento] = useState({
     sessionId: null,
@@ -151,41 +149,41 @@ const VehiculoDocumentUploader = () => {
     mensaje: '',
     estadosPorDocumento: {}
   });
-  
+
   // Estado para mensajes de error/éxito
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
-  
+
   // Estado de carga
   const [cargando, setCargando] = useState(false);
-  
+
   // Socket para comunicación en tiempo real
   const [socket, setSocket] = useState(null);
-  
+
   // Conectar al socket al montar el componente
   useEffect(() => {
-    const nuevoSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
-    
+    const nuevoSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+
     nuevoSocket.on('connect', () => {
       console.log('Socket conectado:', nuevoSocket.id);
       setSocket(nuevoSocket);
     });
-    
+
     nuevoSocket.on('disconnect', () => {
       console.log('Socket desconectado');
     });
-    
+
     return () => {
       nuevoSocket.disconnect();
     };
   }, []);
-  
+
   // Suscribirse a actualizaciones de procesamiento cuando hay un sessionId
   useEffect(() => {
     if (!socket || !procesamiento.sessionId) return;
-    
+
     // Suscribirse al canal de la sesión
     socket.emit('suscribir-proceso', procesamiento.sessionId);
-    
+
     // Configurar manejadores de eventos
     const onDocumentoProcesado = (data) => {
       console.log('Documento procesado:', data);
@@ -199,10 +197,18 @@ const VehiculoDocumentUploader = () => {
         }
       }));
     };
-    
+
     const onErrorProcesamiento = (data) => {
       console.error('Error de procesamiento:', data);
-      
+
+      // Determinar si el error requiere un reset completo
+      const errorRequiereReset =
+        data.mensaje?.includes('ya existe en el sistema') || // Para placas duplicadas
+        data.etapa === 'verificacion-placa' ||              // Errores en verificación de placa
+        data.codigo === 'PLACA_DUPLICADA' ||                // Si estás usando código de error
+        data.resetRequired;                                // Flag explícito desde el backend
+
+      // Actualizar el estado de procesamiento para mostrar el error
       setProcesamiento(prev => ({
         ...prev,
         estado: 'fallido',
@@ -212,37 +218,52 @@ const VehiculoDocumentUploader = () => {
           [data.categoria]: 'error'
         }
       }));
-      
+
+      // Mostrar mensaje de error
       setMensaje({
         tipo: 'error',
-        texto: `Error al procesar ${data.categoria}: ${data.mensaje}`
+        texto: data.mensaje || `Error en el procesamiento`
       });
+
+      // Si el error requiere reset, programar un reset después de mostrar el error
+      if (errorRequiereReset) {
+        // Mostrar mensaje específico para reset
+        setMensaje({
+          tipo: 'error',
+          texto: `${data.mensaje} - El proceso ha sido terminado.`
+        });
+
+        // Esperar un momento para que el usuario pueda leer el mensaje
+        setTimeout(() => {
+          resetearProceso();
+        }, 5000); // 5 segundos para leer el mensaje antes del reset
+      }
     };
-    
+
     const onVehiculoCreado = (data) => {
       console.log('Vehículo creado:', data);
-      
+
       setProcesamiento(prev => ({
         ...prev,
         estado: 'completado',
         progreso: 100,
         procesados: prev.total
       }));
-      
+
       setMensaje({
         tipo: 'success',
         texto: 'Vehículo registrado correctamente'
       });
-      
+
       // Redirigir a la página de detalles o hacer algo con el vehículo creado
       // navigate(`/vehiculos/${data.vehiculo.id}`);
     };
-    
+
     // Registrar eventos
     socket.on('documento-procesado', onDocumentoProcesado);
     socket.on('error-procesamiento', onErrorProcesamiento);
     socket.on('vehiculo-creado', onVehiculoCreado);
-    
+
     // Limpiar eventos al desmontar
     return () => {
       socket.off('documento-procesado', onDocumentoProcesado);
@@ -250,19 +271,19 @@ const VehiculoDocumentUploader = () => {
       socket.off('vehiculo-creado', onVehiculoCreado);
     };
   }, [socket, procesamiento.sessionId]);
-  
+
   // Verificar estado periódicamente como respaldo si los websockets fallan
   useEffect(() => {
     if (!procesamiento.sessionId) return;
-    
+
     const verificarEstado = async () => {
       try {
         const response = await apiClient.get(`/api/flota/progreso/${procesamiento.sessionId}`);
-        
+
         if (response && response.data) {
           const { procesados, total, progreso, completado } = response.data;
 
-          
+
           setProcesamiento(prev => ({
             ...prev,
             progreso: progreso || prev.progreso,
@@ -270,7 +291,7 @@ const VehiculoDocumentUploader = () => {
             total: total || prev.total,
             estado: completado ? 'completado' : 'en_proceso'
           }));
-          
+
           if (completado) {
             setMensaje({
               tipo: 'success',
@@ -282,11 +303,11 @@ const VehiculoDocumentUploader = () => {
         console.error('Error al verificar estado:', error);
       }
     };
-    
+
     const intervalo = setInterval(verificarEstado, 5000);
     return () => clearInterval(intervalo);
   }, [procesamiento.sessionId]);
-  
+
   // Manejar cambio de archivo
   const handleDocumentoChange = (docId, file) => {
     setDocumentos(prev => ({
@@ -294,7 +315,7 @@ const VehiculoDocumentUploader = () => {
       [docId]: file
     }));
   };
-  
+
   // Manejar eliminación de archivo
   const handleDocumentoRemove = (docId) => {
     setDocumentos(prev => {
@@ -303,16 +324,16 @@ const VehiculoDocumentUploader = () => {
       return newDocs;
     });
   };
-  
+
   // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Verificar que todos los documentos requeridos estén presentes
     const documentosFaltantes = DOCUMENTOS_REQUERIDOS
       .filter(doc => doc.isRequired && !documentos[doc.id])
       .map(doc => doc.nombre);
-    
+
     if (documentosFaltantes.length > 0) {
       setMensaje({
         tipo: 'error',
@@ -320,30 +341,30 @@ const VehiculoDocumentUploader = () => {
       });
       return;
     }
-    
+
     setCargando(true);
     setMensaje({ tipo: '', texto: '' });
-    
+
     try {
       // Preparar FormData
       const formData = new FormData();
-      
+
       // Añadir archivos
       Object.entries(documentos).forEach(([docId, file]) => {
         formData.append('documentos', file);
       });
-      
+
       // Añadir categorías
       formData.append('categorias', JSON.stringify(Object.keys(documentos)));
-      
+
       // Añadir ID del socket si está disponible
       if (socket) {
         formData.append('socketId', socket.id);
       }
-      
+
       // Configurar headers para el socketId
       const headers = socket ? { 'socket-id': socket.id } : {};
-      
+
       // Enviar solicitud
       const response = await apiClient.post('/api/flota', formData, {
         headers: {
@@ -351,7 +372,7 @@ const VehiculoDocumentUploader = () => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       if (response.data.success) {
         // Iniciar seguimiento del procesamiento
         setProcesamiento({
@@ -366,7 +387,7 @@ const VehiculoDocumentUploader = () => {
             return acc;
           }, {})
         });
-        
+
         setMensaje({
           tipo: 'info',
           texto: 'Procesando documentos. Esto puede tomar algunos minutos...'
@@ -379,7 +400,7 @@ const VehiculoDocumentUploader = () => {
       }
     } catch (error) {
       console.error('Error al enviar documentos:', error);
-      
+
       setMensaje({
         tipo: 'error',
         texto: error.response?.data?.message || 'Error al procesar la solicitud'
@@ -388,23 +409,57 @@ const VehiculoDocumentUploader = () => {
       setCargando(false);
     }
   };
-  
+
+  const resetearProceso = () => {
+    // Resetear documentos subidos
+    setDocumentos({});
+
+    // Resetear estado de procesamiento
+    setProcesamiento({
+      sessionId: null,
+      estado: null,
+      progreso: 0,
+      procesados: 0,
+      total: 0,
+      mensaje: '',
+      estadosPorDocumento: {}
+    });
+
+    // Limpiar mensajes
+    setMensaje({ tipo: '', texto: '' });
+
+    // Resetear estado de carga
+    setCargando(false);
+
+    // Cualquier otra limpieza necesaria...
+  };
+
   // Verificar si está en proceso
   const enProceso = procesamiento.estado === 'iniciando' || procesamiento.estado === 'en_proceso';
-  
+
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="font-bold mb-6">Registro de Nuevo Vehículo</h1>
-      
+    <div className="container mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        {procesamiento.estado === 'fallido' && (
+          <Button
+            className="text-red-600 hover:text-red-900 transition-colors bg-transparent"
+            disabled={!procesamiento.sessionId || enProceso}
+            onPress={resetearProceso}
+          >
+            Reiniciar proceso
+          </Button>
+        )}
+      </div>
+
       {mensaje.texto && (
-        <Alert 
-          color={mensaje.tipo === 'error' ? 'danger' : mensaje.tipo === 'info' ? 'info' : 'success'} 
+        <Alert
+          color={mensaje.tipo === 'error' ? 'danger' : mensaje.tipo === 'info' ? 'info' : 'success'}
           className="mb-4"
         >
           {mensaje.texto}
         </Alert>
       )}
-      
+
       {procesamiento.sessionId && (
         <div className="mb-6">
           <div className="flex justify-between mb-2">
@@ -412,14 +467,14 @@ const VehiculoDocumentUploader = () => {
             <p>{procesamiento.procesados || 0} de {procesamiento.total || 0} ({procesamiento.progreso || 0}%)</p>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-blue-600 h-2.5 rounded-full transition-width ease-in-out duration-300" 
+            <div
+              className="bg-blue-600 h-2.5 rounded-full transition-width ease-in-out duration-300"
               style={{ width: `${procesamiento.progreso || 0}%` }}
             ></div>
           </div>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {DOCUMENTOS_REQUERIDOS.map(docType => (
@@ -435,17 +490,16 @@ const VehiculoDocumentUploader = () => {
             />
           ))}
         </div>
-        
+
         <div className="mt-6 flex justify-end gap-4">
-          <Button 
-            variant='none'
+          <Button
             disabled={enProceso || procesamiento.estado === 'completado'}
-            className="text-red-600 hover:text-red-900 transition-colors"
+            className="text-red-600 hover:text-red-900 transition-colors bg-transparent"
           >
             Cancelar
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className={`bg-emerald-600 text-white rounded-md ${cargando ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             {cargando ? 'Enviando...' : 'Registrar Vehículo'}
