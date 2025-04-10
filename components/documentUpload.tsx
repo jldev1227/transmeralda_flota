@@ -1,14 +1,14 @@
 "use client"
 
 // VehiculoDocumentUploader.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Button,
 } from "@heroui/button";
 import { Upload, FileText, XCircle } from 'lucide-react';
 import { Alert } from '@heroui/alert';
 import { apiClient } from '@/config/apiClient';
-import { io } from 'socket.io-client';
+import socketService from '@/services/socketServices';
 
 // Lista de tipos de documentos requeridos
 const DOCUMENTOS_REQUERIDOS = [
@@ -21,12 +21,22 @@ const DOCUMENTOS_REQUERIDOS = [
   { id: 'POLIZA_TODO_RIESGO', nombre: 'Póliza Todo Riesgo', isRequired: true }
 ];
 
-const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPending, processingStatus }) => {
+interface DocumentUploaderProps {
+  docType: { id: string; nombre: string; isRequired: boolean };
+  file: Documento | File | null;  // Cambia esto para aceptar File
+  onChange: (docId: string, file: File) => void;
+  onRemove: (docId: string) => void;
+  isRequired?: boolean;
+  isPending?: boolean;
+  processingStatus?: string | null;
+}
+
+const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPending, processingStatus }: DocumentUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = React.useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Función para manejar el arrastrar y soltar
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
   };
@@ -35,7 +45,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
 
@@ -45,7 +55,7 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
   };
 
   // Manejar selección de archivo
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       onChange(docType.id, e.target.files[0]);
     }
@@ -135,20 +145,58 @@ const DocumentUploader = ({ docType, file, onChange, onRemove, isRequired, isPen
   );
 };
 
-const VehiculoDocumentUploader = () => {
+interface ProcesamientoProps {
+  sessionId: string | null;
+  estado: string | null; // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  progreso: number;
+  procesados: number;
+  total: number;
+  mensaje: string;
+  estadosPorDocumento: Record<string, string>;
+}
+
+interface Documento {
+  // Propiedades del documento
+  name: string;
+  url: string;
+  tipo: string;
+  size: number
+  // otras propiedades...
+}
+
+interface ErrorProcesamientoProps extends ProcesamientoProps {
+  categoria: string;
+  etapa?: string;
+  codigo?: string;
+  resetRequired?: boolean;
+}
+
+const initialProcesamientoState: ProcesamientoProps = {
+  sessionId: null,
+  estado: null, // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  progreso: 0,
+  procesados: 0,
+  total: 0,
+  mensaje: '',
+  estadosPorDocumento: {}
+};
+
+const VehiculoDocumentUploader = ({ id }: { id?: string }) => {
   // Estado para almacenar los archivos
-  const [documentos, setDocumentos] = useState({});
+  const [documentos, setDocumentos] = useState<Record<string, Documento | File>>({});
+  const isEditMode = !!id;
+
+  const documentosRequeridos = React.useMemo(() => {
+    return DOCUMENTOS_REQUERIDOS.map(doc => ({
+      ...doc,
+      // Si estamos en modo edición, ningún documento es estrictamente requerido
+      isRequired: isEditMode ? false : doc.isRequired
+    }));
+  }, [isEditMode]);
+
 
   // Estado para el procesamiento de documentos
-  const [procesamiento, setProcesamiento] = useState({
-    sessionId: null,
-    estado: null, // 'iniciando', 'en_proceso', 'completado', 'fallido'
-    progreso: 0,
-    procesados: 0,
-    total: 0,
-    mensaje: '',
-    estadosPorDocumento: {}
-  });
+  const [procesamiento, setProcesamiento] = useState<ProcesamientoProps>(initialProcesamientoState);
 
   // Estado para mensajes de error/éxito
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
@@ -156,160 +204,265 @@ const VehiculoDocumentUploader = () => {
   // Estado de carga
   const [cargando, setCargando] = useState(false);
 
-  // Socket para comunicación en tiempo real
-  const [socket, setSocket] = useState(null);
+  // Función centralizada para resetear el proceso
+  const resetearProceso = useCallback(() => {
+    // Resetear documentos subidos
+    setDocumentos({});
 
-  // Conectar al socket al montar el componente
-  useEffect(() => {
-    const nuevoSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+    // Resetear estado de procesamiento usando el estado inicial
+    setProcesamiento(initialProcesamientoState);
 
-    nuevoSocket.on('connect', () => {
-      console.log('Socket conectado:', nuevoSocket.id);
-      setSocket(nuevoSocket);
-    });
+    // Limpiar mensajes
+    setMensaje({ tipo: '', texto: '' });
 
-    nuevoSocket.on('disconnect', () => {
-      console.log('Socket desconectado');
-    });
-
-    return () => {
-      nuevoSocket.disconnect();
-    };
+    // Resetear estado de carga
+    setCargando(false);
   }, []);
+
+  // Función para mostrar mensajes y opcionalmente programar reset
+  const mostrarMensaje = useCallback((tipo: string, texto: string, resetearDespuesDe?: number) => {
+    setMensaje({ tipo, texto });
+
+    if (resetearDespuesDe) {
+      setTimeout(resetearProceso, resetearDespuesDe);
+    }
+  }, [resetearProceso]);
+
+  // Manejador centralizado de errores del procesamiento
+  const manejarErrorProcesamiento = useCallback((data: ErrorProcesamientoProps) => {
+    console.error('Error de procesamiento:', data);
+
+    // Determinar si el error requiere un reset completo
+    const errorRequiereReset =
+      data.mensaje?.includes('ya existe en el sistema') || // Para placas duplicadas
+      data.etapa === 'verificacion-placa' ||              // Errores en verificación de placa
+      data.codigo === 'PLACA_DUPLICADA' ||                // Si estás usando código de error
+      data.resetRequired;                                 // Flag explícito desde el backend
+
+    // Actualizar el estado de procesamiento para mostrar el error
+    setProcesamiento(prev => ({
+      ...prev,
+      estado: 'fallido',
+      mensaje: data.mensaje,
+      estadosPorDocumento: {
+        ...prev.estadosPorDocumento,
+        [data.categoria]: 'error'
+      }
+    }));
+
+    // Mostrar mensaje de error y resetear si es necesario
+    const mensajeTexto = errorRequiereReset
+      ? `${data.mensaje} - El proceso ha sido terminado.`
+      : data.mensaje || 'Error en el procesamiento';
+
+    mostrarMensaje('error', mensajeTexto, errorRequiereReset ? 5000 : undefined);
+  }, [mostrarMensaje]);
+
+  // Manejador para documento procesado exitosamente
+  const manejarDocumentoProcesado = useCallback((data: ProcesamientoProps & { categoria: string }) => {
+    setProcesamiento(prev => ({
+      ...prev,
+      progreso: data.progreso,
+      procesados: data.procesados || prev.procesados,
+      estadosPorDocumento: {
+        ...prev.estadosPorDocumento,
+        [data.categoria]: 'completado'
+      }
+    }));
+  }, []);
+
+  // Manejador para vehículo creado exitosamente
+  const manejarVehiculoCreado = useCallback(() => {
+    setProcesamiento(prev => ({
+      ...prev,
+      estado: 'completado',
+      progreso: 100,
+      procesados: prev.total
+    }));
+
+    mostrarMensaje(
+      'success',
+      isEditMode ? "Vehículo actualizado correctamente" : "Vehículo registrado correctamente",
+      3000
+    );
+  }, [isEditMode, mostrarMensaje]);
 
   // Suscribirse a actualizaciones de procesamiento cuando hay un sessionId
   useEffect(() => {
-    if (!socket || !procesamiento.sessionId) return;
+    if (!socketService || !procesamiento.sessionId) return;
 
     // Suscribirse al canal de la sesión
-    socket.emit('suscribir-proceso', procesamiento.sessionId);
+    socketService.emit('suscribir-proceso', procesamiento.sessionId);
 
-    // Configurar manejadores de eventos
-    const onDocumentoProcesado = (data) => {
-      console.log('Documento procesado:', data);
-      setProcesamiento(prev => ({
-        ...prev,
-        progreso: data.progreso,
-        procesados: data.procesados || prev.procesados,
-        estadosPorDocumento: {
-          ...prev.estadosPorDocumento,
-          [data.categoria]: 'completado'
-        }
-      }));
-    };
-
-    const onErrorProcesamiento = (data) => {
-      console.error('Error de procesamiento:', data);
-
-      // Determinar si el error requiere un reset completo
-      const errorRequiereReset =
-        data.mensaje?.includes('ya existe en el sistema') || // Para placas duplicadas
-        data.etapa === 'verificacion-placa' ||              // Errores en verificación de placa
-        data.codigo === 'PLACA_DUPLICADA' ||                // Si estás usando código de error
-        data.resetRequired;                                // Flag explícito desde el backend
-
-      // Actualizar el estado de procesamiento para mostrar el error
-      setProcesamiento(prev => ({
-        ...prev,
-        estado: 'fallido',
-        mensaje: data.mensaje,
-        estadosPorDocumento: {
-          ...prev.estadosPorDocumento,
-          [data.categoria]: 'error'
-        }
-      }));
-
-      // Mostrar mensaje de error
-      setMensaje({
-        tipo: 'error',
-        texto: data.mensaje || `Error en el procesamiento`
-      });
-
-      // Si el error requiere reset, programar un reset después de mostrar el error
-      if (errorRequiereReset) {
-        // Mostrar mensaje específico para reset
-        setMensaje({
-          tipo: 'error',
-          texto: `${data.mensaje} - El proceso ha sido terminado.`
-        });
-
-        // Esperar un momento para que el usuario pueda leer el mensaje
-        setTimeout(() => {
-          resetearProceso();
-        }, 5000); // 5 segundos para leer el mensaje antes del reset
-      }
-    };
-
-    const onVehiculoCreado = (data) => {
-      console.log('Vehículo creado:', data);
-
-      setProcesamiento(prev => ({
-        ...prev,
-        estado: 'completado',
-        progreso: 100,
-        procesados: prev.total
-      }));
-
-      setMensaje({
-        tipo: 'success',
-        texto: 'Vehículo registrado correctamente'
-      });
-
-      // Redirigir a la página de detalles o hacer algo con el vehículo creado
-      // navigate(`/vehiculos/${data.vehiculo.id}`);
-    };
-
-    // Registrar eventos
-    socket.on('documento-procesado', onDocumentoProcesado);
-    socket.on('error-procesamiento', onErrorProcesamiento);
-    socket.on('vehiculo-creado', onVehiculoCreado);
+    // Registrar eventos con los manejadores centralizados
+    socketService.on('documento-procesado', manejarDocumentoProcesado);
+    socketService.on('error-procesamiento', manejarErrorProcesamiento);
+    socketService.on('vehiculo-creado', manejarVehiculoCreado);
 
     // Limpiar eventos al desmontar
     return () => {
-      socket.off('documento-procesado', onDocumentoProcesado);
-      socket.off('error-procesamiento', onErrorProcesamiento);
-      socket.off('vehiculo-creado', onVehiculoCreado);
-    };
-  }, [socket, procesamiento.sessionId]);
+      socketService.off('documento-procesado', manejarDocumentoProcesado);
+      socketService.off('error-procesamiento', manejarErrorProcesamiento);
+      socketService.off('vehiculo-creado', manejarVehiculoCreado);
 
-  // Verificar estado periódicamente como respaldo si los websockets fallan
+      // Desuscribirse explícitamente al salir
+      socketService.emit('desuscribir-proceso', procesamiento.sessionId);
+    };
+  }, [
+    procesamiento.sessionId,
+    manejarDocumentoProcesado,
+    manejarErrorProcesamiento,
+    manejarVehiculoCreado
+  ]);
+
+  // Verificar estado periódicamente con manejo de caducidad y retroceso exponencial
   useEffect(() => {
-    if (!procesamiento.sessionId) return;
+    if (!procesamiento.sessionId || procesamiento.estado === 'completado' || procesamiento.estado === 'fallido') {
+      return; // No consultar si no hay sesión o el proceso ya terminó
+    }
+
+    let intentos = 0;
+    const maxIntentos = 8; // Máximo número de intentos fallidos consecutivos
+    const intervaloBase = 5000; // 5 segundos
+    const intervaloMax = 30000; // Máximo 30 segundos entre intentos
 
     const verificarEstado = async () => {
       try {
         const response = await apiClient.get(`/api/flota/progreso/${procesamiento.sessionId}`);
 
         if (response && response.data) {
-          const { procesados, total, progreso, completado } = response.data;
+          intentos = 0; // Reiniciar contador de intentos al tener éxito
+          const { procesados, total, progreso, completado, error } = response.data;
 
+          // Si hay un error reportado por la API
+          if (error) {
+            // Construir un objeto de error similar al que viene por websocket
+            manejarErrorProcesamiento({
+              ...initialProcesamientoState,
+              sessionId: procesamiento.sessionId,
+              mensaje: error.mensaje || 'Error en el procesamiento',
+              categoria: error.categoria || 'general',
+              codigo: error.codigo,
+              resetRequired: error.resetRequired
+            });
+            return;
+          }
 
+          // Actualizar estado normalmente
           setProcesamiento(prev => ({
             ...prev,
-            progreso: progreso || prev.progreso,
-            procesados: procesados || prev.procesados,
-            total: total || prev.total,
-            estado: completado ? 'completado' : 'en_proceso'
+            progreso: progreso !== undefined ? progreso : prev.progreso,
+            procesados: procesados !== undefined ? procesados : prev.procesados,
+            total: total !== undefined ? total : prev.total,
+            estado: completado ? 'completado' : prev.estado || 'en_proceso'
           }));
 
           if (completado) {
-            setMensaje({
-              tipo: 'success',
-              texto: 'Vehículo registrado correctamente'
-            });
+            manejarVehiculoCreado();
           }
         }
       } catch (error) {
         console.error('Error al verificar estado:', error);
+        intentos++;
+
+        // Si superamos el máximo de intentos, consideramos que el proceso ha fallado
+        if (intentos >= maxIntentos) {
+          manejarErrorProcesamiento({
+            ...initialProcesamientoState,
+            sessionId: procesamiento.sessionId,
+            mensaje: 'No se pudo verificar el estado del proceso después de varios intentos.',
+            categoria: 'sistema',
+            resetRequired: true
+          });
+        }
       }
     };
 
-    const intervalo = setInterval(verificarEstado, 5000);
+    // Calcular intervalo con retroceso exponencial
+    const calcularIntervalo = () => {
+      return Math.min(intervaloBase * Math.pow(1.5, intentos), intervaloMax);
+    };
+
+    // Iniciar verificación inmediata
+    verificarEstado();
+
+    // Establecer intervalo dinámico
+    const intervalo = setInterval(() => {
+      verificarEstado();
+    }, calcularIntervalo());
+
     return () => clearInterval(intervalo);
-  }, [procesamiento.sessionId]);
+  }, [
+    procesamiento.sessionId,
+    procesamiento.estado,
+    manejarErrorProcesamiento,
+    manejarVehiculoCreado
+  ]);
+
+  // Función principal para manejar el envío del formulario
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Verificar que hay al menos un documento seleccionado
+    if (Object.keys(documentos).length === 0 && isEditMode) {
+      mostrarMensaje('error', "Debes seleccionar al menos un documento para actualizar");
+      return;
+    }
+
+    // Validar documentos requeridos solo si no estamos en modo edición
+    if (!isEditMode) {
+      const documentosFaltantes = documentosRequeridos
+        .filter(doc => doc.isRequired && !documentos[doc.id])
+        .map(doc => doc.nombre);
+
+      if (documentosFaltantes.length > 0) {
+        mostrarMensaje('error', `Faltan documentos requeridos: ${documentosFaltantes.join(', ')}`);
+        return;
+      }
+    }
+
+    setCargando(true);
+    setMensaje({ tipo: '', texto: '' });
+
+    try {
+      // Iniciar el estado del procesamiento
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'iniciando'
+      }));
+
+      // Ejecutar la función apropiada según el modo
+      const success = isEditMode
+        ? await updateVehiculo()
+        : await createVehiculo();
+
+      if (!success) {
+        // Si la operación devolvió falso pero no lanzó error
+        mostrarMensaje('error', 'La operación no pudo completarse correctamente');
+        setProcesamiento(prev => ({
+          ...prev,
+          estado: 'fallido'
+        }));
+      }
+    } catch (error: any) {
+      console.error(`Error al ${isEditMode ? 'actualizar' : 'crear'} vehículo:`, error);
+
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'fallido'
+      }));
+
+      mostrarMensaje(
+        'error',
+        error.response?.data?.message || 'Error al procesar la solicitud'
+      );
+    } finally {
+      setCargando(false);
+    }
+  };
 
   // Manejar cambio de archivo
-  const handleDocumentoChange = (docId, file) => {
+  const handleDocumentoChange = (docId: string, file: File) => {
     setDocumentos(prev => ({
       ...prev,
       [docId]: file
@@ -317,7 +470,7 @@ const VehiculoDocumentUploader = () => {
   };
 
   // Manejar eliminación de archivo
-  const handleDocumentoRemove = (docId) => {
+  const handleDocumentoRemove = (docId: string) => {
     setDocumentos(prev => {
       const newDocs = { ...prev };
       delete newDocs[docId];
@@ -325,113 +478,137 @@ const VehiculoDocumentUploader = () => {
     });
   };
 
-  // Manejar envío del formulario
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const prepareFormData = () => {
+    const formData = new FormData();
 
-    // Verificar que todos los documentos requeridos estén presentes
-    const documentosFaltantes = DOCUMENTOS_REQUERIDOS
-      .filter(doc => doc.isRequired && !documentos[doc.id])
-      .map(doc => doc.nombre);
+    // Añadir archivos
+    Object.entries(documentos).forEach(([docId, file]) => {
+      if (file instanceof File || file instanceof Blob) {
+        // If it's already a File or Blob, append it directly
+        formData.append('documentos', file);
+      } else {
+        // If it's a Documento object, extract the File or Blob from it
+        if ('archivo' in file && file.archivo instanceof File) {
+          formData.append('documentos', file.archivo);
+        } else if ('file' in file && file.file instanceof File) {
+          formData.append('documentos', file.file);
+        } else {
+          console.error('Cannot append document to FormData: not a valid File or Blob', file);
+        }
+      }
+    });
 
-    if (documentosFaltantes.length > 0) {
-      setMensaje({
-        tipo: 'error',
-        texto: `Faltan documentos requeridos: ${documentosFaltantes.join(', ')}`
-      });
-      return;
+    // Añadir categorías
+    formData.append('categorias', JSON.stringify(Object.keys(documentos)));
+
+    // Añadir socketId si está disponible
+    if (socketService.isConnected()) {
+      const socketId = socketService.getSocketId();
+      if (socketId) {
+        formData.append('socketId', socketId);
+      }
     }
 
-    setCargando(true);
-    setMensaje({ tipo: '', texto: '' });
+    return formData;
+  };
 
-    try {
-      // Preparar FormData
-      const formData = new FormData();
+  // Función para crear un nuevo vehículo
+  const createVehiculo = async () => {
+    const formData = prepareFormData();
 
-      // Añadir archivos
-      Object.entries(documentos).forEach(([docId, file]) => {
-        formData.append('documentos', file);
-      });
+    // Configurar headers para el socketId
+    const headers = socketService.isConnected() ?
+      { 'socket-id': socketService.getSocketId() } : {};
 
-      // Añadir categorías
-      formData.append('categorias', JSON.stringify(Object.keys(documentos)));
-
-      // Añadir ID del socket si está disponible
-      if (socket) {
-        formData.append('socketId', socket.id);
+    // Enviar solicitud
+    const response = await apiClient.post('/api/flota', formData, {
+      headers: {
+        ...headers,
+        'Content-Type': 'multipart/form-data'
       }
+    });
 
-      // Configurar headers para el socketId
-      const headers = socket ? { 'socket-id': socket.id } : {};
-
-      // Enviar solicitud
-      const response = await apiClient.post('/api/flota', formData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data'
-        }
+    if (response.data.success) {
+      // Iniciar seguimiento del procesamiento
+      setProcesamiento({
+        sessionId: response.data.sessionId,
+        estado: 'iniciando',
+        progreso: 0,
+        procesados: 0,
+        total: Object.keys(documentos).length,
+        mensaje: '',
+        estadosPorDocumento: Object.keys(documentos).reduce<Record<string, string>>((acc, docId) => {
+          acc[docId] = 'procesando';
+          return acc;
+        }, {})
       });
-
-      if (response.data.success) {
-        // Iniciar seguimiento del procesamiento
-        setProcesamiento({
-          sessionId: response.data.sessionId,
-          estado: 'iniciando',
-          progreso: 0,
-          procesados: 0,
-          total: Object.keys(documentos).length,
-          mensaje: '',
-          estadosPorDocumento: Object.keys(documentos).reduce((acc, docId) => {
-            acc[docId] = 'procesando';
-            return acc;
-          }, {})
-        });
-
-        setMensaje({
-          tipo: 'info',
-          texto: 'Procesando documentos. Esto puede tomar algunos minutos...'
-        });
-      } else {
-        setMensaje({
-          tipo: 'error',
-          texto: response.data.message || 'Error al iniciar el procesamiento'
-        });
-      }
-    } catch (error) {
-      console.error('Error al enviar documentos:', error);
 
       setMensaje({
-        tipo: 'error',
-        texto: error.response?.data?.message || 'Error al procesar la solicitud'
+        tipo: 'info',
+        texto: 'Procesando documentos. Esto puede tomar algunos minutos...'
       });
-    } finally {
-      setCargando(false);
+
+      return true;
+    } else {
+      setMensaje({
+        tipo: 'error',
+        texto: response.data.message || 'Error al iniciar el procesamiento'
+      });
+
+      return false;
     }
   };
 
-  const resetearProceso = () => {
-    // Resetear documentos subidos
-    setDocumentos({});
+  // Función para actualizar documentos de un vehículo existente
+  const updateVehiculo = async () => {
+    const formData = prepareFormData();
 
-    // Resetear estado de procesamiento
-    setProcesamiento({
-      sessionId: null,
-      estado: null,
-      progreso: 0,
-      procesados: 0,
-      total: 0,
-      mensaje: '',
-      estadosPorDocumento: {}
+    // Añadir ID del vehículo
+    if (id) {
+      formData.append('vehiculoId', id);
+    }
+
+    // Configurar headers para el socketId
+    const headers = socketService.isConnected() ?
+      { 'socket-id': socketService.getSocketId() } : {};
+
+    // Enviar solicitud de actualización
+    const response = await apiClient.put(`/api/flota/${id}`, formData, {
+      headers: {
+        ...headers,
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
-    // Limpiar mensajes
-    setMensaje({ tipo: '', texto: '' });
+    if (response.data.success) {
+      // Establecer procesamiento para documentos actualizados
+      setProcesamiento({
+        sessionId: response.data.sessionId,
+        estado: 'iniciando',
+        progreso: 0,
+        procesados: 0,
+        total: Object.keys(documentos).length,
+        mensaje: '',
+        estadosPorDocumento: Object.keys(documentos).reduce<Record<string, string>>((acc, docId) => {
+          acc[docId] = 'procesando';
+          return acc;
+        }, {})
+      });
 
-    // Resetear estado de carga
-    setCargando(false);
+      setMensaje({
+        tipo: 'info',
+        texto: 'Actualizando documentos del vehículo...'
+      });
 
-    // Cualquier otra limpieza necesaria...
+      return true;
+    } else {
+      setMensaje({
+        tipo: 'error',
+        texto: response.data.message || 'Error al actualizar los documentos'
+      });
+
+      return false;
+    }
   };
 
   // Verificar si está en proceso
@@ -439,25 +616,24 @@ const VehiculoDocumentUploader = () => {
 
   return (
     <div className="container mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        {procesamiento.estado === 'fallido' && (
-          <Button
-            className="text-red-600 hover:text-red-900 transition-colors bg-transparent"
-            disabled={!procesamiento.sessionId || enProceso}
-            onPress={resetearProceso}
-          >
-            Reiniciar proceso
-          </Button>
-        )}
-      </div>
 
       {mensaje.texto && (
-        <Alert
-          color={mensaje.tipo === 'error' ? 'danger' : mensaje.tipo === 'info' ? 'info' : 'success'}
-          className="mb-4"
-        >
-          {mensaje.texto}
-        </Alert>
+        <div className="flex justify-between gap-4 items-center mb-5">
+          <Alert
+            color={mensaje.tipo === 'error' ? 'danger' : mensaje.tipo === 'info' ? 'primary' : 'success'}
+          >
+            {mensaje.texto}
+          </Alert>
+          {procesamiento.estado === 'fallido' && (
+            <Button
+              className="text-red-600 hover:text-red-900 transition-colors bg-transparent"
+              disabled={!procesamiento.sessionId || enProceso}
+              onPress={resetearProceso}
+            >
+              Reiniciar proceso
+            </Button>
+          )}
+        </div>
       )}
 
       {procesamiento.sessionId && (
@@ -477,7 +653,7 @@ const VehiculoDocumentUploader = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DOCUMENTOS_REQUERIDOS.map(docType => (
+          {documentosRequeridos.map(docType => (
             <DocumentUploader
               key={docType.id}
               docType={docType}
@@ -502,7 +678,7 @@ const VehiculoDocumentUploader = () => {
             type="submit"
             className={`bg-emerald-600 text-white rounded-md ${cargando ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            {cargando ? 'Enviando...' : 'Registrar Vehículo'}
+            {cargando ? 'Enviando...' : isEditMode ? "Actualizar Vehículo" : 'Registrar Vehículo'}
           </Button>
         </div>
       </form>

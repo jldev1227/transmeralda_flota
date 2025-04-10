@@ -4,12 +4,14 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, ClockIcon, TruckIcon, XIcon } from "lucide-react";
 import React, { useState } from "react";
-
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@heroui/modal';
 import { useFlota } from "@/context/FlotaContext";
 import DocumentUploadForm from "../documentUpload";
+import { Button } from "@heroui/button";
+import { useRouter } from "next/navigation";
 
 // Función para formatear fechas
-const formatDate = (dateString : Date | string) => {
+const formatDate = (dateString: Date | string) => {
   if (!dateString) return "No registrada";
 
   const date = new Date(dateString);
@@ -86,14 +88,14 @@ interface Doc {
 export default function vehiculoActualDetailModal() {
   const { vehiculoActual, showDetalleModal, cerrarModales } = useFlota();
   const [activeTab, setActiveTab] = useState("info");
-  const [actualizarDocumentos, setActualizarDocumentos] = useState(false)
+  const router = useRouter();
 
   if (!vehiculoActual || !showDetalleModal) return null;
 
   // Prepara un array de documentos con sus estados
   const documents = [
     { name: "SOAT", date: vehiculoActual.soatVencimiento },
-    { name: "Técnico-mecánica", date: vehiculoActual.tecnomecanicaVencimiento },
+    { name: "Técnicomecánica", date: vehiculoActual.tecnomecanicaVencimiento },
     {
       name: "Tarjeta de Operación",
       date: vehiculoActual.tarjetaDeOperacionVencimiento,
@@ -110,14 +112,14 @@ export default function vehiculoActualDetailModal() {
       name: "Póliza Todo Riesgo",
       date: vehiculoActual.polizaTodoRiesgoVencimiento,
     },
-  ].map((doc : Doc) => ({
+  ].map((doc: Doc) => ({
     ...doc,
     status: checkDocumentStatus(doc.date),
     formattedDate: formatDate(doc.date),
   }));
 
   // Imágenes de galería (si existen)
-  let galeria : string[] = [];
+  let galeria: string[] = [];
 
   try {
     if (vehiculoActual.galeria && vehiculoActual.galeria.length > 0) {
@@ -127,27 +129,17 @@ export default function vehiculoActualDetailModal() {
     console.error("Error al parsear la galería:", e);
   }
 
+  const handleNavigate = async () => {
+    router.push(`/actualizar/${vehiculoActual.id}`);
+    cerrarModales()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Backdrop */}
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={cerrarModales}
-        />
-
-        {/* Centrado vertical */}
-        <span
-          aria-hidden="true"
-          className="hidden sm:inline-block sm:align-middle sm:h-screen"
-        >
-          &#8203;
-        </span>
-
-        {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
-          <div className="bg-white">
+    <Modal size="4xl" isOpen={true} onOpenChange={cerrarModales}>
+      <ModalContent>
+        {(onClose) => (
+          <>
+            {/* Modal panel */}
             {/* Header con título y botón de cerrar */}
             <div className="flex justify-between items-center p-4 border-b border-gray-200">
               <div className="flex items-center">
@@ -157,12 +149,6 @@ export default function vehiculoActualDetailModal() {
                   <span className="font-semibold">{vehiculoActual.placa}</span>
                 </h3>
               </div>
-              <button
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                onClick={cerrarModales}
-              >
-                <XIcon className="h-6 w-6" />
-              </button>
             </div>
 
             {/* Pestañas */}
@@ -336,7 +322,7 @@ export default function vehiculoActualDetailModal() {
               )}
 
               {/* Pestaña de documentos */}
-              {activeTab === "documents" && !actualizarDocumentos && (
+              {activeTab === "documents" && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-4">
                     Documentos y Fechas de Vencimiento
@@ -372,20 +358,16 @@ export default function vehiculoActualDetailModal() {
                   </div>
 
                   <div className="mt-6 flex justify-end">
-                    <button
+                    <Button
                       className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm transition-colors"
-                      onClick={() => setActualizarDocumentos(true)}
+                      onPress={handleNavigate}
                     >
                       Actualizar Documentos
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
 
-              {/* Vista de actualización de documentos si está activada */}
-              {activeTab === "documents" && actualizarDocumentos && (
-                <DocumentUploadForm vehiculoActual={vehiculoActual} onSubmit={()=>console.log('update')} />
-              )}
 
               {/* Pestaña de galería */}
               {activeTab === "gallery" && (
@@ -394,9 +376,9 @@ export default function vehiculoActualDetailModal() {
                     Galería de Imágenes
                   </h4>
 
-                  {galeria.length > 0 ? (
+                  {Array.isArray(galeria) && galeria.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {galeria.map((imagen : string, index : number) => (
+                      {galeria.map((imagen: string, index: number) => (
                         <div
                           key={index}
                           className="aspect-square bg-gray-100 rounded-md overflow-hidden"
@@ -426,9 +408,9 @@ export default function vehiculoActualDetailModal() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 }

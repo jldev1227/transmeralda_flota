@@ -7,7 +7,6 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import { ToastContainer, toast } from 'react-toastify';
 
 import { useAuth } from "./AuthContext";
 
@@ -86,14 +85,8 @@ interface FlotaContextType {
   };
   // Métodos para API
   obtenerVehiculoId: (id: string) => Promise<Vehiculo | null>;
-  crearVehiculo: (data: Partial<Vehiculo>) => Promise<Vehiculo | null>;
-  editarVehiculo: (
-    id: string,
-    data: Partial<Vehiculo>,
-  ) => Promise<Vehiculo | null>;
-  obtenerVehiculos: () => Promise<void>;
-  confirmarEliminarVehiculo: (id: string, nombre: string) => Promise<void>;
   ordenarVehiculos: (key: string, direction: "asc" | "desc") => void;
+  obtenerVehiculoBasico: (id: string) => Promise<Vehiculo | null>;
 
   // Métodos para UI
   setFiltros: React.Dispatch<React.SetStateAction<FiltrosVehiculos>>;
@@ -165,13 +158,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         const isConnected = socketService.isConnected();
 
         setSocketConnected(isConnected);
-
-        if (isConnected) {
-          toast.success("Conectado para actualizaciones en tiempo real", {
-            id: "socket-connect",
-            duration: 3000,
-          });
-        }
       };
 
       // Verificar estado inicial
@@ -180,18 +166,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Manejar eventos de conexión
       const handleConnect = () => {
         setSocketConnected(true);
-        toast.success("Conectado para actualizaciones en tiempo real", {
-          id: "socket-connect",
-          duration: 3000,
-        });
       };
 
       const handleDisconnect = () => {
         setSocketConnected(false);
-        // toast.warning('Desconectado de actualizaciones en tiempo real', {
-        //   id: 'socket-disconnect',
-        //   duration: 3000
-        // });
       };
 
       // Registrar manejadores de eventos
@@ -314,152 +292,35 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     [],
   );
 
-  const crearVehiculo = useCallback(
-    async (liquidacionData: Partial<Vehiculo>): Promise<Vehiculo | null> => {
-      try {
-        setLoading(true);
-        setError(null);
+  const obtenerVehiculoBasico = useCallback(async (id: string): Promise<Vehiculo | null> => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await apiClient.post(
-          "/api/nomina/conductores",
-          liquidacionData,
+      const response = await apiClient.get(`/api/flota/basico/${id}`);
+
+      console.log(response)
+
+      if (response.data.success) {
+        return response.data.vehiculo;
+      } else {
+        throw new Error(
+          response.data.message || "Error al obtener la liquidación",
         );
-
-        if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se cree la liquidación a todos los clientes conectados
-          setShowCrearModal(false);
-          notificarCRUD("crear", "Liquidación", true);
-
-          return response.data.data;
-        } else {
-          throw new Error(
-            response.data.message || "Error al crear la liquidación",
-          );
-        }
-      } catch (err: any) {
-        const mensajeError =
-          err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("crear", "Liquidación", false, mensajeError);
-
-        return null;
-      } finally {
-        setLoading(false);
       }
-    },
-    [notificarCRUD],
-  );
-
-  // Editar una liquidación existente
-  const editarVehiculo = useCallback(
-    async (
-      id: string,
-      liquidacionData: Partial<Vehiculo>,
-    ): Promise<Vehiculo | null> => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.put(
-          `/api/nomina/conductores/${id}`,
-          liquidacionData,
-        );
-
-        if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se actualice la liquidación a todos los clientes conectados
-          setShowEditarModal(false);
-
-          // Notificar éxito
-          notificarCRUD("editar", "Liquidación", true);
-
-          return response.data.data;
-        } else {
-          throw new Error(
-            response.data.message || "Error al editar la liquidación",
-          );
-        }
-      } catch (err: any) {
-        const mensajeError =
-          err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("editar", "Liquidación", false, mensajeError);
-
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [notificarCRUD],
-  );
-
-  const eliminarLiquidacion = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await apiClient.delete(
-          `/api/nomina/conductores/${id}`,
-        );
-
-        if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se elimine la liquidación a todos los clientes conectados
-
-          // Notificar éxito
-          notificarCRUD("eliminar", "Liquidación", true);
-
-          return true;
-        } else {
-          throw new Error(
-            response.data.message || "Error al eliminar la liquidación",
-          );
-        }
-      } catch (err: any) {
-        const mensajeError =
-          err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("eliminar", "Liquidación", false, mensajeError);
-
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [notificarCRUD],
-  );
-
-  const confirmarEliminarVehiculo = useCallback(
-    async (id: string, nombre?: string): Promise<void> => {
-      // Si estás usando una librería de confirmación como SweetAlert2, react-confirm-alert, etc.
-      // Aquí un ejemplo con una función genérica de confirmación
-      const confirmar = window.confirm(
-        `¿Estás seguro de que deseas eliminar la liquidación${nombre ? ` de ${nombre}` : ""}? 
-            Esta acción eliminará también todos los registros relacionados (anticipos, bonificaciones, mantenimientos, pernotes y recargos).`,
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        "Error al conectar con el servidor",
       );
 
-      if (confirmar) {
-        await eliminarLiquidacion(id);
-      }
-    },
-    [eliminarLiquidacion],
-  );
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+  , []);
 
   const filtrarVehiculos = useCallback((): Vehiculo[] => {
     // Si no hay vehículos, retornar array vacío
@@ -739,12 +600,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     ordenarVehiculos,
 
     // Métodos para API
-    obtenerVehiculos,
     obtenerVehiculoId,
-    crearVehiculo,
-    editarVehiculo,
-    confirmarEliminarVehiculo,
-
+    obtenerVehiculoBasico,
     // Métodos para UI
     setFiltros,
     resetearFiltros,
@@ -756,13 +613,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     // socket
     socketConnected,
     socketEventLogs,
-    // clearSocketEventLogs,
+    clearSocketEventLogs,
   };
 
   return (
     <FlotaContext.Provider value={value}>
       {children}
-      <ToastContainer/>
     </FlotaContext.Provider>
   );
 };

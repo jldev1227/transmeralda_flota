@@ -14,10 +14,15 @@ class SocketService {
   private getSocketUrl(): string {
     let url = process.env.NEXT_PUBLIC_API_URL || "http://midomninio.local:5000";
 
-    // Para depuración
-    console.log("URL base del socket:", url);
-
     return url;
+  }
+
+  getSocketId() {
+    // Verificar si el socket está inicializado y conectado
+    if (this.socket) {
+      return this.socket.id;
+    }
+    return null;
   }
 
   // Método para conectar con el socket
@@ -28,14 +33,11 @@ class SocketService {
 
     // Guardar el userId para intentos de reconexión
     this.userId = userId;
-    console.log(this.userId);
 
     // Configuración para la conexión
     const socketUrl = this.getSocketUrl();
 
     try {
-      console.log("Intentando conectar a:", socketUrl);
-
       this.socket = io(socketUrl, {
         path: "/socket.io/",
         transports: ["polling"], // Usar solo polling para evitar problemas con WebSockets
@@ -107,8 +109,6 @@ class SocketService {
       const delay =
         this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
 
-      console.log(`Intentando reconectar en ${delay}ms`);
-
       this.reconnectTimer = setTimeout(() => {
         if (this.userId) {
           // En el último intento, probar con URL alternativa
@@ -165,10 +165,14 @@ class SocketService {
   }
 
   // Dejar de escuchar evento
-  off(event?: string): void {
+  // Modificar el método en SocketService
+  off(event?: string, callback?: (...args: any[]) => void): void {
     if (this.socket) {
-      if (event) {
-        console.log(`Eliminando escucha para evento '${event}'`);
+      if (event && callback) {
+        console.log(`Eliminando escucha específica para evento '${event}'`);
+        this.socket.off(event, callback);
+      } else if (event) {
+        console.log(`Eliminando todas las escuchas para evento '${event}'`);
         this.socket.off(event);
       } else {
         console.log("Eliminando todas las escuchas de eventos");

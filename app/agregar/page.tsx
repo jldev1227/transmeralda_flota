@@ -5,28 +5,26 @@ import { Button } from '@heroui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-const NuevoVehiculoPage = () => {
+export default function Page(){
     const router = useRouter();
 
     return (
-        <div className="container mx-auto py-6 space-y-5">
-            <div className="flex justify-between gap-4">
-                <h1 className="text-xl font-bold">Registro de Nuevo Vehículo</h1>
-                <Button color='primary' className='rounded-md' onPress={() => router.back()}>
-                    <ArrowLeft height={18} />
-                    Volver
-                </Button>
-            </div>
-            {/* Documentos del vehículo */}
-            <div className="bg-white shadow-sm rounded-lg mb-6 border border-gray-100">
-                <div className="p-4">
-                    <DocumentUploadForm
-                        onSubmit={() => console.log("ASas")}
-                    />
+        <div className="flex-grow px-6 py-8">
+            <div className="max-w-7xl mx-auto space-y-4">
+                <div className="flex justify-between gap-4">
+                    <h1 className="text-xl font-bold">Registro de Nuevo Vehículo</h1>
+                    <Button color='primary' className='rounded-md' onPress={() => router.back()}>
+                        <ArrowLeft height={18} />
+                        Volver
+                    </Button>
+                </div>
+                {/* Documentos del vehículo */}
+                <div className="bg-white shadow-sm rounded-lg mb-6 border border-gray-100">
+                    <div className="p-4">
+                        <DocumentUploadForm/>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
-
-export default NuevoVehiculoPage;
