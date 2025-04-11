@@ -320,7 +320,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       setLoading(false);
     }
   }
-  , []);
+    , []);
 
   const filtrarVehiculos = useCallback((): Vehiculo[] => {
     // Si no hay vehículos, retornar array vacío
@@ -581,6 +581,108 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   useEffect(() => {
     obtenerVehiculos();
   }, []);
+
+  // Configurar listeners para eventos de vehiculos
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log(user.id)
+
+    // Manejador para nueva liquidación creada
+    const handleVehiculoCreado = (data: {
+      vehiculo: Vehiculo;
+      usuarioCreador: string;
+    }) => {
+      logSocketEvent("vehiculo_creado", data);
+
+      // Actualizar la lista de vehiculos
+      setVehiculos((prev) => {
+        // Verificar si la liquidación ya existe
+        const exists = prev.some((liq) => liq.id === data.vehiculo.id);
+
+        if (exists) {
+          return prev.map((liq) =>
+            liq.id === data.vehiculo.id ? data.vehiculo : liq,
+          );
+        } else {
+          return [data.vehiculo, ...prev];
+        }
+      });
+    };
+
+    // Manejador para liquidación actualizada
+    const handleVehiculoActualizado = (data: {
+      vehiculo: Vehiculo;
+      usuarioActualizador: string;
+      cambios: any;
+    }) => {
+      logSocketEvent("vehiculo_actualizado", data);
+
+      // Actualizar la lista de liquidaciones
+      setVehiculos((prev) =>
+        prev.map((liq) =>
+          liq.id === data.vehiculo.id ? data.vehiculo : liq,
+        ),
+      );
+
+      // Si la liquidación actual se está viendo/editando, actualizarla también
+      if (vehiculoActual && vehiculoActual.id === data.vehiculo.id) {
+        setVehiculoActual(data.vehiculo);
+      }
+    };
+
+    // Manejador para liquidación eliminada
+    const handleVehiculoEliminado = (data: {
+      liquidacionId: string;
+      usuarioEliminador: string;
+    }) => {
+      logSocketEvent("liquidacion_eliminada", data);
+
+      // Eliminar la liquidación de la lista
+      setVehiculos((prev) =>
+        prev.filter((liq) => liq.id !== data.liquidacionId),
+      );
+
+      // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
+      if (vehiculoActual && vehiculoActual.id === data.liquidacionId) {
+        setVehiculoActual(null);
+
+        // Cerrar modales si están abiertos
+        cerrarModales();
+      }
+    };
+
+    // Manejador para cambio de estado
+    const handleCambioEstadoVehiculo = (data: {
+      liquidacionId: string;
+      estadoAnterior: string;
+      nuevoEstado: string;
+      usuarioResponsable: string;
+      comentario?: string;
+    }) => {
+      logSocketEvent("cambio_estado_liquidacion", data);
+
+      // No actualizamos la liquidación aquí, ya que se actualizará con handleVehiculoActualizado
+    };
+
+    // Registrar los listeners
+    socketService.on("vehiculo_creado", handleVehiculoCreado);
+    socketService.on("vehiculo_actualizado", handleVehiculoActualizado);
+    socketService.on("vehiculo_eliminado", handleVehiculoEliminado);
+    socketService.on(
+      "cambio_estado_vehiculo",
+      handleCambioEstadoVehiculo,
+    );
+
+    // Limpiar al desmontar
+    return () => {
+      socketService.off("vehiculo_creado");
+      socketService.off("vehiculo_actualizado");
+      socketService.off("vehiculo_eliminado");
+      socketService.off("cambio_estado_vehiculo");
+    };
+  }, [user?.id, vehiculoActual, logSocketEvent]);
+
 
   // Valor del contexto
   const value: FlotaContextType = {

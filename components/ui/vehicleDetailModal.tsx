@@ -105,7 +105,7 @@ export default function vehiculoActualDetailModal() {
       date: vehiculoActual.polizaContractualVencimiento,
     },
     {
-      name: "Póliza Extra-Contractual",
+      name: "Póliza Extracontractual",
       date: vehiculoActual.polizaExtraContractualVencimiento,
     },
     {

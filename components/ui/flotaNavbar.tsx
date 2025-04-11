@@ -43,14 +43,7 @@ const FlotaNavbar = () => {
       path: "/",
       icon: <Home size={20} />,
       active: currentPath === "/",
-    },
-    {
-      name: "Análisis",
-      path: "/analisis",
-      icon: <PieChart size={20} />,
-      active: currentPath === "/analisis",
-      submenu: [{ name: "Conductores", path: "/conductores/analisis" }],
-    },
+    }
   ];
 
   const handleNavigation = (path: string, disabled = false) => {
@@ -75,7 +68,7 @@ const FlotaNavbar = () => {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto max-xl:px-4">
         <div className="flex justify-between h-16">
           {/* Logo & Brand */}
           <Link className="flex" href={"/"}>
@@ -255,7 +248,7 @@ const FlotaNavbar = () => {
 
       {/* Breadcrumb - Optional */}
       <div className="bg-gray-50 border-t border-b border-gray-200">
-        <div className="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto py-2 max-xl:px-4">
           <nav aria-label="Breadcrumb" className="flex">
             <ol className="flex items-center space-x-3 text-sm">
               <li className="flex items-center">

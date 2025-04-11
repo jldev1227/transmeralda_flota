@@ -12,11 +12,6 @@ export default function DynamicTitle() {
     // Mapeo de rutas a nombres descriptivos
     const pathNames: { [key: string]: string } = {
       "/": "Inicio",
-      "/conductores": "Conductores",
-      "/administrativo": "Administrativo",
-      "/reportes": "Reportes",
-      "/analisis": "Análisis",
-      "/configuracion": "Configuración",
     };
 
     // Obtener el nombre de la página actual
