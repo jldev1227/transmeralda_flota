@@ -8,10 +8,10 @@ import {
   PlusIcon,
   TruckIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import { SearchIcon } from "@/components/icons";
 import { useFlota } from "@/context/FlotaContext";
-import Link from "next/link";
 import VehiculosTable from "@/components/vehiculosTable";
 
 // Función para verificar el estado de documentos
@@ -47,8 +47,8 @@ export default function Dashboard() {
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold text-gray-900">Vehiculos</h1>
           <Link
-            href={"agregar"}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-colors"
+            href={"agregar"}
           >
             <PlusIcon className="h-5 w-5" />
             <span>Nuevo Vehículo</span>
@@ -141,9 +141,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                          "PRÓXIMO" ||
+                            "PRÓXIMO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                          "PRÓXIMO" ||
+                            "PRÓXIMO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "PRÓXIMO",
@@ -170,9 +170,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                          "VENCIDO" ||
+                            "VENCIDO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                          "VENCIDO" ||
+                            "VENCIDO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "VENCIDO",
@@ -199,12 +199,9 @@ export default function Dashboard() {
             </h3>
           </div>
 
-
           <VehiculosTable vehiculos={vehiculosFiltrados} />
-
         </div>
       </div>
     </div>
   );
 }
-

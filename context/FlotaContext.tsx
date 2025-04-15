@@ -10,7 +10,6 @@ import React, {
 
 import { useAuth } from "./AuthContext";
 
-import { useNotificaciones } from "@/hooks/useNotificaciones";
 import { apiClient } from "@/config/apiClient";
 import socketService from "@/services/socketServices";
 
@@ -115,7 +114,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   const [vehiculoActual, setVehiculoActual] = useState<Vehiculo | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { notificarCRUD } = useNotificaciones();
   const { user } = useAuth();
 
   // Estados para Socket.IO
@@ -222,7 +220,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       });
     };
 
-
     // Limpiar al desmontar
     return () => {
       socketService.off("vehiculo_creado");
@@ -251,8 +248,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Error al conectar con el servidor",
+          err.message ||
+          "Error al conectar con el servidor",
       );
     } finally {
       setLoading(false);
@@ -280,8 +277,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       } catch (err: any) {
         setError(
           err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor",
+            err.message ||
+            "Error al conectar con el servidor",
         );
 
         return null;
@@ -292,35 +289,35 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     [],
   );
 
-  const obtenerVehiculoBasico = useCallback(async (id: string): Promise<Vehiculo | null> => {
-    try {
-      setLoading(true);
-      setError(null);
+  const obtenerVehiculoBasico = useCallback(
+    async (id: string): Promise<Vehiculo | null> => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await apiClient.get(`/api/flota/basico/${id}`);
+        const response = await apiClient.get(`/api/flota/basico/${id}`);
 
-      console.log(response)
-
-      if (response.data.success) {
-        return response.data.vehiculo;
-      } else {
-        throw new Error(
-          response.data.message || "Error al obtener la liquidación",
+        if (response.data.success) {
+          return response.data.vehiculo;
+        } else {
+          throw new Error(
+            response.data.message || "Error al obtener la liquidación",
+          );
+        }
+      } catch (err: any) {
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Error al conectar con el servidor",
         );
-      }
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-        err.message ||
-        "Error al conectar con el servidor",
-      );
 
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }
-    , []);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const filtrarVehiculos = useCallback((): Vehiculo[] => {
     // Si no hay vehículos, retornar array vacío
@@ -442,7 +439,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           const fechaVencimiento = new Date(fechaStr);
           const diferenciaDias = Math.floor(
             (fechaVencimiento.getTime() - hoy.getTime()) /
-            (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24),
           );
 
           return diferenciaDias >= 0 && diferenciaDias <= diasLimite;
@@ -618,9 +615,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
       // Actualizar la lista de liquidaciones
       setVehiculos((prev) =>
-        prev.map((liq) =>
-          liq.id === data.vehiculo.id ? data.vehiculo : liq,
-        ),
+        prev.map((liq) => (liq.id === data.vehiculo.id ? data.vehiculo : liq)),
       );
 
       // Si la liquidación actual se está viendo/editando, actualizarla también
@@ -667,10 +662,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     socketService.on("vehiculo_creado", handleVehiculoCreado);
     socketService.on("vehiculo_actualizado", handleVehiculoActualizado);
     socketService.on("vehiculo_eliminado", handleVehiculoEliminado);
-    socketService.on(
-      "cambio_estado_vehiculo",
-      handleCambioEstadoVehiculo,
-    );
+    socketService.on("cambio_estado_vehiculo", handleCambioEstadoVehiculo);
 
     // Limpiar al desmontar
     return () => {
@@ -680,7 +672,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       socketService.off("cambio_estado_vehiculo");
     };
   }, [user?.id, vehiculoActual, logSocketEvent]);
-
 
   // Valor del contexto
   const value: FlotaContextType = {
@@ -717,9 +708,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   };
 
   return (
-    <FlotaContext.Provider value={value}>
-      {children}
-    </FlotaContext.Provider>
+    <FlotaContext.Provider value={value}>{children}</FlotaContext.Provider>
   );
 };
 

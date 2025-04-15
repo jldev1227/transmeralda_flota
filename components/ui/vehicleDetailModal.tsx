@@ -1,14 +1,17 @@
+"use client";
+
 import {
-  ArrowDownTrayIcon,
   DocumentTextIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, ClockIcon, EyeIcon, TruckIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Modal, ModalContent } from '@heroui/modal';
-import { useFlota } from "@/context/FlotaContext";
+import { Modal, ModalContent } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+import { useFlota } from "@/context/FlotaContext";
 import { apiClient } from "@/config/apiClient";
 
 // Función para formatear fechas
@@ -89,14 +92,15 @@ interface DocumentFile {
   filename: string;
 }
 
-export default function vehiculoActualDetailModal() {
+export default function VehiculoActualDetailModal() {
   const { vehiculoActual, showDetalleModal, cerrarModales } = useFlota();
   const [activeTab, setActiveTab] = useState("info");
   const [documentFiles, setDocumentFiles] = useState<DocumentFile[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {4
+  useEffect(() => {
+    4;
     // Si el modal está abierto y estamos en la pestaña de documentos, cargar los documentos
     if (showDetalleModal && activeTab === "documents" && vehiculoActual?.id) {
       fetchDocuments();
@@ -108,7 +112,10 @@ export default function vehiculoActualDetailModal() {
 
     setLoading(true);
     try {
-      const response = await apiClient.get(`/api/documentos/vehiculos/${vehiculoActual.id}`);
+      const response = await apiClient.get(
+        `/api/documentos/vehiculos/${vehiculoActual.id}`,
+      );
+
       setDocumentFiles(response.data.data);
     } catch (error) {
       console.error("Error al cargar documentos:", error);
@@ -120,17 +127,20 @@ export default function vehiculoActualDetailModal() {
   const getPresignedUrl = async (s3Key: string) => {
     try {
       const response = await apiClient.get(`/api/documentos/url-firma`, {
-        params: { key: s3Key }
+        params: { key: s3Key },
       });
+
       return response.data.url;
     } catch (error) {
       console.error("Error al obtener URL firmada:", error);
+
       return null;
     }
   };
 
   const handleViewDocument = async (s3Key: string) => {
     const url = await getPresignedUrl(s3Key);
+
     if (url) {
       window.open(url, "_blank");
     }
@@ -141,17 +151,40 @@ export default function vehiculoActualDetailModal() {
   // Prepara un array de documentos con sus estados
   const documentsBase = [
     { name: "SOAT", date: vehiculoActual.soatVencimiento, type: "SOAT" },
-    { name: "Técnicomecánica", date: vehiculoActual.tecnomecanicaVencimiento, type: "TECNOMECANICA" },
-    { name: "Tarjeta de Operación", date: vehiculoActual.tarjetaDeOperacionVencimiento, type: "TARJETA_DE_OPERACION" },
-    { name: "Póliza Contractual", date: vehiculoActual.polizaContractualVencimiento, type: "POLIZA_CONTRACTUAL" },
-    { name: "Póliza Extracontractual", date: vehiculoActual.polizaExtraContractualVencimiento, type: "POLIZA_EXTRACONTRACTUAL" },
-    { name: "Póliza Todo Riesgo", date: vehiculoActual.polizaTodoRiesgoVencimiento, type: "POLIZA_TODO_RIESGO" },
-    { name: "Tarjeta de Propiedad", date: null, type: "TARJETA_DE_PROPIEDAD" }
+    {
+      name: "Técnicomecánica",
+      date: vehiculoActual.tecnomecanicaVencimiento,
+      type: "TECNOMECANICA",
+    },
+    {
+      name: "Tarjeta de Operación",
+      date: vehiculoActual.tarjetaDeOperacionVencimiento,
+      type: "TARJETA_DE_OPERACION",
+    },
+    {
+      name: "Póliza Contractual",
+      date: vehiculoActual.polizaContractualVencimiento,
+      type: "POLIZA_CONTRACTUAL",
+    },
+    {
+      name: "Póliza Extracontractual",
+      date: vehiculoActual.polizaExtraContractualVencimiento,
+      type: "POLIZA_EXTRACONTRACTUAL",
+    },
+    {
+      name: "Póliza Todo Riesgo",
+      date: vehiculoActual.polizaTodoRiesgoVencimiento,
+      type: "POLIZA_TODO_RIESGO",
+    },
+    { name: "Tarjeta de Propiedad", date: null, type: "TARJETA_DE_PROPIEDAD" },
   ];
 
   // Enriquecer los documentos base con información de archivos si está disponible
   const documents = documentsBase.map((doc) => {
-    const matchingFile = documentFiles.find(file => file.document_type === doc.type);
+    const matchingFile = documentFiles.find(
+      (file) => file.document_type === doc.type,
+    );
+
     return {
       ...doc,
       status: checkDocumentStatus(doc.date),
@@ -159,7 +192,7 @@ export default function vehiculoActualDetailModal() {
       hasFile: !!matchingFile,
       s3Key: matchingFile?.s3_key,
       fileId: matchingFile?.id,
-      filename: matchingFile?.filename
+      filename: matchingFile?.filename,
     };
   });
 
@@ -177,11 +210,10 @@ export default function vehiculoActualDetailModal() {
   const handleNavigate = async () => {
     router.push(`/actualizar/${vehiculoActual.id}`);
     cerrarModales();
-  }
-
+  };
 
   return (
-    <Modal size="4xl" isOpen={true} onOpenChange={cerrarModales}>
+    <Modal isOpen={true} size="4xl" onOpenChange={cerrarModales}>
       <ModalContent className=" overflow-y-auto max-h-full">
         {(onClose) => (
           <>
@@ -201,28 +233,31 @@ export default function vehiculoActualDetailModal() {
             <div className="border-b border-gray-200">
               <nav className="flex -mb-px">
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${activeTab === "info"
-                    ? "border-b-2 border-emerald-500 text-emerald-600"
-                    : "text-gray-500 hover:text-gray-700"
-                    }`}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === "info"
+                      ? "border-b-2 border-emerald-500 text-emerald-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
                   onClick={() => setActiveTab("info")}
                 >
                   Información General
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${activeTab === "documents"
-                    ? "border-b-2 border-emerald-500 text-emerald-600"
-                    : "text-gray-500 hover:text-gray-700"
-                    }`}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === "documents"
+                      ? "border-b-2 border-emerald-500 text-emerald-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
                   onClick={() => setActiveTab("documents")}
                 >
                   Documentos
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${activeTab === "gallery"
-                    ? "border-b-2 border-emerald-500 text-emerald-600"
-                    : "text-gray-500 hover:text-gray-700"
-                    }`}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === "gallery"
+                      ? "border-b-2 border-emerald-500 text-emerald-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
                   onClick={() => setActiveTab("gallery")}
                 >
                   Galería
@@ -376,8 +411,10 @@ export default function vehiculoActualDetailModal() {
 
                   {loading ? (
                     <div className="text-center py-8">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-emerald-500"></div>
-                      <p className="mt-2 text-gray-600">Cargando documentos...</p>
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-emerald-500" />
+                      <p className="mt-2 text-gray-600">
+                        Cargando documentos...
+                      </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -407,8 +444,8 @@ export default function vehiculoActualDetailModal() {
                             {doc.hasFile && (
                               <div className="mt-2 flex space-x-2">
                                 <button
-                                  onClick={() => handleViewDocument(doc.s3Key!)}
                                   className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs rounded-md bg-white hover:bg-gray-50 text-gray-700"
+                                  onClick={() => handleViewDocument(doc.s3Key!)}
                                 >
                                   <EyeIcon className="h-4 w-4 mr-1" />
                                   Ver
@@ -446,7 +483,7 @@ export default function vehiculoActualDetailModal() {
                           key={index}
                           className="aspect-square bg-gray-100 rounded-md overflow-hidden"
                         >
-                          <img
+                          <Image
                             alt={`Imagen ${index + 1} de ${vehiculoActual.placa}`}
                             className="w-full h-full object-cover"
                             src={imagen}

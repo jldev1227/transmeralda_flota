@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Home,
-  PieChart,
-  Menu,
-  X,
-  ChevronDown,
-  CircleUserRound,
-} from "lucide-react";
+import { Home, Menu, X, ChevronDown, CircleUserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -43,7 +36,7 @@ const FlotaNavbar = () => {
       path: "/",
       icon: <Home size={20} />,
       active: currentPath === "/",
-    }
+    },
   ];
 
   const handleNavigation = (path: string, disabled = false) => {
