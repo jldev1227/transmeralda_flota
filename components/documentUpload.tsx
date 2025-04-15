@@ -669,12 +669,6 @@ const VehiculoDocumentUploader = ({ id }: { id?: string }) => {
 
         <div className="mt-6 flex justify-end gap-4">
           <Button
-            disabled={enProceso || procesamiento.estado === 'completado'}
-            className="text-red-600 hover:text-red-900 transition-colors bg-transparent"
-          >
-            Cancelar
-          </Button>
-          <Button
             type="submit"
             className={`bg-emerald-600 text-white rounded-md ${cargando ? 'opacity-70 cursor-not-allowed' : ''}`}
           >

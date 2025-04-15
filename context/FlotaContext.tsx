@@ -586,8 +586,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log(user.id)
-
     // Manejador para nueva liquidación creada
     const handleVehiculoCreado = (data: {
       vehiculo: Vehiculo;
