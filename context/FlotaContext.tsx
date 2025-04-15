@@ -199,7 +199,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     if (!user?.id) return;
 
     // Manejador para nueva liquidación creada
-    const handleLiquidacionCreada = (data: {
+    const handleVehiculoCreado = (data: {
       vehiculo: Vehiculo;
       usuarioCreador: string;
     }) => {
@@ -613,7 +613,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     }) => {
       logSocketEvent("vehiculo_actualizado", data);
 
-      // Actualizar la lista de liquidaciones
+      // Actualizar la lista de vehiculos
       setVehiculos((prev) =>
         prev.map((liq) => (liq.id === data.vehiculo.id ? data.vehiculo : liq)),
       );
@@ -626,18 +626,18 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
     // Manejador para liquidación eliminada
     const handleVehiculoEliminado = (data: {
-      liquidacionId: string;
+      vehiculo_id: string;
       usuarioEliminador: string;
     }) => {
-      logSocketEvent("liquidacion_eliminada", data);
+      logSocketEvent("vehiculo_eliminado", data);
 
       // Eliminar la liquidación de la lista
       setVehiculos((prev) =>
-        prev.filter((liq) => liq.id !== data.liquidacionId),
+        prev.filter((liq) => liq.id !== data.vehiculo_id),
       );
 
       // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
-      if (vehiculoActual && vehiculoActual.id === data.liquidacionId) {
+      if (vehiculoActual && vehiculoActual.id === data.vehiculo_id) {
         setVehiculoActual(null);
 
         // Cerrar modales si están abiertos
@@ -645,24 +645,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       }
     };
 
-    // Manejador para cambio de estado
-    const handleCambioEstadoVehiculo = (data: {
-      liquidacionId: string;
-      estadoAnterior: string;
-      nuevoEstado: string;
-      usuarioResponsable: string;
-      comentario?: string;
-    }) => {
-      logSocketEvent("cambio_estado_liquidacion", data);
-
-      // No actualizamos la liquidación aquí, ya que se actualizará con handleVehiculoActualizado
-    };
-
     // Registrar los listeners
     socketService.on("vehiculo_creado", handleVehiculoCreado);
     socketService.on("vehiculo_actualizado", handleVehiculoActualizado);
     socketService.on("vehiculo_eliminado", handleVehiculoEliminado);
-    socketService.on("cambio_estado_vehiculo", handleCambioEstadoVehiculo);
 
     // Limpiar al desmontar
     return () => {
