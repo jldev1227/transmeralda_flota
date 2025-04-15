@@ -14,10 +14,16 @@ class SocketService {
   private getSocketUrl(): string {
     let url = process.env.NEXT_PUBLIC_API_URL || "http://midomninio.local:5000";
 
-    // Para depuración
-    console.log("URL base del socket:", url);
-
     return url;
+  }
+
+  getSocketId() {
+    // Verificar si el socket está inicializado y conectado
+    if (this.socket) {
+      return this.socket.id;
+    }
+
+    return null;
   }
 
   // Método para conectar con el socket
@@ -28,14 +34,11 @@ class SocketService {
 
     // Guardar el userId para intentos de reconexión
     this.userId = userId;
-    console.log(this.userId);
 
     // Configuración para la conexión
     const socketUrl = this.getSocketUrl();
 
     try {
-      console.log("Intentando conectar a:", socketUrl);
-
       this.socket = io(socketUrl, {
         path: "/socket.io/",
         transports: ["polling"], // Usar solo polling para evitar problemas con WebSockets
@@ -60,7 +63,6 @@ class SocketService {
 
   // Manejador de conexión exitosa
   private handleConnect = () => {
-    console.log("Socket conectado exitosamente");
     toast.success("Conexión en tiempo real establecida");
 
     this.reconnectAttempts = 0; // Resetear conteo de intentos al conectar
@@ -81,8 +83,6 @@ class SocketService {
 
   // Manejador de desconexión
   private handleDisconnect = (reason: string) => {
-    console.log("Socket desconectado, razón:", reason);
-
     // Intentar reconectar si la desconexión no fue intencional
     if (reason !== "io client disconnect" && this.userId) {
       this.attemptReconnect();
@@ -99,22 +99,14 @@ class SocketService {
     if (this.reconnectAttempts < this.maxReconnectAttempts && this.userId) {
       this.reconnectAttempts++;
 
-      console.log(
-        `Intento de reconexión ${this.reconnectAttempts} de ${this.maxReconnectAttempts}`,
-      );
-
       // Calcular retraso exponencial
       const delay =
         this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
-
-      console.log(`Intentando reconectar en ${delay}ms`);
 
       this.reconnectTimer = setTimeout(() => {
         if (this.userId) {
           // En el último intento, probar con URL alternativa
           if (this.reconnectAttempts === this.maxReconnectAttempts) {
-            console.log("Último intento con configuración alternativa");
-
             // Usar la misma URL pero con configuración diferente
             this.socket = io(this.getSocketUrl(), {
               path: "/socket.io/",
@@ -137,7 +129,6 @@ class SocketService {
         }
       }, delay);
     } else {
-      console.log("Se han agotado los intentos de reconexión");
       toast.error("No se pudo establecer la conexión en tiempo real");
     }
   };
@@ -145,7 +136,6 @@ class SocketService {
   // Enviar evento al servidor
   emit(event: string, data: any): void {
     if (this.socket && this.socket.connected) {
-      console.log(`Emitiendo evento '${event}':`, data);
       this.socket.emit(event, data);
     } else {
       console.warn(`No se pudo emitir evento '${event}': Socket no conectado`);
@@ -155,7 +145,6 @@ class SocketService {
   // Escuchar evento del servidor
   on(event: string, callback: (...args: any[]) => void): void {
     if (this.socket) {
-      console.log(`Registrando escucha para evento '${event}'`);
       this.socket.on(event, callback);
     } else {
       console.warn(
@@ -165,13 +154,14 @@ class SocketService {
   }
 
   // Dejar de escuchar evento
-  off(event?: string): void {
+  // Modificar el método en SocketService
+  off(event?: string, callback?: (...args: any[]) => void): void {
     if (this.socket) {
-      if (event) {
-        console.log(`Eliminando escucha para evento '${event}'`);
+      if (event && callback) {
+        this.socket.off(event, callback);
+      } else if (event) {
         this.socket.off(event);
       } else {
-        console.log("Eliminando todas las escuchas de eventos");
         this.socket.removeAllListeners();
       }
     }
@@ -180,7 +170,6 @@ class SocketService {
   // Desconectar socket
   disconnect(): void {
     if (this.socket) {
-      console.log("Desconectando socket");
       this.socket.disconnect();
       this.socket = null;
     }

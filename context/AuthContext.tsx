@@ -97,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setLoading(true);
       // Hacer la petición al endpoint de perfil
-      console.log("response");
       const response = await apiClient.get("/api/usuarios/perfil");
 
       if (response.data && response.data.success) {

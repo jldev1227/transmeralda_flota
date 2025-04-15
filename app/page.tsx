@@ -8,9 +8,11 @@ import {
   PlusIcon,
   TruckIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import { SearchIcon } from "@/components/icons";
-import { useFlota, Vehiculo } from "@/context/FlotaContext";
+import { useFlota } from "@/context/FlotaContext";
+import VehiculosTable from "@/components/vehiculosTable";
 
 // Función para verificar el estado de documentos
 const checkDocumentStatus = (date: string) => {
@@ -30,114 +32,27 @@ const checkDocumentStatus = (date: string) => {
   }
 };
 
-// Función para obtener la clase de color según el estado
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "DISPONIBLE":
-      return "bg-emerald-100 text-emerald-800";
-    case "NO DISPONIBLE":
-      return "bg-red-100 text-red-800";
-    case "MANTENIMIENTO":
-      return "bg-amber-100 text-amber-800";
-    case "INACTIVO":
-      return "bg-gray-100 text-gray-800";
-    case "VENCIDO":
-      return "bg-red-100 text-red-800";
-    case "PRÓXIMO":
-      return "bg-amber-100 text-amber-800";
-    case "VIGENTE":
-      return "bg-emerald-100 text-emerald-800";
-    default:
-      return "bg-gray-100 text-gray-600";
-  }
-};
-
-// Función para obtener todos los documentos clasificados
-const getDocumentStatus = (vehicle: Vehiculo) => {
-  // Definir todos los documentos requeridos
-  const requiredDocs = [
-    { name: "SOAT", date: vehicle.soatVencimiento },
-    { name: "Técnico-mecánica", date: vehicle.tecnomecanicaVencimiento },
-    {
-      name: "Tarjeta de Operación",
-      date: vehicle.tarjetaDeOperacionVencimiento,
-    },
-    { name: "Póliza Contractual", date: vehicle.polizaContractualVencimiento },
-    {
-      name: "Póliza Extra-Contractual",
-      date: vehicle.polizaExtraContractualVencimiento,
-    },
-    { name: "Póliza Todo Riesgo", date: vehicle.polizaTodoRiesgoVencimiento },
-  ];
-
-  // Todos los documentos con su estado
-  const allDocs = requiredDocs.map((doc) => ({
-    ...doc,
-    status: doc.date ? checkDocumentStatus(doc.date) : "NA",
-    date: doc.date ? new Date(doc.date) : null,
-  }));
-
-  // Separar por estado
-  const pendientes = allDocs.filter((doc) => doc.status === "NA");
-  const vencidos = allDocs.filter((doc) => doc.status === "VENCIDO");
-  const proximos = allDocs.filter((doc) => doc.status === "PRÓXIMO");
-  const vigentes = allDocs.filter((doc) => doc.status === "VIGENTE");
-
-  // Ordenar los que tienen fecha por proximidad
-  vencidos.sort(
-    (a, b) => (a.date as Date).getTime() - (b.date as Date).getTime(),
-  );
-  proximos.sort(
-    (a, b) => (a.date as Date).getTime() - (b.date as Date).getTime(),
-  );
-  vigentes.sort(
-    (a, b) => (a.date as Date).getTime() - (b.date as Date).getTime(),
-  );
-
-  // Determinar el documento de mayor prioridad
-  // 1. Pendientes (NA), 2. Vencidos, 3. Próximos, 4. Vigentes
-  const priorityDoc =
-    pendientes.length > 0
-      ? pendientes[0]
-      : vencidos.length > 0
-        ? vencidos[0]
-        : proximos.length > 0
-          ? proximos[0]
-          : vigentes.length > 0
-            ? vigentes[0]
-            : null;
-
-  return {
-    allDocs,
-    pendientes,
-    vencidos,
-    proximos,
-    vigentes,
-    priorityDoc,
-  };
-};
-
 export default function Dashboard() {
   const {
     vehiculos,
     vehiculosFiltrados,
-    abrirModalDetalle,
     filtros,
     setFiltros,
+    socketConnected,
   } = useFlota();
 
   return (
-    <div className="flex-grow px-6 py-8">
+    <div className="flex-grow px-4 py-8">
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold text-gray-900">Vehiculos</h1>
-          <button
+          <Link
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-colors"
-            onClick={() => console.log("Agregar nuevo vehículo")}
+            href={"agregar"}
           >
             <PlusIcon className="h-5 w-5" />
             <span>Nuevo Vehículo</span>
-          </button>
+          </Link>
         </div>
         {/* Filtros y búsqueda */}
         <div className="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
@@ -272,184 +187,21 @@ export default function Dashboard() {
 
         {/* Lista de vehículos */}
         <div className="bg-white shadow overflow-hidden rounded-lg">
+          {socketConnected && (
+            <div className="px-6 py-2 bg-green-50 text-green-700 border-b border-green-100 flex items-center text-sm">
+              <div className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
+              <span>Sincronización en tiempo real activa</span>
+            </div>
+          )}
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Vehículos ({vehiculosFiltrados.length})
+              Visualizando ({vehiculosFiltrados.length}) vehiculos
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-            {vehiculosFiltrados.map((vehicle) => {
-              return (
-                <div
-                  key={vehicle.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => abrirModalDetalle(vehicle.id)}
-                >
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">
-                          {vehicle.placa}
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          {vehicle.marca} {vehicle.linea}
-                        </p>
-                      </div>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(vehicle.estado)}`}
-                      >
-                        {vehicle.estado}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <div>
-                        <span className="text-gray-500">Modelo:</span>
-                        <span className="ml-1 text-gray-900">
-                          {vehicle.modelo}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Color:</span>
-                        <span className="ml-1 text-gray-900">
-                          {vehicle.color}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Clase:</span>
-                        <span className="ml-1 text-gray-900">
-                          {vehicle.claseVehiculo}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Combustible:</span>
-                        <span className="ml-1 text-gray-900">
-                          {vehicle.combustible}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <h5 className="text-sm font-medium text-gray-700">
-                        Propietario
-                      </h5>
-                      <p className="text-sm text-gray-900 truncate">
-                        {vehicle.propietarioNombre}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {vehicle.propietarioIdentificacion}
-                      </p>
-                    </div>
-
-                    <DocumentInfo vehicle={vehicle} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {vehiculosFiltrados.length === 0 && (
-            <div className="py-8 text-center">
-              <TruckIcon className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No hay vehículos
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                No se encontraron vehículos con los criterios de búsqueda
-                actuales.
-              </p>
-            </div>
-          )}
+          <VehiculosTable vehiculos={vehiculosFiltrados} />
         </div>
       </div>
     </div>
   );
 }
-
-const DocumentInfo = ({ vehicle }) => {
-  const { pendientes, vencidos, proximos, priorityDoc } =
-    getDocumentStatus(vehicle);
-
-  // Determinar el texto de estado y color basados en la prioridad
-  let statusText = "";
-  let statusColor = "";
-
-  if (pendientes.length > 0) {
-    statusText = `${pendientes.length} documento${pendientes.length > 1 ? "s" : ""} sin registrar`;
-    statusColor = "bg-gray-100 text-gray-800";
-  } else if (vencidos.length > 0) {
-    statusText = `${vencidos.length} documento${vencidos.length > 1 ? "s" : ""} vencido${vencidos.length > 1 ? "s" : ""}`;
-    statusColor = "bg-red-100 text-red-800";
-  } else if (proximos.length > 0) {
-    statusText = `${proximos.length} documento${proximos.length > 1 ? "s" : ""} próximo${proximos.length > 1 ? "s" : ""} a vencer`;
-    statusColor = "bg-amber-100 text-amber-800";
-  }
-
-  // Formatear fecha para mostrar
-  const formatDate = (date: Date | null) => {
-    if (!date) return "No registrada";
-
-    return date.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // Obtener color basado en estado
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "VENCIDO":
-        return "bg-red-100 text-red-800";
-      case "PRÓXIMO":
-        return "bg-amber-100 text-amber-800";
-      case "VIGENTE":
-        return "bg-emerald-100 text-emerald-800";
-      case "NA":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  return (
-    <div className="mt-4 pt-4 border-t border-gray-100">
-      {/* Indicador de estado general */}
-      {(pendientes.length > 0 ||
-        vencidos.length > 0 ||
-        proximos.length > 0) && (
-        <div className="flex items-center mb-2">
-          <span
-            className={`text-xs font-medium p-1 rounded-md ${statusColor} w-full text-center`}
-          >
-            {statusText}
-          </span>
-        </div>
-      )}
-
-      {/* Documento prioritario */}
-      {priorityDoc && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            {priorityDoc.status === "NA"
-              ? "Documento pendiente:"
-              : priorityDoc.status === "VENCIDO"
-                ? "Documento vencido:"
-                : priorityDoc.status === "PRÓXIMO"
-                  ? "Próximo vencimiento:"
-                  : "Vencimiento más próximo:"}
-          </span>
-          <span
-            className={`text-xs font-medium p-1 rounded-md ${getStatusColor(priorityDoc.status)}`}
-          >
-            {priorityDoc.name}:{" "}
-            {priorityDoc.status === "NA"
-              ? "No registrado"
-              : formatDate(priorityDoc.date)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-};

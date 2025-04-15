@@ -10,8 +10,8 @@ import React, {
 
 import { useAuth } from "./AuthContext";
 
-import { useNotificaciones } from "@/hooks/useNotificaciones";
 import { apiClient } from "@/config/apiClient";
+import socketService from "@/services/socketServices";
 
 export interface Vehiculo {
   claseVehiculo: string;
@@ -21,7 +21,7 @@ export interface Vehiculo {
   createdAt: string;
   estado: string;
   fechaMatricula: string;
-  galeria: string[];
+  galeria?: string[];
   id: string;
   kilometraje: number;
   latitud: number;
@@ -84,14 +84,8 @@ interface FlotaContextType {
   };
   // Métodos para API
   obtenerVehiculoId: (id: string) => Promise<Vehiculo | null>;
-  crearVehiculo: (data: Partial<Vehiculo>) => Promise<Vehiculo | null>;
-  editarVehiculo: (
-    id: string,
-    data: Partial<Vehiculo>,
-  ) => Promise<Vehiculo | null>;
-  obtenerVehiculos: () => Promise<void>;
-  confirmarEliminarVehiculo: (id: string, nombre: string) => Promise<void>;
   ordenarVehiculos: (key: string, direction: "asc" | "desc") => void;
+  obtenerVehiculoBasico: (id: string) => Promise<Vehiculo | null>;
 
   // Métodos para UI
   setFiltros: React.Dispatch<React.SetStateAction<FiltrosVehiculos>>;
@@ -120,7 +114,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   const [vehiculoActual, setVehiculoActual] = useState<Vehiculo | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { notificarCRUD } = useNotificaciones();
   const { user } = useAuth();
 
   // Estados para Socket.IO
@@ -152,173 +145,91 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   const [showEditarModal, setShowEditarModal] = useState<boolean>(false);
   const [showDetalleModal, setShowDetalleModal] = useState<boolean>(false);
 
-  // // Inicializar Socket.IO cuando el usuario esté autenticado
-  // useEffect(() => {
-  //   if (user?.id) {
-  //     // Conectar socket
-  //     socketService.connect(user.id);
+  // Inicializar Socket.IO cuando el usuario esté autenticado
+  useEffect(() => {
+    if (user?.id) {
+      // Conectar socket
+      socketService.connect(user.id);
 
-  //     // Verificar conexión inicial y configurar manejo de eventos de conexión
-  //     const checkConnection = () => {
-  //       const isConnected = socketService.isConnected();
+      // Verificar conexión inicial y configurar manejo de eventos de conexión
+      const checkConnection = () => {
+        const isConnected = socketService.isConnected();
 
-  //       setSocketConnected(isConnected);
+        setSocketConnected(isConnected);
+      };
 
-  //       if (isConnected) {
-  //         toast.success("Conectado para actualizaciones en tiempo real", {
-  //           id: "socket-connect",
-  //           duration: 3000,
-  //         });
-  //       }
-  //     };
+      // Verificar estado inicial
+      checkConnection();
 
-  //     // Verificar estado inicial
-  //     checkConnection();
+      // Manejar eventos de conexión
+      const handleConnect = () => {
+        setSocketConnected(true);
+      };
 
-  //     // Manejar eventos de conexión
-  //     const handleConnect = () => {
-  //       setSocketConnected(true);
-  //       toast.success("Conectado para actualizaciones en tiempo real", {
-  //         id: "socket-connect",
-  //         duration: 3000,
-  //       });
-  //     };
+      const handleDisconnect = () => {
+        setSocketConnected(false);
+      };
 
-  //     const handleDisconnect = () => {
-  //       setSocketConnected(false);
-  //       // toast.warning('Desconectado de actualizaciones en tiempo real', {
-  //       //   id: 'socket-disconnect',
-  //       //   duration: 3000
-  //       // });
-  //     };
+      // Registrar manejadores de eventos
+      socketService.on("connect", handleConnect);
+      socketService.on("disconnect", handleDisconnect);
 
-  //     // Registrar manejadores de eventos
-  //     socketService.on("connect", handleConnect);
-  //     socketService.on("disconnect", handleDisconnect);
+      return () => {
+        // Limpiar al desmontar
+        socketService.off("connect");
+        socketService.off("disconnect");
+      };
+    }
+  }, [user?.id]);
 
-  //     return () => {
-  //       // Limpiar al desmontar
-  //       socketService.off("connect");
-  //       socketService.off("disconnect");
-  //     };
-  //   }
-  // }, [user?.id]);
+  // Función para añadir eventos al registro (log)
+  const logSocketEvent = useCallback((eventName: string, data: any) => {
+    setSocketEventLogs((prev) => [
+      {
+        eventName,
+        data,
+        timestamp: new Date(),
+      },
+      ...prev,
+    ]);
+  }, []);
 
-  // // Función para añadir eventos al registro (log)
-  // const logSocketEvent = useCallback((eventName: string, data: any) => {
-  //   setSocketEventLogs((prev) => [
-  //     {
-  //       eventName,
-  //       data,
-  //       timestamp: new Date(),
-  //     },
-  //     ...prev,
-  //   ]);
-  // }, []);
+  // Configurar listeners para eventos de vehiculos
+  useEffect(() => {
+    if (!user?.id) return;
 
-  //   // Configurar listeners para eventos de vehiculos
-  //   useEffect(() => {
-  //     if (!user?.id) return;
+    // Manejador para nueva liquidación creada
+    const handleLiquidacionCreada = (data: {
+      vehiculo: Vehiculo;
+      usuarioCreador: string;
+    }) => {
+      logSocketEvent("vehiculo_creada", data);
 
-  //     // Manejador para nueva liquidación creada
-  //     const handleLiquidacionCreada = (data: {
-  //       liquidacion: Liquidacion;
-  //       usuarioCreador: string;
-  //     }) => {
-  //       logSocketEvent("liquidacion_creada", data);
+      // Actualizar la lista de vehiculos
+      setVehiculos((prev) => {
+        // Verificar si la liquidación ya existe
+        const exists = prev.some((liq) => liq.id === data.vehiculo.id);
 
-  //       // Actualizar la lista de vehiculos
-  //       setVehiculos((prev) => {
-  //         // Verificar si la liquidación ya existe
-  //         const exists = prev.some((liq) => liq.id === data.liquidacion.id);
+        if (exists) {
+          return prev.map((liq) =>
+            liq.id === data.vehiculo.id ? data.vehiculo : liq,
+          );
+        } else {
+          return [data.vehiculo, ...prev];
+        }
+      });
+    };
 
-  //         if (exists) {
-  //           return prev.map((liq) =>
-  //             liq.id === data.liquidacion.id ? data.liquidacion : liq,
-  //           );
-  //         } else {
-  //           return [data.liquidacion, ...prev];
-  //         }
-  //       });
-  //     };
+    // Limpiar al desmontar
+    return () => {
+      socketService.off("vehiculo_creado");
+    };
+  }, [user?.id, vehiculoActual, logSocketEvent]);
 
-  //     // Manejador para liquidación actualizada
-  //     const handleLiquidacionActualizada = (data: {
-  //       liquidacion: Liquidacion;
-  //       usuarioActualizador: string;
-  //       cambios: any;
-  //     }) => {
-  //       logSocketEvent("liquidacion_actualizada", data);
-
-  //       // Actualizar la lista de vehiculos
-  //       setVehiculos((prev) =>
-  //         prev.map((liq) =>
-  //           liq.id === data.liquidacion.id ? data.liquidacion : liq,
-  //         ),
-  //       );
-
-  //       // Si la liquidación actual se está viendo/editando, actualizarla también
-  //       if (vehiculoActual && vehiculoActual.id === data.liquidacion.id) {
-  //         setVehiculoActual(data.liquidacion);
-  //       }
-  //     };
-
-  //     // Manejador para liquidación eliminada
-  //     const handleLiquidacionEliminada = (data: {
-  //       liquidacionId: string;
-  //       usuarioEliminador: string;
-  //     }) => {
-  //       logSocketEvent("liquidacion_eliminada", data);
-
-  //       // Eliminar la liquidación de la lista
-  //       setVehiculos((prev) =>
-  //         prev.filter((liq) => liq.id !== data.liquidacionId),
-  //       );
-
-  //       // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
-  //       if (vehiculoActual && vehiculoActual.id === data.liquidacionId) {
-  //         setVehiculoActual(null);
-
-  //         // Cerrar modales si están abiertos
-  //         cerrarModales();
-  //       }
-  //     };
-
-  //     // Manejador para cambio de estado
-  //     const handleCambioEstadoLiquidacion = (data: {
-  //       liquidacionId: string;
-  //       estadoAnterior: string;
-  //       nuevoEstado: string;
-  //       usuarioResponsable: string;
-  //       comentario?: string;
-  //     }) => {
-  //       logSocketEvent("cambio_estado_liquidacion", data);
-
-  //       // No actualizamos la liquidación aquí, ya que se actualizará con handleLiquidacionActualizada
-  //     };
-
-  //     // Registrar los listeners
-  //     socketService.on("liquidacion_creada", handleLiquidacionCreada);
-  //     socketService.on("liquidacion_actualizada", handleLiquidacionActualizada);
-  //     socketService.on("liquidacion_eliminada", handleLiquidacionEliminada);
-  //     socketService.on(
-  //       "cambio_estado_liquidacion",
-  //       handleCambioEstadoLiquidacion,
-  //     );
-
-  //     // Limpiar al desmontar
-  //     return () => {
-  //       socketService.off("liquidacion_creada");
-  //       socketService.off("liquidacion_actualizada");
-  //       socketService.off("liquidacion_eliminada");
-  //       socketService.off("cambio_estado_liquidacion");
-  //     };
-  //   }, [user?.id, vehiculoActual, logSocketEvent]);
-
-  //   // Función para limpiar el registro de eventos de socket
-  //   const clearSocketEventLogs = useCallback(() => {
-  //     setSocketEventLogs([]);
-  //   }, []);
+  // Función para limpiar el registro de eventos de socket
+  const clearSocketEventLogs = useCallback(() => {
+    setSocketEventLogs([]);
+  }, []);
 
   // Obtener todas las vehiculos
 
@@ -327,12 +238,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      console.log("first");
       const response = await apiClient.get("/api/flota");
 
       if (response.data.success) {
         setVehiculos(response.data.data);
-        console.log(response.data.data);
       } else {
         throw new Error(response.data.message || "Error al obtener vehiculos");
       }
@@ -380,151 +289,34 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     [],
   );
 
-  const crearVehiculo = useCallback(
-    async (liquidacionData: Partial<Vehiculo>): Promise<Vehiculo | null> => {
+  const obtenerVehiculoBasico = useCallback(
+    async (id: string): Promise<Vehiculo | null> => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await apiClient.post(
-          "/api/nomina/conductores",
-          liquidacionData,
-        );
+        const response = await apiClient.get(`/api/flota/basico/${id}`);
 
         if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se cree la liquidación a todos los clientes conectados
-          setShowCrearModal(false);
-          notificarCRUD("crear", "Liquidación", true);
-
-          return response.data.data;
+          return response.data.vehiculo;
         } else {
           throw new Error(
-            response.data.message || "Error al crear la liquidación",
+            response.data.message || "Error al obtener la liquidación",
           );
         }
       } catch (err: any) {
-        const mensajeError =
+        setError(
           err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("crear", "Liquidación", false, mensajeError);
+            err.message ||
+            "Error al conectar con el servidor",
+        );
 
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [notificarCRUD],
-  );
-
-  // Editar una liquidación existente
-  const editarVehiculo = useCallback(
-    async (
-      id: string,
-      liquidacionData: Partial<Vehiculo>,
-    ): Promise<Vehiculo | null> => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.put(
-          `/api/nomina/conductores/${id}`,
-          liquidacionData,
-        );
-
-        if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se actualice la liquidación a todos los clientes conectados
-          setShowEditarModal(false);
-
-          // Notificar éxito
-          notificarCRUD("editar", "Liquidación", true);
-
-          return response.data.data;
-        } else {
-          throw new Error(
-            response.data.message || "Error al editar la liquidación",
-          );
-        }
-      } catch (err: any) {
-        const mensajeError =
-          err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("editar", "Liquidación", false, mensajeError);
-
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [notificarCRUD],
-  );
-
-  const eliminarLiquidacion = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await apiClient.delete(
-          `/api/nomina/conductores/${id}`,
-        );
-
-        if (response.data.success) {
-          // No actualizamos manualmente el estado porque el socket se encargará de notificar
-          // cuando se elimine la liquidación a todos los clientes conectados
-
-          // Notificar éxito
-          notificarCRUD("eliminar", "Liquidación", true);
-
-          return true;
-        } else {
-          throw new Error(
-            response.data.message || "Error al eliminar la liquidación",
-          );
-        }
-      } catch (err: any) {
-        const mensajeError =
-          err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor";
-
-        setError(mensajeError);
-
-        // Notificar error
-        notificarCRUD("eliminar", "Liquidación", false, mensajeError);
-
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [notificarCRUD],
-  );
-
-  const confirmarEliminarVehiculo = useCallback(
-    async (id: string, nombre?: string): Promise<void> => {
-      // Si estás usando una librería de confirmación como SweetAlert2, react-confirm-alert, etc.
-      // Aquí un ejemplo con una función genérica de confirmación
-      const confirmar = window.confirm(
-        `¿Estás seguro de que deseas eliminar la liquidación${nombre ? ` de ${nombre}` : ""}? 
-            Esta acción eliminará también todos los registros relacionados (anticipos, bonificaciones, mantenimientos, pernotes y recargos).`,
-      );
-
-      if (confirmar) {
-        await eliminarLiquidacion(id);
-      }
-    },
-    [eliminarLiquidacion],
+    [],
   );
 
   const filtrarVehiculos = useCallback((): Vehiculo[] => {
@@ -777,7 +569,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   };
 
   const cerrarModales = (): void => {
-    console.log("cerrando Modal");
     setShowCrearModal(false);
     setShowEditarModal(false);
     setShowDetalleModal(false);
@@ -787,6 +578,100 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   useEffect(() => {
     obtenerVehiculos();
   }, []);
+
+  // Configurar listeners para eventos de vehiculos
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Manejador para nueva liquidación creada
+    const handleVehiculoCreado = (data: {
+      vehiculo: Vehiculo;
+      usuarioCreador: string;
+    }) => {
+      logSocketEvent("vehiculo_creado", data);
+
+      // Actualizar la lista de vehiculos
+      setVehiculos((prev) => {
+        // Verificar si la liquidación ya existe
+        const exists = prev.some((liq) => liq.id === data.vehiculo.id);
+
+        if (exists) {
+          return prev.map((liq) =>
+            liq.id === data.vehiculo.id ? data.vehiculo : liq,
+          );
+        } else {
+          return [data.vehiculo, ...prev];
+        }
+      });
+    };
+
+    // Manejador para liquidación actualizada
+    const handleVehiculoActualizado = (data: {
+      vehiculo: Vehiculo;
+      usuarioActualizador: string;
+      cambios: any;
+    }) => {
+      logSocketEvent("vehiculo_actualizado", data);
+
+      // Actualizar la lista de liquidaciones
+      setVehiculos((prev) =>
+        prev.map((liq) => (liq.id === data.vehiculo.id ? data.vehiculo : liq)),
+      );
+
+      // Si la liquidación actual se está viendo/editando, actualizarla también
+      if (vehiculoActual && vehiculoActual.id === data.vehiculo.id) {
+        setVehiculoActual(data.vehiculo);
+      }
+    };
+
+    // Manejador para liquidación eliminada
+    const handleVehiculoEliminado = (data: {
+      liquidacionId: string;
+      usuarioEliminador: string;
+    }) => {
+      logSocketEvent("liquidacion_eliminada", data);
+
+      // Eliminar la liquidación de la lista
+      setVehiculos((prev) =>
+        prev.filter((liq) => liq.id !== data.liquidacionId),
+      );
+
+      // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
+      if (vehiculoActual && vehiculoActual.id === data.liquidacionId) {
+        setVehiculoActual(null);
+
+        // Cerrar modales si están abiertos
+        cerrarModales();
+      }
+    };
+
+    // Manejador para cambio de estado
+    const handleCambioEstadoVehiculo = (data: {
+      liquidacionId: string;
+      estadoAnterior: string;
+      nuevoEstado: string;
+      usuarioResponsable: string;
+      comentario?: string;
+    }) => {
+      logSocketEvent("cambio_estado_liquidacion", data);
+
+      // No actualizamos la liquidación aquí, ya que se actualizará con handleVehiculoActualizado
+    };
+
+    // Registrar los listeners
+    socketService.on("vehiculo_creado", handleVehiculoCreado);
+    socketService.on("vehiculo_actualizado", handleVehiculoActualizado);
+    socketService.on("vehiculo_eliminado", handleVehiculoEliminado);
+    socketService.on("cambio_estado_vehiculo", handleCambioEstadoVehiculo);
+
+    // Limpiar al desmontar
+    return () => {
+      socketService.off("vehiculo_creado");
+      socketService.off("vehiculo_actualizado");
+      socketService.off("vehiculo_eliminado");
+      socketService.off("cambio_estado_vehiculo");
+    };
+  }, [user?.id, vehiculoActual, logSocketEvent]);
 
   // Valor del contexto
   const value: FlotaContextType = {
@@ -806,12 +691,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     ordenarVehiculos,
 
     // Métodos para API
-    obtenerVehiculos,
     obtenerVehiculoId,
-    crearVehiculo,
-    editarVehiculo,
-    confirmarEliminarVehiculo,
-
+    obtenerVehiculoBasico,
     // Métodos para UI
     setFiltros,
     resetearFiltros,
@@ -823,7 +704,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     // socket
     socketConnected,
     socketEventLogs,
-    // clearSocketEventLogs,
+    clearSocketEventLogs,
   };
 
   return (
