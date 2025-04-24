@@ -636,9 +636,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       logSocketEvent("vehiculo_eliminado", data);
 
       // Eliminar la liquidación de la lista
-      setVehiculos((prev) =>
-        prev.filter((liq) => liq.id !== data.vehiculo_id),
-      );
+      setVehiculos((prev) => prev.filter((liq) => liq.id !== data.vehiculo_id));
 
       // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
       if (vehiculoActual && vehiculoActual.id === data.vehiculo_id) {
