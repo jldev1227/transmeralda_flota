@@ -207,7 +207,11 @@ export default function Dashboard() {
           {/* <VehiculosTable vehiculos={vehiculosFiltrados} /> */}
           <div className="grid grid-cols-3 gap-4 p-5">
             {vehiculosFiltrados.map((vehiculo) => (
-              <VehiculoCard vehiculo={vehiculo} onPress={abrirModalDetalle} />
+              <VehiculoCard
+                key={vehiculo.id}
+                vehiculo={vehiculo}
+                onPress={abrirModalDetalle}
+              />
             ))}
           </div>
         </div>
