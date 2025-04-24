@@ -126,6 +126,24 @@ export default function VehiculoCard({ vehiculo, onPress }: VehiculoCardProps) {
     }
   };
 
+  // Determinar qué icono mostrar según el estado del documento prioritario
+  const getStatusColor = (estado: string) => {
+    if (!estado) return null;
+
+    switch (estado) {
+      case "DISPONIBLE":
+        return "text-emerald-500";
+      case "NO DISPONIBLE":
+        return "text-red-500";
+      case "MANTENIMIENTO":
+        return "text-primary-500";
+      case "INACTIVO":
+        return "text-gray-500";
+      default:
+        return null;
+    }
+  };
+
   // Texto de estado para el icono
   const getStatusText = () => {
     if (!docStatus.priorityDoc) return "";
@@ -159,6 +177,7 @@ export default function VehiculoCard({ vehiculo, onPress }: VehiculoCardProps) {
       <CardBody className="flex flex-row justify-around">
         <div className="mb-4">
           <Image
+            priority
             alt={`${vehiculo.claseVehiculo} ${vehiculo.placa}`}
             className="scale-x-[-1]"
             height={200}
@@ -182,9 +201,7 @@ export default function VehiculoCard({ vehiculo, onPress }: VehiculoCardProps) {
           </div>
           <div>
             <p className="text-gray-500">Estado:</p>
-            <p
-              className={`font-medium ${vehiculo.estado === "DISPONIBLE" ? "text-green-600" : "text-amber-600"}`}
-            >
+            <p className={`font-medium ${getStatusColor(vehiculo.estado)}`}>
               {vehiculo.estado}
             </p>
           </div>
