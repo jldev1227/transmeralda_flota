@@ -12,7 +12,6 @@ import Link from "next/link";
 
 import { SearchIcon } from "@/components/icons";
 import { useFlota } from "@/context/FlotaContext";
-import VehiculosTable from "@/components/vehiculosTable";
 import VehiculoCard from "@/components/vehiculoCard";
 
 // Función para verificar el estado de documentos
@@ -41,7 +40,7 @@ export default function Dashboard() {
     setFiltros,
     socketConnected,
     abrirModalDetalle,
-    socketEventLogs
+    socketEventLogs,
   } = useFlota();
 
   return (
@@ -111,9 +110,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                          "PRÓXIMO" ||
+                            "PRÓXIMO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                          "PRÓXIMO" ||
+                            "PRÓXIMO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "PRÓXIMO",
@@ -140,9 +139,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                          "VENCIDO" ||
+                            "VENCIDO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                          "VENCIDO" ||
+                            "VENCIDO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "VENCIDO",
@@ -207,12 +206,12 @@ export default function Dashboard() {
 
           {/* <VehiculosTable vehiculos={vehiculosFiltrados} /> */}
           <div className="grid grid-cols-3 gap-4 p-5">
-            {vehiculosFiltrados.map(vehiculo => (
-              <VehiculoCard onPress={abrirModalDetalle} vehiculo={vehiculo} />
+            {vehiculosFiltrados.map((vehiculo) => (
+              <VehiculoCard vehiculo={vehiculo} onPress={abrirModalDetalle} />
             ))}
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 }
