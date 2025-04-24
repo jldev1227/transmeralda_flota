@@ -257,10 +257,10 @@ const VehiculosTable = ({ vehiculos }: { vehiculos: Vehiculo[] }) => {
                   <tr
                     key={vehicle.id}
                     className={`
-                                            hover:bg-gray-50 hover:cursor-pointer 
-                                            ${isNew ? "animate-highlight-new bg-green-50" : ""}
-                                            ${isUpdated ? "animate-highlight-update bg-blue-50" : ""}
-                                          `}
+                      hover:bg-gray-50 hover:cursor-pointer 
+                      ${isNew ? "animate-highlight-new bg-green-50" : ""}
+                      ${isUpdated ? "animate-highlight-update bg-blue-50" : ""}
+                    `}
                     id={`vehiculo-row-${vehicle.id}`}
                     onClick={() => abrirModalDetalle(vehicle.id)}
                   >

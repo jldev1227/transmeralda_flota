@@ -13,6 +13,7 @@ import Link from "next/link";
 import { SearchIcon } from "@/components/icons";
 import { useFlota } from "@/context/FlotaContext";
 import VehiculosTable from "@/components/vehiculosTable";
+import VehiculoCard from "@/components/vehiculoCard";
 
 // Función para verificar el estado de documentos
 const checkDocumentStatus = (date: string) => {
@@ -39,6 +40,8 @@ export default function Dashboard() {
     filtros,
     setFiltros,
     socketConnected,
+    abrirModalDetalle,
+    socketEventLogs
   } = useFlota();
 
   return (
@@ -53,39 +56,6 @@ export default function Dashboard() {
             <PlusIcon className="h-5 w-5" />
             <span>Nuevo Vehículo</span>
           </Link>
-        </div>
-        {/* Filtros y búsqueda */}
-        <div className="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-          <div className="relative sm:w-96">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-              placeholder="Buscar por placa, marca o propietario..."
-              type="text"
-              value={filtros.busqueda}
-              onChange={(e) =>
-                setFiltros({ ...filtros, busqueda: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="sm:w-64">
-            <select
-              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-              value={filtros.estado}
-              onChange={(e) =>
-                setFiltros({ ...filtros, estado: e.target.value })
-              }
-            >
-              <option value="">Todos los estados</option>
-              <option value="DISPONIBLE">Disponible</option>
-              <option value="NO DISPONIBLE">No disponible</option>
-              <option value="MANTENIMIENTO">En mantenimiento</option>
-              <option value="INACTIVO">Inactivo</option>
-            </select>
-          </div>
         </div>
 
         {/* Resumen de estadísticas */}
@@ -141,9 +111,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                            "PRÓXIMO" ||
+                          "PRÓXIMO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "PRÓXIMO" ||
+                          "PRÓXIMO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "PRÓXIMO",
@@ -170,9 +140,9 @@ export default function Dashboard() {
                       vehiculos.filter(
                         (v) =>
                           checkDocumentStatus(v.soatVencimiento) ===
-                            "VENCIDO" ||
+                          "VENCIDO" ||
                           checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "VENCIDO" ||
+                          "VENCIDO" ||
                           checkDocumentStatus(
                             v.tarjetaDeOperacionVencimiento,
                           ) === "VENCIDO",
@@ -181,6 +151,42 @@ export default function Dashboard() {
                   </dd>
                 </dl>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-4">
+          {/* Filtros y búsqueda */}
+          <div className="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+            <div className="relative sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SearchIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                placeholder="Buscar por placa, marca o propietario..."
+                type="text"
+                value={filtros.busqueda}
+                onChange={(e) =>
+                  setFiltros({ ...filtros, busqueda: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="sm:w-64">
+              <select
+                className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                value={filtros.estado}
+                onChange={(e) =>
+                  setFiltros({ ...filtros, estado: e.target.value })
+                }
+              >
+                <option value="">Todos los estados</option>
+                <option value="DISPONIBLE">Disponible</option>
+                <option value="NO DISPONIBLE">No disponible</option>
+                <option value="MANTENIMIENTO">En mantenimiento</option>
+                <option value="INACTIVO">Inactivo</option>
+              </select>
             </div>
           </div>
         </div>
@@ -199,9 +205,14 @@ export default function Dashboard() {
             </h3>
           </div>
 
-          <VehiculosTable vehiculos={vehiculosFiltrados} />
+          {/* <VehiculosTable vehiculos={vehiculosFiltrados} /> */}
+          <div className="grid grid-cols-3 gap-4 p-5">
+            {vehiculosFiltrados.map(vehiculo => (
+              <VehiculoCard onPress={abrirModalDetalle} vehiculo={vehiculo} />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
