@@ -316,7 +316,7 @@ export default function Dashboard() {
           </div>
 
           {vehiculosFiltrados.length > 0 ? (
-            <div className="grid grid-cols-3 gap-4 p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
               {vehiculosFiltrados.map((vehiculo) => (
                 <VehiculoCard
                   key={vehiculo.id}

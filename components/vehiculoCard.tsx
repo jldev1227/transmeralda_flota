@@ -174,12 +174,12 @@ export default function VehiculoCard({ vehiculo, onPress }: VehiculoCardProps) {
           {getStatusText()}
         </div>
       </CardHeader>
-      <CardBody className="flex flex-row justify-around">
+      <CardBody className="flex md:flex-row justify-around">
         <div className="mb-4">
           <Image
             priority
             alt={`${vehiculo.claseVehiculo} ${vehiculo.placa}`}
-            className="scale-x-[-1]"
+            className="scale-x-[-1] mx-auto"
             height={200}
             src={`/assets/${isCamioneta ? "car" : "bus"}.jpg`}
             width={200}
@@ -187,25 +187,25 @@ export default function VehiculoCard({ vehiculo, onPress }: VehiculoCardProps) {
         </div>
 
         <div className="text-sm space-y-2">
-          <div>
+          <div className="max-md:flex max-md:gap-2">
             <p className="text-gray-500">Marca:</p>
             <p className="text-gray-800 font-medium">{vehiculo.marca}</p>
           </div>
-          <div>
+          <div className="max-md:flex max-md:gap-2">
             <p className="text-gray-500">Línea:</p>
             <p className="text-gray-800 font-medium">{vehiculo.linea}</p>
           </div>
-          <div>
+          <div className="max-md:flex max-md:gap-2">
             <p className="text-gray-500">Modelo:</p>
             <p className="text-gray-800 font-medium">{vehiculo.modelo}</p>
           </div>
-          <div>
+          <div className="max-md:flex max-md:gap-2">
             <p className="text-gray-500">Estado:</p>
             <p className={`font-medium ${getStatusColor(vehiculo.estado)}`}>
               {vehiculo.estado}
             </p>
           </div>
-          <div>
+          <div className="max-md:flex max-md:gap-2">
             <p className="text-gray-500">Kilometraje:</p>
             <p className="text-gray-800 font-medium">
               {vehiculo.kilometraje.toLocaleString()} km
