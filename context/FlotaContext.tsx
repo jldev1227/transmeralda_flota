@@ -371,6 +371,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         const matchMarca = vehiculo.marca
           ? vehiculo.marca.toLowerCase().includes(busqueda)
           : false;
+        const matchLinea = vehiculo.linea
+          ? vehiculo.linea.toLowerCase().includes(busqueda)
+          : false;
         const matchModelo = vehiculo.modelo
           ? vehiculo.modelo.toLowerCase().includes(busqueda)
           : false;
@@ -398,6 +401,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           !(
             matchPlaca ||
             matchMarca ||
+            matchLinea ||
             matchModelo ||
             matchColor ||
             matchClase ||

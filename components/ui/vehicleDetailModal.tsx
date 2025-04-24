@@ -9,7 +9,6 @@ import React, { useEffect, useState } from "react";
 import { Modal, ModalContent } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 import { useFlota } from "@/context/FlotaContext";
 import { apiClient } from "@/config/apiClient";
@@ -196,17 +195,6 @@ export default function VehiculoActualDetailModal() {
     };
   });
 
-  // Imágenes de galería (si existen)
-  let galeria: string[] = [];
-
-  try {
-    if (vehiculoActual.galeria && vehiculoActual.galeria.length > 0) {
-      galeria = vehiculoActual.galeria;
-    }
-  } catch (e) {
-    console.error("Error al parsear la galería:", e);
-  }
-
   const handleNavigate = async () => {
     router.push(`/actualizar/${vehiculoActual.id}`);
     cerrarModales();
@@ -251,16 +239,6 @@ export default function VehiculoActualDetailModal() {
                   onClick={() => setActiveTab("documents")}
                 >
                   Documentos
-                </button>
-                <button
-                  className={`px-4 py-2 text-sm font-medium ${
-                    activeTab === "gallery"
-                      ? "border-b-2 border-emerald-500 text-emerald-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                  onClick={() => setActiveTab("gallery")}
-                >
-                  Galería
                 </button>
               </nav>
             </div>
@@ -466,45 +444,6 @@ export default function VehiculoActualDetailModal() {
                       Actualizar Documentos
                     </Button>
                   </div>
-                </div>
-              )}
-
-              {/* Pestaña de galería */}
-              {activeTab === "gallery" && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-4">
-                    Galería de Imágenes
-                  </h4>
-
-                  {Array.isArray(galeria) && galeria.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {galeria.map((imagen: string, index: number) => (
-                        <div
-                          key={index}
-                          className="aspect-square bg-gray-100 rounded-md overflow-hidden"
-                        >
-                          <Image
-                            alt={`Imagen ${index + 1} de ${vehiculoActual.placa}`}
-                            className="w-full h-full object-cover"
-                            src={imagen}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      {/* <PhotographIcon className="h-12 w-12 text-gray-300 mx-auto" /> */}
-                      <p className="mt-2 text-gray-500">
-                        No hay imágenes disponibles
-                      </p>
-                      <button
-                        className="mt-4 bg-white border border-gray-300 rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
-                        onClick={() => console.log("Agregar imágenes")}
-                      >
-                        Agregar imágenes
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
