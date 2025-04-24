@@ -56,6 +56,7 @@ export interface FiltrosVehiculos {
   modelo: string;
   claseVehiculo: string;
   vencimientoProximo: boolean;
+  documentosVencidos: boolean;
 }
 
 export interface SocketEventLog {
@@ -138,6 +139,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     modelo: "",
     claseVehiculo: "",
     vencimientoProximo: false,
+    documentosVencidos: false,
   });
 
   // Estado para manejo de modales
@@ -474,6 +476,52 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         }
       }
 
+      // Filtro por documentos vencidos
+      if (filtros.documentosVencidos) {
+        const hoy = new Date();
+
+        // Función para verificar si una fecha ya está vencida
+        const esDocumentoVencido = (fechaStr: string | null): boolean => {
+          if (!fechaStr) return false;
+
+          const fechaVencimiento = new Date(fechaStr);
+
+          return fechaVencimiento < hoy;
+        };
+
+        // Verificar vencimientos relevantes
+        const soatVencido = esDocumentoVencido(vehiculo.soatVencimiento);
+        const tecnomecanicaVencida = esDocumentoVencido(
+          vehiculo.tecnomecanicaVencimiento,
+        );
+        const todoRiesgoVencido = esDocumentoVencido(
+          vehiculo.polizaTodoRiesgoVencimiento,
+        );
+        const polizaContractualVencida = esDocumentoVencido(
+          vehiculo.polizaContractualVencimiento,
+        );
+        const polizaExtraContractualVencida = esDocumentoVencido(
+          vehiculo.polizaExtraContractualVencimiento,
+        );
+        const tarjetaOperacionVencida = esDocumentoVencido(
+          vehiculo.tarjetaDeOperacionVencimiento,
+        );
+
+        // Si ningún documento está vencido, excluir el vehículo
+        if (
+          !(
+            soatVencido ||
+            tecnomecanicaVencida ||
+            todoRiesgoVencido ||
+            polizaContractualVencida ||
+            polizaExtraContractualVencida ||
+            tarjetaOperacionVencida
+          )
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
 
@@ -547,6 +595,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       modelo: "",
       claseVehiculo: "",
       vencimientoProximo: false,
+      documentosVencidos: false,
     });
   };
 
