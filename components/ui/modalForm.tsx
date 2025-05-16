@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Vehiculo } from "@/context/FlotaContext";
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { Switch } from "@heroui/switch";
 import { SaveIcon, TruckIcon } from "lucide-react";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
+
+import { Vehiculo } from "@/context/FlotaContext";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -25,6 +31,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   titulo = "Registrar Nuevo Vehículo",
 }) => {
 
+  console.log(vehiculoEditar)
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
     placa: "",
@@ -67,7 +74,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -110,7 +117,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       "clase_vehiculo",
       "modelo",
       "linea",
-      "color"
+      "color",
     ];
 
     // Validar campos requeridos
@@ -134,9 +141,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   };
 
   const clasesVehiculo = [
-    { key: "camioneta", label: "Camioneta" },
-    { key: "bus", label: "Bus" },
-    { key: "microbus", label: "Microbús" },
+    { key: "CAMIONETA", label: "Camioneta" },
+    { key: "BUS", label: "Bus" },
+    { key: "MICROBUS", label: "Microbús" },
   ];
 
   // Efecto para cargar datos cuando se está editando
@@ -145,7 +152,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       setFormData({
         ...vehiculoEditar,
       });
-
     } else {
       // Resetear el formulario si no hay conductor para editar
       resetForm();
@@ -212,10 +218,12 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       errorMessage={
                         errores.clase_vehiculo ? "La clase es requerida" : ""
                       }
+                      value={formData.clase_vehiculo || ""}
                       isInvalid={errores.clase_vehiculo}
                       label="Clase de Vehículo"
                       name="clase_vehiculo"
                       placeholder="Seleccione una clase"
+                      selectedKeys={formData.clase_vehiculo ? [formData.clase_vehiculo] : []}
                       onChange={(e) => handleSelectChange("clase_vehiculo", e.target.value)}
                     >
                       {clasesVehiculo.map((clase) => (

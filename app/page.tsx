@@ -7,17 +7,21 @@ import { Alert } from "@heroui/alert";
 
 import { Vehiculo, useFlota, BusquedaParams } from "@/context/FlotaContext";
 import VehiculosTable from "@/components/ui/table";
-import { SortDescriptor } from "@/components/ui/customTable";
+import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
+import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
 
 export default function GestionVehiculos() {
-  const { vehiculosState, fetchVehiculos, crearVehiculoBasico, actualizarVehiculoBasico } = useFlota();
+  const {
+    vehiculosState,
+    sortDescriptor,
+    fetchVehiculos,
+    crearVehiculoBasico,
+    actualizarVehiculoBasico,
+    handleSortChange,
+  } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "placa",
-    direction: "ascending",
-  });
 
   // Estados para búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -63,7 +67,7 @@ export default function GestionVehiculos() {
       const params: BusquedaParams = {
         page,
         sort: sortDescriptor.column,
-        order: sortDescriptor.direction === "ascending" ? "ASC" : "DESC",
+        order: sortDescriptor.direction,
       };
 
       // Añadir término de búsqueda
@@ -115,12 +119,6 @@ export default function GestionVehiculos() {
     cargarVehiculos(page);
   };
 
-  // Manejar cambio de ordenamiento
-  const handleSortChange = (descriptor: SortDescriptor) => {
-    setSortDescriptor(descriptor);
-    cargarVehiculos(1); // Volver a la primera página con el nuevo ordenamiento
-  };
-
   // Manejar la selección de conductores
   const handleSelectItem = (vehiculo: Vehiculo) => {
     if (selectedIds.includes(vehiculo.id)) {
@@ -165,8 +163,7 @@ export default function GestionVehiculos() {
         // Editar vehiculo existente
         await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
       } else {
-
-        console.log("creando")
+        console.log("creando");
         // Crear nuevo vehiculo
         await crearVehiculoBasico(vehiculoData);
       }
@@ -211,12 +208,12 @@ export default function GestionVehiculos() {
         variant="faded"
       />
 
-      {/* Componente de búsqueda y filtros
+      {/* Componente de búsqueda y filtros */}
       <BuscadorFiltrosVehiculo
         onFilter={handleFilter}
         onReset={handleReset}
         onSearch={handleSearch}
-      /> */}
+      />
 
       {/* Información sobre resultados filtrados */}
       {(searchTerm || Object.values(filtros).some((f) => f.length > 0)) && (
@@ -255,7 +252,7 @@ export default function GestionVehiculos() {
         onSave={guardarVehiculo}
       />
 
-      {/* Modal de detalle
+      {/* Modal de detalle */}
       <ModalDetalleVehiculo
         vehiculo={
           vehiculosState.data.find(
@@ -273,7 +270,7 @@ export default function GestionVehiculos() {
             ) || null,
           );
         }}
-      /> */}
+      />
     </div>
   );
 }

@@ -64,7 +64,7 @@ export interface FiltrosVehiculos {
   busqueda: string;
   marca: string;
   modelo: string;
-  claseVehiculo: string;
+  clase_vehiculo: string;
   vencimientoProximo: boolean;
   documentosVencidos: boolean;
 }
@@ -75,7 +75,7 @@ export interface BusquedaParams {
   search?: string; // Para búsqueda general (placa, marca, modelo, linea.)
   estado?: EstadoVehiculo | EstadoVehiculo[];
   sort?: string;
-  order?: "ASC" | "DESC";
+  order?: "ascending" | "descending";
 }
 
 export interface ValidationError {
@@ -84,7 +84,7 @@ export interface ValidationError {
 }
 
 export interface CrearVehiculoRequest {
-  claseVehiculo: string;
+  clase_vehiculo: string;
   color?: string;
   combustible?: string;
   estado?: string;
@@ -113,7 +113,7 @@ export interface CrearVehiculoRequest {
   vin?: string;
 }
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest> { }
+  extends Partial<CrearVehiculoRequest> {}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -217,6 +217,7 @@ interface FlotaContextType {
   loading: boolean;
   error: string | null;
   validationErrors: ValidationError[] | null;
+  sortDescriptor: SortDescriptor;
 
   // Operaciones CRUD
   fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
@@ -321,8 +322,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     setLoading(true);
     clearError();
 
-    console.log(paramsBusqueda);
-
     try {
       // Prepara los parámetros básicos
       const params: any = {
@@ -352,8 +351,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           params,
         },
       );
-
-      console.log(response);
 
       if (response.data && response.data.success) {
         setVehiculosState({
@@ -497,13 +494,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
                 "Algunos de los datos ingresados ya existen en el sistema.";
 
               // Intentar ser más específico basado en el mensaje completo
-              if (
-                errorDescription.toLowerCase().includes("placa")
-              ) {
+              if (errorDescription.toLowerCase().includes("placa")) {
                 errorTitle = "Placa duplicada";
-                errorDescription =
-                  "Ya existe un conductor con este placa.";
-              } 
+                errorDescription = "Ya existe un conductor con este placa.";
+              }
             }
             break;
 
@@ -600,6 +594,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       ...prevState,
       currentPage: 1,
     }));
+    console.log(descriptor);
 
     const params: BusquedaParams = {
       page: vehiculosState.currentPage,
@@ -685,12 +680,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     loading,
     error,
     validationErrors,
+    sortDescriptor,
 
     fetchVehiculos,
     getVehiculo,
     crearVehiculoBasico,
     actualizarVehiculoBasico,
-
 
     // Propiedades para Socket.IO
     socketConnected,

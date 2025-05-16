@@ -6,10 +6,10 @@ import * as React from "react";
 import { HeroUIProvider } from "@heroui/system";
 import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ToastProvider } from "@heroui/toast";
 
 import { FlotaProvider } from "@/context/FlotaContext";
 import { AuthProvider } from "@/context/AuthContext";
-import { ToastProvider } from "@heroui/toast";
 
 export interface ProvidersProps {
   children: React.ReactNode;

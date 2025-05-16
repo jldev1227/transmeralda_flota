@@ -12,7 +12,7 @@ import CustomTable, {
 // Definimos todas las posibles columnas como un tipo
 export type VehiculoColumnKey =
   | "vehiculo"
-  | "clase"
+  | "clase_vehiculo"
   | "kilometraje"
   | "propietario"
   | "estado"
@@ -42,7 +42,7 @@ export default function ConductoresTable({
   sortDescriptor,
   onSortChange,
   selectedIds = [],
-  onSelectItem = () => {},
+  onSelectItem = () => { },
   isLoading = false,
   columnKeys,
   currentPage,
@@ -130,18 +130,17 @@ export default function ConductoresTable({
         </div>
       ),
     },
-    clase: {
-      key: "clase",
+    clase_vehiculo: {
+      key: "clase_vehiculo",
       label: "CLASE",
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
           <span
-            className={`px-2 py-1 rounded-full ${
-              vehiculo.clase_vehiculo === "CAMIONETA"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-purple-100 text-purple-800"
-            }`}
+            className={`px-2 py-1 rounded-full ${vehiculo.clase_vehiculo === "CAMIONETA"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-purple-100 text-purple-800"
+              }`}
           >
             {vehiculo.clase_vehiculo}
           </span>
@@ -291,7 +290,7 @@ export default function ConductoresTable({
       // Mostrar todas las columnas en desktop
       displayColumns = [
         "vehiculo",
-        "clase",
+        "clase_vehiculo",
         "kilometraje",
         "propietario",
         "estado",
@@ -300,10 +299,12 @@ export default function ConductoresTable({
       ];
     } else if (isTablet) {
       // Mostrar menos columnas en tablet
-      displayColumns = ["vehiculo", "acciones"];
+      displayColumns = ["vehiculo", "clase_vehiculo",
+        "kilometraje",
+        "estado", "acciones"];
     } else {
       // Mostrar mínimo de columnas en móvil
-      displayColumns = ["vehiculo", "acciones"];
+      displayColumns = ["vehiculo", "estado", "acciones"];
     }
   }
 
@@ -355,22 +356,20 @@ export default function ConductoresTable({
       <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
         <div className="flex flex-1 justify-between sm:hidden">
           <button
-            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
-              currentPage === 1
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
+            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === 1
+              ? "text-gray-300 cursor-not-allowed"
+              : "text-gray-700 hover:bg-gray-50"
+              }`}
             disabled={currentPage === 1}
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           >
             Anterior
           </button>
           <button
-            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
-              currentPage === totalPages
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
+            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === totalPages
+              ? "text-gray-300 cursor-not-allowed"
+              : "text-gray-700 hover:bg-gray-50"
+              }`}
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           >
@@ -397,11 +396,10 @@ export default function ConductoresTable({
               className="isolate inline-flex -space-x-px rounded-md shadow-sm"
             >
               <button
-                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${
-                  currentPage === 1
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
+                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${currentPage === 1
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:bg-gray-50"
+                  }`}
                 disabled={currentPage === 1}
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               >
@@ -432,11 +430,10 @@ export default function ConductoresTable({
                 ) : (
                   <button
                     key={`page-${page}`}
-                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                      currentPage === page
-                        ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                        : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
-                    }`}
+                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === page
+                      ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                      : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                      }`}
                     onClick={() =>
                       typeof page === "number" && onPageChange(page)
                     }
@@ -447,11 +444,10 @@ export default function ConductoresTable({
               )}
 
               <button
-                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${
-                  currentPage === totalPages
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
+                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${currentPage === totalPages
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:bg-gray-50"
+                  }`}
                 disabled={currentPage === totalPages}
                 onClick={() =>
                   onPageChange(Math.min(totalPages, currentPage + 1))

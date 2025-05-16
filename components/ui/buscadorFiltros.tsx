@@ -95,27 +95,6 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     );
   };
 
-  const handleSedesChange = (keys: SharedSelection) => {
-    setFiltros((prev) => ({
-      ...prev,
-      sedes: keys as unknown as Set<string>,
-    }));
-  };
-
-  const handleTiposIdentificacionChange = (keys: SharedSelection) => {
-    setFiltros((prev) => ({
-      ...prev,
-      tiposIdentificacion: keys as unknown as Set<string>,
-    }));
-  };
-
-  const handleTiposContratoChange = (keys: SharedSelection) => {
-    setFiltros((prev) => ({
-      ...prev,
-      tiposContrato: keys as unknown as Set<string>,
-    }));
-  };
-
   const handleEstadosChange = (keys: SharedSelection) => {
     setFiltros((prev) => ({
       ...prev,
@@ -130,16 +109,6 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
         tipo: "sedes",
         valor: sede,
         label: `Sede: ${sede}`,
-      })),
-      ...Array.from(filtros.tiposIdentificacion).map((tipo) => ({
-        tipo: "tiposIdentificacion",
-        valor: tipo,
-        label: `ID: ${tiposIdentificacion.find((t) => t.key === tipo)?.label || tipo}`,
-      })),
-      ...Array.from(filtros.tiposContrato).map((contrato) => ({
-        tipo: "tiposContrato",
-        valor: contrato,
-        label: `Contrato: ${tiposContrato.find((t) => t.key === contrato)?.label || contrato}`,
       })),
       ...Array.from(filtros.estados).map((estado) => ({
         tipo: "estados",
@@ -208,7 +177,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
         {/* Botones de acción */}
         <div className="flex flex-wrap gap-2">
           <Button
-            className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+            className="w-full xs:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
             variant="solid"
             onPress={aplicarBusqueda}
           >
