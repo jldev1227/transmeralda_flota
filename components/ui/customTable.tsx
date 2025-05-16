@@ -85,19 +85,19 @@ const CustomTable: React.FC<CustomTableProps> = ({
     const newAnimations: RowAnimationState = { ...rowAnimations };
 
     latestEvents.forEach((event) => {
-      // Obtener ID del conductor según el tipo de evento
-      let conductorId = "";
+      // Obtener ID del vehiculo según el tipo de evento
+      let vehiculoId = "";
 
-      if (event.data.conductor) {
-        conductorId = event.data.conductor.id;
+      if (event.data.vehiculo) {
+        vehiculoId = event.data.vehiculo.id;
       } else if (event.data.id) {
-        conductorId = event.data.id;
+        vehiculoId = event.data.id;
       }
 
-      if (!conductorId) return;
+      if (!vehiculoId) return;
 
-      if (event.eventName === "conductor:creado") {
-        newAnimations[conductorId] = {
+      if (event.eventName === "vehiculo:creado") {
+        newAnimations[vehiculoId] = {
           isNew: true,
           isUpdated: false,
           eventType: event.eventName,
@@ -105,7 +105,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
         };
       } else {
         // Para cualquier otro evento, marcar como actualizado
-        newAnimations[conductorId] = {
+        newAnimations[vehiculoId] = {
           isNew: false,
           isUpdated: true,
           eventType: event.eventName,
@@ -113,10 +113,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
         };
       }
 
-      // Scroll al conductor si es nuevo
-      if (event.eventName === "conductor:creado") {
+      // Scroll al vehiculo si es nuevo
+      if (event.eventName === "vehiculo:creado") {
         setTimeout(() => {
-          const row = document.getElementById(`conductor-row-${conductorId}`);
+          const row = document.getElementById(`vehiculo-row-${vehiculoId}`);
 
           if (row) {
             row.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -152,8 +152,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
         <thead className="bg-gray-50">
           <tr>
             {columns.map((column) => {
-              console.log(column);
-
               return (
                 <th
                   key={column.key}
@@ -201,25 +199,39 @@ const CustomTable: React.FC<CustomTableProps> = ({
             </tr>
           ) : (
             data.map((item, rowIndex) => {
-              const conductorId = item.id || "";
-              const animation = rowAnimations[conductorId];
+
+              const vehiculoId = item.id || "";
+              const animation = rowAnimations[vehiculoId];
+              console.log(animation)
               const isNew = animation?.isNew || false;
               const isUpdated = animation?.isUpdated || false;
 
               return (
                 <tr
-                  key={rowIndex}
+                  key={item.id ?? rowIndex}
+                  id={`vehiculo-row-${item.id ?? rowIndex}`}
                   className={`
                     hover:bg-gray-50 transition-colors cursor-pointer
-                    ${isNew ? "animate-pulse bg-success-50 border-l-2 border-success-400" : ""}
-                    ${isUpdated ? "animate-pulse bg-primary-50 border-l-2 border-primary-400" : ""}
+                    ${isNew ? "animate-pulse bg-success-50 border-l-[2px] border-solid !border-success-400" : ""}
+                    ${isUpdated && !isNew ? "animate-pulse bg-primary-50 border-l-[2px] border-solid !border-primary-400" : ""}
                   `}
-                  id={`servicio-${item.id}`}
-                  onClick={() => onRowClick && onRowClick(item)}
+                  style={{
+                    borderLeftWidth: (isNew || isUpdated) ? 4 : undefined,
+                    borderLeftStyle: (isNew || isUpdated) ? "solid" : undefined,
+                    borderLeftColor: isNew
+                      ? "#22c55e !important" // success-400
+                      : isUpdated && !isNew
+                      ? "#3b82f6 !important" // primary-400
+                      : undefined,
+                    // No tocamos borderTop, se mantiene por default
+                  }}
+                  onClick={() => onRowClick?.(item)}
+                  tabIndex={0}
+                  aria-label={`Fila de ${item.id ?? rowIndex}`}
                 >
-                  {columns.map((column, columIndex) => (
+                  {columns.map((column, columnIndex) => (
                     <td
-                      key={columIndex}
+                      key={column.key}
                       className="px-6 py-4 whitespace-nowrap"
                     >
                       {column.renderCell

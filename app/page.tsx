@@ -163,7 +163,6 @@ export default function GestionVehiculos() {
         // Editar vehiculo existente
         await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
       } else {
-        console.log("creando");
         // Crear nuevo vehiculo
         await crearVehiculoBasico(vehiculoData);
       }
