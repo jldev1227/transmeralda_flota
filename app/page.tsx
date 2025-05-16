@@ -253,12 +253,12 @@ export default function GestionVehiculos() {
 
       {/* Modal de detalle */}
       <ModalDetalleVehiculo
+        isOpen={modalDetalleOpen}
         vehiculo={
           vehiculosState.data.find(
             (vehiculo) => vehiculo.id === selectedVehiculoId,
           ) || null
         }
-        isOpen={modalDetalleOpen}
         onClose={cerrarModalDetalle}
         onEdit={() => {
           setModalDetalleOpen(false);
