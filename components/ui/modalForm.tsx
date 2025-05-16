@@ -30,8 +30,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
-
-  console.log(vehiculoEditar)
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
     placa: "",

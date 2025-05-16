@@ -594,7 +594,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       ...prevState,
       currentPage: 1,
     }));
-    console.log(descriptor);
 
     const params: BusquedaParams = {
       page: vehiculosState.currentPage,
@@ -681,8 +680,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             timestamp: new Date(),
           },
         ]);
-
-        console.log(data)
 
         addToast({
           title: "Vehículo Actualizado",
