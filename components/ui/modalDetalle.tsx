@@ -15,7 +15,6 @@ import {
   PenTool,
   ShieldCheck,
   Edit,
-  Download,
   User,
   Gauge,
   MapPin,
@@ -23,7 +22,6 @@ import {
   FileText,
 } from "lucide-react";
 import Image from "next/image";
-import { Chip } from "@heroui/chip";
 
 export interface Vehiculo {
   clase_vehiculo: string;
@@ -122,6 +120,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
   // Función para formatear el kilometraje
   const formatearKilometraje = (km?: number) => {
     if (!km && km !== 0) return "No registrado";
+
     return `${new Intl.NumberFormat("es-CO").format(km)} km`;
   };
 
@@ -130,6 +129,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
     if (!fecha) return false;
     const hoy = new Date();
     const fechaVencimiento = new Date(fecha);
+
     return fechaVencimiento < hoy;
   };
 
@@ -166,7 +166,8 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       {vehiculo.marca} {vehiculo.linea}
                     </h2>
                     <p className="text-md text-gray-600 mb-2">
-                      Placa: <strong>{vehiculo.placa}</strong> | Modelo: {vehiculo.modelo}
+                      Placa: <strong>{vehiculo.placa}</strong> | Modelo:{" "}
+                      {vehiculo.modelo}
                     </p>
                     <div className="flex flex-col md:flex-row md:items-center text-sm text-gray-500 space-y-1 md:space-y-0 md:space-x-4">
                       <span className="flex items-center capitalize">
@@ -222,7 +223,9 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">Carrocería:</span>
-                          <span>{vehiculo.tipo_carroceria || "No especificada"}</span>
+                          <span>
+                            {vehiculo.tipo_carroceria || "No especificada"}
+                          </span>
                         </li>
                       </ul>
                     </div>
@@ -240,23 +243,33 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">No. Motor:</span>
-                          <span>{vehiculo.numero_motor || "No registrado"}</span>
+                          <span>
+                            {vehiculo.numero_motor || "No registrado"}
+                          </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">No. Chasis:</span>
-                          <span>{vehiculo.numero_chasis || "No registrado"}</span>
+                          <span>
+                            {vehiculo.numero_chasis || "No registrado"}
+                          </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">No. Serie:</span>
-                          <span>{vehiculo.numero_serie || "No registrado"}</span>
+                          <span>
+                            {vehiculo.numero_serie || "No registrado"}
+                          </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">Combustible:</span>
-                          <span>{vehiculo.combustible || "No especificado"}</span>
+                          <span>
+                            {vehiculo.combustible || "No especificado"}
+                          </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">Kilometraje:</span>
-                          <span>{formatearKilometraje(vehiculo.kilometraje)}</span>
+                          <span>
+                            {formatearKilometraje(vehiculo.kilometraje)}
+                          </span>
                         </li>
                       </ul>
                     </div>
@@ -293,11 +306,18 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       <ul className="space-y-2">
                         <li className="flex items-start">
                           <span className="font-medium w-28">Nombre:</span>
-                          <span>{vehiculo.propietario_nombre || "No registrado"}</span>
+                          <span>
+                            {vehiculo.propietario_nombre || "No registrado"}
+                          </span>
                         </li>
                         <li className="flex items-start">
-                          <span className="font-medium w-28">Identificación:</span>
-                          <span>{vehiculo.propietario_identificacion || "No registrado"}</span>
+                          <span className="font-medium w-28">
+                            Identificación:
+                          </span>
+                          <span>
+                            {vehiculo.propietario_identificacion ||
+                              "No registrado"}
+                          </span>
                         </li>
                       </ul>
                     </div>
@@ -310,25 +330,51 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       </h4>
                       <ul className="space-y-2">
                         <li className="flex items-start">
-                          <span className="font-medium w-28">Fecha Matrícula:</span>
+                          <span className="font-medium w-28">
+                            Fecha Matrícula:
+                          </span>
                           <span>{formatearFecha(vehiculo.fechaMatricula)}</span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">SOAT:</span>
-                          <span className={estaVencida(vehiculo.soat_vencimiento) ? "text-red-600 font-medium" : ""}>
+                          <span
+                            className={
+                              estaVencida(vehiculo.soat_vencimiento)
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
                             {formatearFecha(vehiculo.soat_vencimiento)}
                           </span>
                         </li>
                         <li className="flex items-start">
-                          <span className="font-medium w-28">Tecno-mecánica:</span>
-                          <span className={estaVencida(vehiculo.tecnomecanica_vencimiento) ? "text-red-600 font-medium" : ""}>
+                          <span className="font-medium w-28">
+                            Tecno-mecánica:
+                          </span>
+                          <span
+                            className={
+                              estaVencida(vehiculo.tecnomecanica_vencimiento)
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
                             {formatearFecha(vehiculo.tecnomecanica_vencimiento)}
                           </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">Tarjeta Op.:</span>
-                          <span className={estaVencida(vehiculo.tarjeta_de_operacion_vencimiento) ? "text-red-600 font-medium" : ""}>
-                            {formatearFecha(vehiculo.tarjeta_de_operacion_vencimiento)}
+                          <span
+                            className={
+                              estaVencida(
+                                vehiculo.tarjeta_de_operacion_vencimiento,
+                              )
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
+                            {formatearFecha(
+                              vehiculo.tarjeta_de_operacion_vencimiento,
+                            )}
                           </span>
                         </li>
                       </ul>
@@ -343,20 +389,52 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       <ul className="space-y-2">
                         <li className="flex items-start">
                           <span className="font-medium w-28">Contractual:</span>
-                          <span className={estaVencida(vehiculo.poliza_contractual_vencimiento) ? "text-red-600 font-medium" : ""}>
-                            {formatearFecha(vehiculo.poliza_contractual_vencimiento)}
+                          <span
+                            className={
+                              estaVencida(
+                                vehiculo.poliza_contractual_vencimiento,
+                              )
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
+                            {formatearFecha(
+                              vehiculo.poliza_contractual_vencimiento,
+                            )}
                           </span>
                         </li>
                         <li className="flex items-start">
-                          <span className="font-medium w-28">Extra Contractual:</span>
-                          <span className={estaVencida(vehiculo.poliza_extra_contractual_vencimiento) ? "text-red-600 font-medium" : ""}>
-                            {formatearFecha(vehiculo.poliza_extra_contractual_vencimiento)}
+                          <span className="font-medium w-28">
+                            Extra Contractual:
+                          </span>
+                          <span
+                            className={
+                              estaVencida(
+                                vehiculo.poliza_extra_contractual_vencimiento,
+                              )
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
+                            {formatearFecha(
+                              vehiculo.poliza_extra_contractual_vencimiento,
+                            )}
                           </span>
                         </li>
                         <li className="flex items-start">
                           <span className="font-medium w-28">Todo Riesgo:</span>
-                          <span className={estaVencida(vehiculo.poliza_todo_riesgo_vencimiento) ? "text-red-600 font-medium" : ""}>
-                            {formatearFecha(vehiculo.poliza_todo_riesgo_vencimiento)}
+                          <span
+                            className={
+                              estaVencida(
+                                vehiculo.poliza_todo_riesgo_vencimiento,
+                              )
+                                ? "text-red-600 font-medium"
+                                : ""
+                            }
+                          >
+                            {formatearFecha(
+                              vehiculo.poliza_todo_riesgo_vencimiento,
+                            )}
                           </span>
                         </li>
                       </ul>
@@ -375,9 +453,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       <span className="font-medium w-28">Creado el:</span>
                       <span>
                         {vehiculo.createdAt
-                          ? new Date(vehiculo.createdAt).toLocaleString(
-                            "es-CO",
-                          )
+                          ? new Date(vehiculo.createdAt).toLocaleString("es-CO")
                           : "No disponible"}
                       </span>
                     </li>
@@ -385,9 +461,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       <span className="font-medium w-28">Actualizado:</span>
                       <span>
                         {vehiculo.updatedAt
-                          ? new Date(vehiculo.updatedAt).toLocaleString(
-                            "es-CO",
-                          )
+                          ? new Date(vehiculo.updatedAt).toLocaleString("es-CO")
                           : "No disponible"}
                       </span>
                     </li>

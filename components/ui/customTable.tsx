@@ -199,35 +199,35 @@ const CustomTable: React.FC<CustomTableProps> = ({
             </tr>
           ) : (
             data.map((item, rowIndex) => {
-
               const vehiculoId = item.id || "";
               const animation = rowAnimations[vehiculoId];
-              console.log(animation)
+
+              console.log(animation);
               const isNew = animation?.isNew || false;
               const isUpdated = animation?.isUpdated || false;
 
               return (
                 <tr
                   key={item.id ?? rowIndex}
-                  id={`vehiculo-row-${item.id ?? rowIndex}`}
+                  aria-label={`Fila de ${item.id ?? rowIndex}`}
                   className={`
                     hover:bg-gray-50 transition-colors cursor-pointer
                     ${isNew ? "animate-pulse bg-success-50 border-l-[2px] border-solid !border-success-400" : ""}
                     ${isUpdated && !isNew ? "animate-pulse bg-primary-50 border-l-[2px] border-solid !border-primary-400" : ""}
                   `}
+                  id={`vehiculo-row-${item.id ?? rowIndex}`}
                   style={{
-                    borderLeftWidth: (isNew || isUpdated) ? 4 : undefined,
-                    borderLeftStyle: (isNew || isUpdated) ? "solid" : undefined,
+                    borderLeftWidth: isNew || isUpdated ? 4 : undefined,
+                    borderLeftStyle: isNew || isUpdated ? "solid" : undefined,
                     borderLeftColor: isNew
                       ? "#22c55e !important" // success-400
                       : isUpdated && !isNew
-                      ? "#3b82f6 !important" // primary-400
-                      : undefined,
+                        ? "#3b82f6 !important" // primary-400
+                        : undefined,
                     // No tocamos borderTop, se mantiene por default
                   }}
-                  onClick={() => onRowClick?.(item)}
                   tabIndex={0}
-                  aria-label={`Fila de ${item.id ?? rowIndex}`}
+                  onClick={() => onRowClick?.(item)}
                 >
                   {columns.map((column, columnIndex) => (
                     <td

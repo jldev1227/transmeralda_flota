@@ -216,13 +216,17 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       errorMessage={
                         errores.clase_vehiculo ? "La clase es requerida" : ""
                       }
-                      value={formData.clase_vehiculo || ""}
                       isInvalid={errores.clase_vehiculo}
                       label="Clase de Vehículo"
                       name="clase_vehiculo"
                       placeholder="Seleccione una clase"
-                      selectedKeys={formData.clase_vehiculo ? [formData.clase_vehiculo] : []}
-                      onChange={(e) => handleSelectChange("clase_vehiculo", e.target.value)}
+                      selectedKeys={
+                        formData.clase_vehiculo ? [formData.clase_vehiculo] : []
+                      }
+                      value={formData.clase_vehiculo || ""}
+                      onChange={(e) =>
+                        handleSelectChange("clase_vehiculo", e.target.value)
+                      }
                     >
                       {clasesVehiculo.map((clase) => (
                         <SelectItem key={clase.key} textValue={clase.label}>

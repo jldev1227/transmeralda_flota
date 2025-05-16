@@ -113,7 +113,7 @@ export interface CrearVehiculoRequest {
   vin?: string;
 }
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest> { }
+  extends Partial<CrearVehiculoRequest> {}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -692,11 +692,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       socketService.on("connect", handleConnect);
       socketService.on("disconnect", handleDisconnect);
 
-
       // Registrar manejadores de eventos de vehículos
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
-
 
       return () => {
         // Limpiar al desmontar
