@@ -7,14 +7,17 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
+import { AxiosError, isAxiosError } from "axios";
+import { addToast } from "@heroui/toast";
 
 import { useAuth } from "./AuthContext";
 
 import { apiClient } from "@/config/apiClient";
 import socketService from "@/services/socketServices";
+import { SortDescriptor } from "@/components/ui/customTable";
 
 export interface Vehiculo {
-  claseVehiculo: string;
+  clase_vehiculo: string;
   color: string;
   combustible: string;
   conductor_id: string;
@@ -29,22 +32,29 @@ export interface Vehiculo {
   longitud: number;
   marca: string;
   modelo: string;
-  numeroChasis: string;
-  numeroMotor: string;
-  numeroSerie: string;
+  numero_chasis: string;
+  numero_motor: string;
+  numero_serie: string;
   placa: string;
-  polizaContractualVencimiento: string;
-  polizaExtraContractualVencimiento: string;
-  polizaTodoRiesgoVencimiento: string;
-  propietarioIdentificacion: string;
-  propietarioNombre: string;
+  poliza_contractual_vencimiento: string;
+  poliza_extra_contractual_vencimiento: string;
+  poliza_todo_riesgo_vencimiento: string;
+  propietario_identificacion: string;
+  propietario_nombre: string;
   propietario_id: string;
-  soatVencimiento: string;
-  tarjetaDeOperacionVencimiento: string;
-  tecnomecanicaVencimiento: string;
-  tipoCarroceria: string;
+  soat_vencimiento: string;
+  tarjeta_de_operacion_vencimiento: string;
+  tecnomecanica_vencimiento: string;
+  tipo_carroceria: string;
   updatedAt: string;
   vin: string;
+}
+
+export enum EstadoVehiculo {
+  ACTIVO = "ACTIVO",
+  INACTIVO = "INACTIVO",
+  MANTENIMIENTO = "MANTENIMIENTO",
+  DISPONIBLE = "DISPONIBLE",
 }
 
 export interface FiltrosVehiculos {
@@ -59,6 +69,140 @@ export interface FiltrosVehiculos {
   documentosVencidos: boolean;
 }
 
+export interface BusquedaParams {
+  page?: number;
+  limit?: number;
+  search?: string; // Para búsqueda general (placa, marca, modelo, linea.)
+  estado?: EstadoVehiculo | EstadoVehiculo[];
+  sort?: string;
+  order?: "ASC" | "DESC";
+}
+
+export interface ValidationError {
+  campo: string;
+  mensaje: string;
+}
+
+export interface CrearVehiculoRequest {
+  claseVehiculo: string;
+  color?: string;
+  combustible?: string;
+  estado?: string;
+  fechaMatricula?: string;
+  galeria?: string[];
+  kilometraje?: number;
+  latitud?: number;
+  linea?: string;
+  longitud?: number;
+  marca: string;
+  modelo?: string;
+  numeroChasis?: string;
+  numeroMotor?: string;
+  numeroSerie?: string;
+  placa: string;
+  polizaContractualVencimiento?: string;
+  polizaExtraContractualVencimiento?: string;
+  polizaTodoRiesgoVencimiento?: string;
+  propietarioIdentificacion?: string;
+  propietarioNombre?: string;
+  propietario_id?: string;
+  soatVencimiento?: string;
+  tarjetaDeOperacionVencimiento?: string;
+  tecnomecanicaVencimiento?: string;
+  tipoCarroceria?: string;
+  vin?: string;
+}
+export interface ActualizarVehiculoRequest
+  extends Partial<CrearVehiculoRequest> { }
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  count?: number;
+  currentPage?: number;
+  totalPages?: number;
+  message?: string;
+  errores?: ValidationError[];
+}
+
+export interface VehiculosState {
+  data: Vehiculo[];
+  count: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+// Funciones utilitarias
+export const getEstadoColor = (estado: EstadoVehiculo) => {
+  switch (estado) {
+    case EstadoVehiculo.ACTIVO:
+      return {
+        bg: "bg-green-100",
+        text: "text-green-800",
+        border: "border-green-200",
+        dot: "bg-green-500",
+        badge: "bg-green-100 text-green-800",
+        color: "#16a34a",
+        lightColor: "#dcfce7",
+      };
+    case EstadoVehiculo.INACTIVO:
+      return {
+        bg: "bg-gray-100",
+        text: "text-gray-800",
+        border: "border-gray-200",
+        dot: "bg-gray-500",
+        badge: "bg-gray-100 text-gray-800",
+        color: "#71717a",
+        lightColor: "#f4f4f5",
+      };
+    case EstadoVehiculo.MANTENIMIENTO:
+      return {
+        bg: "bg-yellow-100",
+        text: "text-yellow-800",
+        border: "border-yellow-200",
+        dot: "bg-yellow-500",
+        badge: "bg-yellow-100 text-yellow-800",
+        color: "#ca8a04",
+        lightColor: "#fef9c3",
+      };
+    case EstadoVehiculo.DISPONIBLE:
+      return {
+        bg: "bg-red-100",
+        text: "text-red-800",
+        border: "border-red-200",
+        dot: "bg-red-500",
+        badge: "bg-red-100 text-red-800",
+        color: "#dc2626",
+        lightColor: "#fee2e2",
+      };
+    default:
+      return {
+        bg: "bg-gray-100",
+        text: "text-gray-800",
+        border: "border-gray-200",
+        dot: "bg-gray-500",
+        badge: "bg-gray-100 text-gray-800",
+        color: "#71717a",
+        lightColor: "#f4f4f5",
+      };
+  }
+};
+
+export const getEstadoLabel = (estado: EstadoVehiculo): string => {
+  switch (estado) {
+    case EstadoVehiculo.ACTIVO:
+      return "Activo";
+    case EstadoVehiculo.INACTIVO:
+      return "Inactivo";
+    case EstadoVehiculo.MANTENIMIENTO:
+      return "Suspendido";
+    case EstadoVehiculo.DISPONIBLE:
+      return "Retirado";
+    default:
+      return "Desconocido";
+  }
+};
+
 export interface SocketEventLog {
   eventName: string;
   data: any;
@@ -67,34 +211,28 @@ export interface SocketEventLog {
 
 // Interfaz para el contexto
 interface FlotaContextType {
-  // Datos
-  vehiculos: Vehiculo[];
-  vehiculoActual: Vehiculo | null;
+  // Estado
+  vehiculosState: VehiculosState;
+  currentVehiculo: Vehiculo | null;
   loading: boolean;
   error: string | null;
-  filtros: FiltrosVehiculos;
-  vehiculosFiltrados: Vehiculo[];
+  validationErrors: ValidationError[] | null;
 
-  // Estados de modales
-  showCrearModal: boolean;
-  showEditarModal: boolean;
-  showDetalleModal: boolean;
-  sortConfig: {
-    key: string;
-    direction: "asc" | "desc";
-  };
-  // Métodos para API
-  obtenerVehiculoId: (id: string) => Promise<Vehiculo | null>;
-  ordenarVehiculos: (key: string, direction: "asc" | "desc") => void;
-  obtenerVehiculoBasico: (id: string) => Promise<Vehiculo | null>;
+  // Operaciones CRUD
+  fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
+  getVehiculo: (id: string) => Promise<Vehiculo | null>;
+  crearVehiculoBasico: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
+  actualizarVehiculoBasico: (
+    id: string,
+    data: ActualizarVehiculoRequest,
+  ) => Promise<Vehiculo | null>;
 
-  // Métodos para UI
-  setFiltros: React.Dispatch<React.SetStateAction<FiltrosVehiculos>>;
-  resetearFiltros: () => void;
-  abrirModalCrear: () => void;
-  abrirModalEditar: (id: string) => Promise<void>;
-  abrirModalDetalle: (id: string) => Promise<void>;
-  cerrarModales: () => void;
+  // Funciones de utilidad
+  handlePageChange: (page: number) => void;
+  handleSortChange: (descriptor: SortDescriptor) => void;
+  clearError: () => void;
+  setCurrentVehiculo: (vehiculo: Vehiculo | null) => void;
+
   // Nuevas propiedades para Socket.IO
   socketConnected?: boolean;
   socketEventLogs?: SocketEventLog[];
@@ -111,41 +249,402 @@ const FlotaContext = createContext<FlotaContextType | undefined>(undefined);
 
 // Proveedor del contexto
 export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
-  const [vehiculoActual, setVehiculoActual] = useState<Vehiculo | null>(null);
+  const [vehiculosState, setVehiculosState] = useState<VehiculosState>({
+    data: [],
+    count: 0,
+    totalPages: 1,
+    currentPage: 1,
+  });
+  const [currentVehiculo, setCurrentVehiculo] = useState<Vehiculo | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [validationErrors, setValidationErrors] = useState<
+    ValidationError[] | null
+  >(null);
+  const [initializing, setInitializing] = useState<boolean>(true);
 
-  // Estados para Socket.IO
+  // Estado para Socket.IO
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [socketEventLogs, setSocketEventLogs] = useState<SocketEventLog[]>([]);
+  const { user } = useAuth();
 
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: "asc" | "desc";
-  }>({
-    key: "periodo_start",
-    direction: "desc",
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: "placa",
+    direction: "ascending",
   });
 
-  // Estados para filtros y paginación
-  const [filtros, setFiltros] = useState<FiltrosVehiculos>({
-    conductor_id: "",
-    fechaMatricula: "",
-    estado: "",
-    busqueda: "",
-    marca: "",
-    modelo: "",
-    claseVehiculo: "",
-    vencimientoProximo: false,
-    documentosVencidos: false,
-  });
+  // Función para manejar errores de Axios
+  const handleApiError = (err: unknown, defaultMessage: string): string => {
+    if (isAxiosError(err)) {
+      const axiosError = err as AxiosError<ApiResponse<any>>;
 
-  // Estado para manejo de modales
-  const [showCrearModal, setShowCrearModal] = useState<boolean>(false);
-  const [showEditarModal, setShowEditarModal] = useState<boolean>(false);
-  const [showDetalleModal, setShowDetalleModal] = useState<boolean>(false);
+      if (axiosError.response) {
+        // El servidor respondió con un código de estado fuera del rango 2xx
+        const statusCode = axiosError.response.status;
+        const errorMessage = axiosError.response.data?.message;
+        const validationErrors = axiosError.response.data?.errores;
+
+        if (validationErrors) {
+          setValidationErrors(validationErrors);
+        }
+
+        if (statusCode === 401) {
+          return "Sesión expirada o usuario no autenticado";
+        } else if (statusCode === 403) {
+          return "No tienes permisos para realizar esta acción";
+        } else if (statusCode === 404) {
+          return "Vehiculo no encontrado";
+        } else {
+          return errorMessage || `Error en la petición (${statusCode})`;
+        }
+      } else if (axiosError.request) {
+        // La petición fue hecha pero no se recibió respuesta
+        return "No se pudo conectar con el servidor. Verifica tu conexión a internet";
+      } else {
+        // Error al configurar la petición
+        return `Error al configurar la petición: ${axiosError.message}`;
+      }
+    } else {
+      // Error que no es de Axios
+      return `${defaultMessage}: ${(err as Error).message}`;
+    }
+  };
+
+  // Función para limpiar errores
+  const clearError = () => {
+    setError(null);
+    setValidationErrors(null);
+  };
+
+  // Operaciones CRUD
+  const fetchVehiculos = async (paramsBusqueda: BusquedaParams = {}) => {
+    setLoading(true);
+    clearError();
+
+    console.log(paramsBusqueda);
+
+    try {
+      // Prepara los parámetros básicos
+      const params: any = {
+        page: paramsBusqueda.page || vehiculosState.currentPage,
+        limit: paramsBusqueda.limit || 10,
+        sort: paramsBusqueda.sort || sortDescriptor.column,
+        order: paramsBusqueda.order || sortDescriptor.direction,
+      };
+
+      // Añade el término de búsqueda si existe
+      if (paramsBusqueda.search) {
+        params.search = paramsBusqueda.search;
+      }
+
+      // Añade filtros de estado
+      if (paramsBusqueda.estado) {
+        if (Array.isArray(paramsBusqueda.estado)) {
+          params.estado = paramsBusqueda.estado.join(",");
+        } else {
+          params.estado = paramsBusqueda.estado;
+        }
+      }
+
+      const response = await apiClient.get<ApiResponse<Vehiculo[]>>(
+        "/api/flota",
+        {
+          params,
+        },
+      );
+
+      console.log(response);
+
+      if (response.data && response.data.success) {
+        setVehiculosState({
+          data: response.data.data,
+          count: response.data.count || 0,
+          totalPages: response.data.totalPages || 1,
+          currentPage: parseInt(params.page) || 1,
+        });
+
+        return;
+      } else {
+        throw new Error("Respuesta no exitosa del servidor");
+      }
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Error al obtener conductores");
+
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+      setInitializing(false);
+    }
+  };
+
+  const getVehiculo = async (id: string): Promise<Vehiculo | null> => {
+    setLoading(true);
+    clearError();
+
+    try {
+      const response = await apiClient.get<ApiResponse<Vehiculo>>(
+        `/api/conductores/${id}`,
+      );
+
+      if (response.data && response.data.success) {
+        const conductor = response.data.data;
+
+        setCurrentVehiculo(conductor);
+
+        return conductor;
+      } else {
+        throw new Error("Respuesta no exitosa del servidor");
+      }
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Error al obtener el conductor");
+
+      setError(errorMessage);
+
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crearVehiculoBasico = async (
+    data: CrearVehiculoRequest,
+  ): Promise<Vehiculo> => {
+    // Cambiado el tipo de retorno para no permitir null
+    clearError();
+
+    try {
+      const response = await apiClient.post<ApiResponse<Vehiculo>>(
+        "/api/conductores",
+        data,
+      );
+
+      if (response.data && response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Error al crear conductor");
+      }
+    } catch (err: any) {
+      // Definir un mensaje de error predeterminado
+      let errorTitle = "Error al crear conductor";
+      let errorDescription = "Ha ocurrido un error inesperado.";
+
+      // Manejar errores específicos por código de estado
+      if (err.response) {
+        switch (err.response.status) {
+          case 400: // Bad Request
+            errorTitle = "Error en los datos enviados";
+
+            // Verificar si tenemos detalles específicos del error en la respuesta
+            if (err.response.data && err.response.data.message) {
+              errorDescription = err.response.data.message;
+            }
+
+            // Verificar si hay errores específicos en formato español (errores)
+            if (
+              err.response.data &&
+              err.response.data.errores &&
+              Array.isArray(err.response.data.errores)
+            ) {
+              // Mapeo de nombres de campos para mensajes más amigables
+              const fieldLabels: Record<string, string> = {
+                nombre: "Nombre",
+                apellido: "Apellido",
+                tipo_identificacion: "Tipo de identificación",
+                numero_identificacion: "Número de identificación",
+                email: "Correo electrónico",
+                telefono: "Teléfono",
+                password: "Contraseña",
+                // Añadir más campos según sea necesario
+              };
+
+              // Mostrar cada error de validación como un toast separado
+              let errorShown = false;
+
+              err.response.data.errores.forEach(
+                (error: { campo: string; mensaje: string }) => {
+                  errorShown = true;
+                  const fieldLabel = fieldLabels[error.campo] || error.campo;
+
+                  // Personalizar mensajes para errores comunes
+                  let customMessage = error.mensaje;
+
+                  if (error.mensaje.includes("must be unique")) {
+                    customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
+                  }
+
+                  addToast({
+                    title: `Error en ${fieldLabel}`,
+                    description: customMessage,
+                    color: "danger",
+                  });
+                },
+              );
+
+              // IMPORTANTE: Ya no hacemos return null aquí
+              // Solo actualizamos el mensaje de error general
+              if (errorShown) {
+                setError(errorDescription);
+                // Arrojamos un nuevo error en lugar de retornar null
+                throw new Error("Error de validación en los campos");
+              }
+            }
+
+            // Verificar errores específicos comunes en el mensaje
+            if (
+              errorDescription.includes("unique") ||
+              errorDescription.includes("duplicado")
+            ) {
+              // Error genérico de duplicación
+              errorTitle = "Datos duplicados";
+              errorDescription =
+                "Algunos de los datos ingresados ya existen en el sistema.";
+
+              // Intentar ser más específico basado en el mensaje completo
+              if (
+                errorDescription.toLowerCase().includes("email") ||
+                errorDescription.toLowerCase().includes("correo")
+              ) {
+                errorTitle = "Correo electrónico duplicado";
+                errorDescription =
+                  "Ya existe un conductor con este correo electrónico.";
+              } else if (
+                errorDescription.toLowerCase().includes("identificacion") ||
+                errorDescription.toLowerCase().includes("identificación")
+              ) {
+                errorTitle = "Identificación duplicada";
+                errorDescription =
+                  "Ya existe un conductor con este número de identificación.";
+              }
+            }
+            break;
+
+          // Los demás casos igual que antes...
+        }
+      } else if (err.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        errorTitle = "Error de conexión";
+        errorDescription =
+          "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+      } else {
+        // Algo sucedió al configurar la solicitud que desencadenó un error
+        errorTitle = "Error en la solicitud";
+        errorDescription =
+          err.message || "Ha ocurrido un error al procesar la solicitud.";
+      }
+
+      // Guardar el mensaje de error para referencia en el componente
+      setError(errorDescription);
+
+      // Mostrar el toast con el mensaje de error
+      addToast({
+        title: errorTitle,
+        description: errorDescription,
+        color: "danger",
+      });
+
+      // Registrar el error en la consola para depuración
+      console.error("Error detallado:", err);
+
+      // Siempre lanzamos el error, nunca retornamos null
+      throw err;
+    }
+    // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
+  };
+
+  const actualizarVehiculoBasico = async (
+    id: string,
+    data: ActualizarVehiculoRequest,
+  ): Promise<Vehiculo | null> => {
+    setLoading(true);
+    clearError();
+
+    try {
+      const response = await apiClient.put<ApiResponse<Vehiculo>>(
+        `/api/flota/${id}/basico`,
+        data,
+      );
+
+      if (response.data && response.data.success) {
+        const conductorActualizado = response.data.data;
+
+        // Actualizar el currentVehiculo si corresponde al mismo ID
+        if (currentVehiculo && currentVehiculo.id === id) {
+          setCurrentVehiculo(conductorActualizado);
+        }
+
+        const params: BusquedaParams = {
+          page: vehiculosState.currentPage,
+        };
+
+        // Actualizar la lista de conductores
+        fetchVehiculos(params);
+
+        return conductorActualizado;
+      } else {
+        throw new Error("Respuesta no exitosa del servidor");
+      }
+    } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Error al actualizar el conductor",
+      );
+
+      setError(errorMessage);
+
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funciones de utilidad
+  const handlePageChange = (page: number) => {
+    setVehiculosState((prevState) => ({
+      ...prevState,
+      currentPage: page,
+    }));
+  };
+
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    setSortDescriptor(descriptor);
+    setVehiculosState((prevState) => ({
+      ...prevState,
+      currentPage: 1,
+    }));
+
+    const params: BusquedaParams = {
+      page: vehiculosState.currentPage,
+    };
+
+    fetchVehiculos(params);
+  };
+
+  // Efecto que se ejecuta cuando cambia la página actual
+  useEffect(() => {
+    const params: BusquedaParams = {
+      page: vehiculosState.currentPage,
+    };
+
+    fetchVehiculos(params);
+  }, [vehiculosState.currentPage]);
+
+  // Efecto de inicialización
+  useEffect(() => {
+    const params: BusquedaParams = {
+      page: vehiculosState.currentPage,
+    };
+
+    fetchVehiculos(params);
+
+    // Establecer un tiempo máximo para la inicialización
+    const timeoutId = setTimeout(() => {
+      if (initializing) {
+        setInitializing(false);
+      }
+    }, 5000); // 5 segundos máximo de espera
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   // Inicializar Socket.IO cuando el usuario esté autenticado
   useEffect(() => {
@@ -184,568 +683,41 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     }
   }, [user?.id]);
 
-  // Función para añadir eventos al registro (log)
-  const logSocketEvent = useCallback((eventName: string, data: any) => {
-    setSocketEventLogs((prev) => [
-      {
-        eventName,
-        data,
-        timestamp: new Date(),
-      },
-      ...prev,
-    ]);
-  }, []);
-
-  // Configurar listeners para eventos de vehiculos
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Manejador para nueva liquidación creada
-    const handleVehiculoCreado = (data: {
-      vehiculo: Vehiculo;
-      usuarioCreador: string;
-    }) => {
-      logSocketEvent("vehiculo_creada", data);
-
-      // Actualizar la lista de vehiculos
-      setVehiculos((prev) => {
-        // Verificar si la liquidación ya existe
-        const exists = prev.some((liq) => liq.id === data.vehiculo.id);
-
-        if (exists) {
-          return prev.map((liq) =>
-            liq.id === data.vehiculo.id ? data.vehiculo : liq,
-          );
-        } else {
-          return [data.vehiculo, ...prev];
-        }
-      });
-    };
-
-    // Limpiar al desmontar
-    return () => {
-      socketService.off("vehiculo_creado");
-    };
-  }, [user?.id, vehiculoActual, logSocketEvent]);
-
   // Función para limpiar el registro de eventos de socket
   const clearSocketEventLogs = useCallback(() => {
     setSocketEventLogs([]);
   }, []);
 
-  // Obtener todas las vehiculos
-
-  const obtenerVehiculos = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await apiClient.get("/api/flota");
-
-      if (response.data.success) {
-        setVehiculos(response.data.data);
-      } else {
-        throw new Error(response.data.message || "Error al obtener vehiculos");
-      }
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Error al conectar con el servidor",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [apiClient]);
-
-  // Obtener una liquidación por ID
-  const obtenerVehiculoId = useCallback(
-    async (id: string): Promise<Vehiculo | null> => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.get(`/api/flota/${id}`);
-
-        if (response.data.success) {
-          setVehiculoActual(response.data.vehiculo);
-
-          return response.data.vehiculo;
-        } else {
-          throw new Error(
-            response.data.message || "Error al obtener la liquidación",
-          );
-        }
-      } catch (err: any) {
-        setError(
-          err.response?.data?.message ||
-            err.message ||
-            "Error al conectar con el servidor",
-        );
-
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const obtenerVehiculoBasico = useCallback(
-    async (id: string): Promise<Vehiculo | null> => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.get(`/api/flota/basico/${id}`);
-
-        if (response.data.success) {
-          return response.data.vehiculo;
-        } else {
-          throw new Error(
-            response.data.message || "Error al obtener la liquidación",
-          );
-        }
-      } catch (err: any) {
-        setError(
-          err.response?.data?.message ||
-            err.message ||
-            "Error al conectar con el servidor",
-        );
-
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const filtrarVehiculos = useCallback((): Vehiculo[] => {
-    // Si no hay vehículos, retornar array vacío
-    if (!vehiculos || vehiculos.length === 0) {
-      return [];
-    }
-
-    // Filtrar los vehículos
-    let filteredVehiculos = vehiculos.filter((vehiculo) => {
-      // Filtro por conductor
-      if (
-        filtros.conductor_id &&
-        vehiculo.conductor_id !== filtros.conductor_id
-      ) {
-        return false;
-      }
-
-      // Filtro por fecha de matrícula (mes específico)
-      if (filtros.fechaMatricula && vehiculo.fechaMatricula) {
-        // Asegurarse que las fechas estén en formato YYYY-MM-DD
-        const fechaFiltroStr = filtros.fechaMatricula.split("T")[0]; // Remover parte de hora si existe
-        const fechaVehiculoStr = vehiculo.fechaMatricula.split("T")[0];
-
-        // Extraer año y mes directamente de los strings para evitar problemas de zona horaria
-        const [anioFiltro, mesFiltro] = fechaFiltroStr
-          .split("-")
-          .map((num) => parseInt(num));
-        const [anioVehiculo, mesVehiculo] = fechaVehiculoStr
-          .split("-")
-          .map((num) => parseInt(num));
-
-        // Verificar si el vehículo pertenece al mes y año específicos
-        if (mesVehiculo !== mesFiltro || anioVehiculo !== anioFiltro) {
-          return false;
-        }
-      }
-
-      // Filtro por estado
-      if (filtros.estado && vehiculo.estado !== filtros.estado) {
-        return false;
-      }
-
-      // Filtro por búsqueda (texto libre)
-      if (filtros.busqueda && filtros.busqueda.trim() !== "") {
-        const busqueda = filtros.busqueda.toLowerCase().trim();
-
-        // Buscar en los campos relevantes
-        const matchPlaca = vehiculo.placa
-          ? vehiculo.placa.toLowerCase().includes(busqueda)
-          : false;
-        const matchMarca = vehiculo.marca
-          ? vehiculo.marca.toLowerCase().includes(busqueda)
-          : false;
-        const matchLinea = vehiculo.linea
-          ? vehiculo.linea.toLowerCase().includes(busqueda)
-          : false;
-        const matchModelo = vehiculo.modelo
-          ? vehiculo.modelo.toLowerCase().includes(busqueda)
-          : false;
-        const matchColor = vehiculo.color
-          ? vehiculo.color.toLowerCase().includes(busqueda)
-          : false;
-        const matchClase = vehiculo.claseVehiculo
-          ? vehiculo.claseVehiculo.toLowerCase().includes(busqueda)
-          : false;
-        const matchPropietario = vehiculo.propietarioNombre
-          ? vehiculo.propietarioNombre.toLowerCase().includes(busqueda)
-          : false;
-        const matchNumeroMotor = vehiculo.numeroMotor
-          ? vehiculo.numeroMotor.toLowerCase().includes(busqueda)
-          : false;
-        const matchNumeroChasis = vehiculo.numeroChasis
-          ? vehiculo.numeroChasis.toLowerCase().includes(busqueda)
-          : false;
-        const matchVIN = vehiculo.vin
-          ? vehiculo.vin.toLowerCase().includes(busqueda)
-          : false;
-
-        // Si no coincide con ningún campo, filtrar
-        if (
-          !(
-            matchPlaca ||
-            matchMarca ||
-            matchLinea ||
-            matchModelo ||
-            matchColor ||
-            matchClase ||
-            matchPropietario ||
-            matchNumeroMotor ||
-            matchNumeroChasis ||
-            matchVIN
-          )
-        ) {
-          return false;
-        }
-      }
-
-      // Filtros adicionales específicos para vehículos
-      if (filtros.marca && vehiculo.marca !== filtros.marca) {
-        return false;
-      }
-
-      if (filtros.modelo && vehiculo.modelo !== filtros.modelo) {
-        return false;
-      }
-
-      if (
-        filtros.claseVehiculo &&
-        vehiculo.claseVehiculo !== filtros.claseVehiculo
-      ) {
-        return false;
-      }
-
-      // Filtro por vencimientos próximos
-      if (filtros.vencimientoProximo) {
-        const hoy = new Date();
-        const diasLimite = 30; // Ejemplo: 30 días para considerar vencimiento próximo
-
-        // Función para verificar si una fecha está próxima a vencer
-        const esVencimientoProximo = (fechaStr: string | null): boolean => {
-          if (!fechaStr) return false;
-
-          const fechaVencimiento = new Date(fechaStr);
-          const diferenciaDias = Math.floor(
-            (fechaVencimiento.getTime() - hoy.getTime()) /
-              (1000 * 60 * 60 * 24),
-          );
-
-          return diferenciaDias >= 0 && diferenciaDias <= diasLimite;
-        };
-
-        // Verificar vencimientos relevantes
-        const soatProximo = esVencimientoProximo(vehiculo.soatVencimiento);
-        const tecnomecanicaProxima = esVencimientoProximo(
-          vehiculo.tecnomecanicaVencimiento,
-        );
-        const todoRiesgoProximo = esVencimientoProximo(
-          vehiculo.polizaTodoRiesgoVencimiento,
-        );
-        const tarjetaOperacionProxima = esVencimientoProximo(
-          vehiculo.tarjetaDeOperacionVencimiento,
-        );
-
-        // Si ningún documento está próximo a vencer, excluir el vehículo
-        if (
-          !(
-            soatProximo ||
-            tecnomecanicaProxima ||
-            todoRiesgoProximo ||
-            tarjetaOperacionProxima
-          )
-        ) {
-          return false;
-        }
-      }
-
-      // Filtro por documentos vencidos
-      if (filtros.documentosVencidos) {
-        const hoy = new Date();
-
-        // Función para verificar si una fecha ya está vencida
-        const esDocumentoVencido = (fechaStr: string | null): boolean => {
-          if (!fechaStr) return false;
-
-          const fechaVencimiento = new Date(fechaStr);
-
-          return fechaVencimiento < hoy;
-        };
-
-        // Verificar vencimientos relevantes
-        const soatVencido = esDocumentoVencido(vehiculo.soatVencimiento);
-        const tecnomecanicaVencida = esDocumentoVencido(
-          vehiculo.tecnomecanicaVencimiento,
-        );
-        const todoRiesgoVencido = esDocumentoVencido(
-          vehiculo.polizaTodoRiesgoVencimiento,
-        );
-        const polizaContractualVencida = esDocumentoVencido(
-          vehiculo.polizaContractualVencimiento,
-        );
-        const polizaExtraContractualVencida = esDocumentoVencido(
-          vehiculo.polizaExtraContractualVencimiento,
-        );
-        const tarjetaOperacionVencida = esDocumentoVencido(
-          vehiculo.tarjetaDeOperacionVencimiento,
-        );
-
-        // Si ningún documento está vencido, excluir el vehículo
-        if (
-          !(
-            soatVencido ||
-            tecnomecanicaVencida ||
-            todoRiesgoVencido ||
-            polizaContractualVencida ||
-            polizaExtraContractualVencida ||
-            tarjetaOperacionVencida
-          )
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Ordenar los resultados filtrados
-    if (sortConfig.key) {
-      filteredVehiculos.sort((a: Vehiculo, b: Vehiculo) => {
-        let valorA, valorB;
-
-        // Manejar casos especiales
-        switch (sortConfig.key) {
-          case "propietario":
-            valorA = a.propietarioNombre || "";
-            valorB = b.propietarioNombre || "";
-            break;
-          case "fechaMatricula":
-          case "soatVencimiento":
-          case "tecnomecanicaVencimiento":
-          case "polizaTodoRiesgoVencimiento":
-          case "tarjetaDeOperacionVencimiento":
-            valorA = a[sortConfig.key] ? new Date(a[sortConfig.key]) : null;
-            valorB = b[sortConfig.key] ? new Date(b[sortConfig.key]) : null;
-            break;
-          case "kilometraje":
-            valorA = a.kilometraje || 0;
-            valorB = b.kilometraje || 0;
-            break;
-          default:
-            valorA = a[sortConfig.key as keyof Vehiculo];
-            valorB = b[sortConfig.key as keyof Vehiculo];
-            break;
-        }
-
-        // Manejar valores nulos o undefined
-        if (valorA === null || valorA === undefined)
-          return sortConfig.direction === "asc" ? -1 : 1;
-        if (valorB === null || valorB === undefined)
-          return sortConfig.direction === "asc" ? 1 : -1;
-
-        // Ordenar
-        if (valorA < valorB) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (valorA > valorB) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-
-        return 0;
-      });
-    }
-
-    return filteredVehiculos;
-  }, [vehiculos, filtros, sortConfig]);
-
-  // Define la función de ordenamiento
-  const ordenarVehiculos = useCallback(
-    (key: string, direction: "asc" | "desc") => {
-      setSortConfig({ key, direction });
-      // No necesitas hacer nada más aquí, ya que filtrarVehiculos usará el nuevo sortConfig
-    },
-    [],
-  );
-
-  // Resetear filtros
-  const resetearFiltros = (): void => {
-    setFiltros({
-      conductor_id: "",
-      fechaMatricula: "",
-      estado: "",
-      busqueda: "",
-      marca: "",
-      modelo: "",
-      claseVehiculo: "",
-      vencimientoProximo: false,
-      documentosVencidos: false,
-    });
-  };
-
-  // Manejo de modales
-  const abrirModalCrear = (): void => {
-    setVehiculoActual(null);
-    setShowCrearModal(true);
-  };
-
-  const abrirModalEditar = async (id: string): Promise<void> => {
-    const vehiculo = await obtenerVehiculoId(id);
-
-    if (vehiculo) {
-      setShowEditarModal(true);
-    }
-  };
-
-  const abrirModalDetalle = async (id: string): Promise<void> => {
-    const vehiculo = await obtenerVehiculoId(id);
-
-    if (vehiculo) {
-      setShowDetalleModal(true);
-    }
-  };
-
-  const cerrarModales = (): void => {
-    setShowCrearModal(false);
-    setShowEditarModal(false);
-    setShowDetalleModal(false);
-  };
-
-  // Cargar vehiculos al montar el componente o cuando cambie el token
-  useEffect(() => {
-    obtenerVehiculos();
-  }, []);
-
-  // Configurar listeners para eventos de vehiculos
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Manejador para nueva liquidación creada
-    const handleVehiculoCreado = (data: {
-      vehiculo: Vehiculo;
-      usuarioCreador: string;
-    }) => {
-      logSocketEvent("vehiculo_creado", data);
-
-      // Actualizar la lista de vehiculos
-      setVehiculos((prev) => {
-        // Verificar si la liquidación ya existe
-        const exists = prev.some((liq) => liq.id === data.vehiculo.id);
-
-        if (exists) {
-          return prev.map((liq) =>
-            liq.id === data.vehiculo.id ? data.vehiculo : liq,
-          );
-        } else {
-          return [data.vehiculo, ...prev];
-        }
-      });
-    };
-
-    // Manejador para liquidación actualizada
-    const handleVehiculoActualizado = (data: {
-      vehiculo: Vehiculo;
-      usuarioActualizador: string;
-      cambios: any;
-    }) => {
-      logSocketEvent("vehiculo_actualizado", data);
-
-      // Actualizar la lista de vehiculos
-      setVehiculos((prev) =>
-        prev.map((liq) => (liq.id === data.vehiculo.id ? data.vehiculo : liq)),
-      );
-
-      // Si la liquidación actual se está viendo/editando, actualizarla también
-      if (vehiculoActual && vehiculoActual.id === data.vehiculo.id) {
-        setVehiculoActual(data.vehiculo);
-      }
-    };
-
-    // Manejador para liquidación eliminada
-    const handleVehiculoEliminado = (data: {
-      vehiculo_id: string;
-      usuarioEliminador: string;
-    }) => {
-      logSocketEvent("vehiculo_eliminado", data);
-
-      // Eliminar la liquidación de la lista
-      setVehiculos((prev) => prev.filter((liq) => liq.id !== data.vehiculo_id));
-
-      // Si la liquidación eliminada es la seleccionada actualmente, limpiar la selección
-      if (vehiculoActual && vehiculoActual.id === data.vehiculo_id) {
-        setVehiculoActual(null);
-
-        // Cerrar modales si están abiertos
-        cerrarModales();
-      }
-    };
-
-    // Registrar los listeners
-    socketService.on("vehiculo_creado", handleVehiculoCreado);
-    socketService.on("vehiculo_actualizado", handleVehiculoActualizado);
-    socketService.on("vehiculo_eliminado", handleVehiculoEliminado);
-
-    // Limpiar al desmontar
-    return () => {
-      socketService.off("vehiculo_creado");
-      socketService.off("vehiculo_actualizado");
-      socketService.off("vehiculo_eliminado");
-      socketService.off("cambio_estado_vehiculo");
-    };
-  }, [user?.id, vehiculoActual, logSocketEvent]);
-
   // Valor del contexto
-  const value: FlotaContextType = {
+  const vehiculoContext: FlotaContextType = {
     // Datos
-    vehiculos,
-    vehiculoActual,
+    vehiculosState,
+    currentVehiculo,
     loading,
     error,
-    filtros,
-    vehiculosFiltrados: filtrarVehiculos(),
+    validationErrors,
 
-    // Estados de modales
-    showCrearModal,
-    showEditarModal,
-    showDetalleModal,
-    sortConfig,
-    ordenarVehiculos,
+    fetchVehiculos,
+    getVehiculo,
+    crearVehiculoBasico,
+    actualizarVehiculoBasico,
 
-    // Métodos para API
-    obtenerVehiculoId,
-    obtenerVehiculoBasico,
-    // Métodos para UI
-    setFiltros,
-    resetearFiltros,
-    abrirModalCrear,
-    abrirModalEditar,
-    abrirModalDetalle,
-    cerrarModales,
 
-    // socket
+    // Propiedades para Socket.IO
     socketConnected,
     socketEventLogs,
     clearSocketEventLogs,
+
+    handlePageChange,
+    handleSortChange,
+    clearError,
+    setCurrentVehiculo,
   };
 
   return (
-    <FlotaContext.Provider value={value}>{children}</FlotaContext.Provider>
+    <FlotaContext.Provider value={vehiculoContext}>
+      {children}
+    </FlotaContext.Provider>
   );
 };
 
