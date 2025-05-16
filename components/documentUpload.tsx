@@ -16,20 +16,20 @@ const DOCUMENTOS_REQUERIDOS = [
     nombre: "Tarjeta de Propiedad",
     isRequired: true,
   },
-  { id: "SOAT", nombre: "SOAT", isRequired: true },
-  { id: "TECNOMECANICA", nombre: "Tecnomecánica", isRequired: true },
+  { id: "SOAT", nombre: "SOAT", isRequired: false },
+  { id: "TECNOMECANICA", nombre: "Tecnomecánica", isRequired: false },
   {
     id: "TARJETA_DE_OPERACION",
     nombre: "Tarjeta de Operación",
-    isRequired: true,
+    isRequired: false,
   },
-  { id: "POLIZA_CONTRACTUAL", nombre: "Póliza Contractual", isRequired: true },
+  { id: "POLIZA_CONTRACTUAL", nombre: "Póliza Contractual", isRequired: false },
   {
     id: "POLIZA_EXTRACONTRACTUAL",
     nombre: "Póliza Extracontractual",
-    isRequired: true,
+    isRequired: false,
   },
-  { id: "POLIZA_TODO_RIESGO", nombre: "Póliza Todo Riesgo", isRequired: true },
+  { id: "POLIZA_TODO_RIESGO", nombre: "Póliza Todo Riesgo", isRequired: false },
 ];
 
 interface DocumentUploaderProps {
@@ -741,7 +741,7 @@ const VehiculoDocumentUploader = ({ id }: { id?: string }) => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {documentosRequeridos.map((docType) => (
             <DocumentUploader
               key={docType.id}
@@ -756,7 +756,7 @@ const VehiculoDocumentUploader = ({ id }: { id?: string }) => {
           ))}
         </div>
 
-        <div className="mt-6 flex justify-end gap-4">
+        <div className="my-6 flex justify-end gap-4">
           <Button
             className={`bg-emerald-600 text-white rounded-md ${cargando ? "opacity-70 cursor-not-allowed" : ""}`}
             type="submit"

@@ -284,7 +284,7 @@ export default function VehiculoActualDetailModal() {
                       </div>
                       <div>
                         <p className="text-gray-500">Clase</p>
-                        <p>{vehiculoActual.claseVehiculo}</p>
+                        <p>{vehiculoActual.clase_vehiculo}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Carrocería</p>

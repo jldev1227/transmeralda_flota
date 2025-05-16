@@ -1,344 +1,276 @@
 "use client";
 
-import React from "react";
-import {
-  BanIcon,
-  CheckCircleIcon,
-  CircleAlert,
-  ClockIcon,
-  HammerIcon,
-  PlusIcon,
-  TruckIcon,
-} from "lucide-react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import { Button } from "@heroui/button";
+import { PlusIcon } from "lucide-react";
+import { Alert } from "@heroui/alert";
 
-import { SearchIcon } from "@/components/icons";
-import { useFlota } from "@/context/FlotaContext";
-import VehiculoCard from "@/components/vehiculoCard";
+import { Vehiculo, useFlota, BusquedaParams } from "@/context/FlotaContext";
+import VehiculosTable from "@/components/ui/table";
+import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
+import ModalForm from "@/components/ui/modalForm";
+import { FilterOptions } from "@/components/ui/buscadorFiltros";
+import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
 
-// Función para verificar el estado de documentos
-const checkDocumentStatus = (date: string) => {
-  if (!date) return "NA";
-  const today = new Date();
-  const expiryDate = new Date(date);
-  const thirtyDaysFromNow = new Date();
-
-  thirtyDaysFromNow.setDate(today.getDate() + 30);
-
-  if (expiryDate < today) {
-    return "VENCIDO";
-  } else if (expiryDate <= thirtyDaysFromNow) {
-    return "PRÓXIMO";
-  } else {
-    return "VIGENTE";
-  }
-};
-
-export default function Dashboard() {
+export default function GestionVehiculos() {
   const {
-    vehiculos,
-    vehiculosFiltrados,
-    filtros,
-    setFiltros,
-    socketConnected,
-    abrirModalDetalle,
-    resetearFiltros,
+    vehiculosState,
+    sortDescriptor,
+    fetchVehiculos,
+    crearVehiculoBasico,
+    actualizarVehiculoBasico,
+    handleSortChange,
   } = useFlota();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Estados para búsqueda y filtros
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filtros, setFiltros] = useState<FilterOptions>({
+    sedes: [],
+    tiposIdentificacion: [],
+    tiposContrato: [],
+    estados: [],
+  });
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Estados para los modales
+  const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
+  const [selectedVehiculoId, setSelectedVehiculoId] = useState<string | null>(
+    null,
+  );
+  const [modalFormOpen, setModalFormOpen] = useState(false);
+  const [vehiculoParaEditar, setVehiculoParaEditar] = useState<Vehiculo | null>(
+    null,
+  );
+
+  // Inicialización: cargar conductores
+  useEffect(() => {
+    cargarVehiculos();
+  }, []);
+
+  /// Función para cargar conductores con parámetros de búsqueda/filtros
+  const cargarVehiculos = async (
+    page: number = 1,
+    searchTermParam?: string,
+    filtrosParam?: FilterOptions,
+  ) => {
+    setLoading(true);
+
+    try {
+      // Usar parámetros proporcionados o valores de estado actuales
+      const currentSearchTerm =
+        searchTermParam !== undefined ? searchTermParam : searchTerm;
+      const currentFiltros =
+        filtrosParam !== undefined ? filtrosParam : filtros;
+
+      // Construir parámetros de búsqueda
+      const params: BusquedaParams = {
+        page,
+        sort: sortDescriptor.column,
+        order: sortDescriptor.direction,
+      };
+
+      // Añadir término de búsqueda
+      if (currentSearchTerm) {
+        params.search = currentSearchTerm;
+      }
+
+      if (currentFiltros.estados.length > 0) {
+        params.estado = currentFiltros.estados as any;
+      }
+
+      // Realizar la búsqueda
+      await fetchVehiculos(params);
+
+      // Actualizar los estados después de la búsqueda exitosa
+      if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
+      if (filtrosParam !== undefined) setFiltros(filtrosParam);
+    } catch (error) {
+      console.error("Error al cargar conductores:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manejar la búsqueda
+  const handleSearch = async (termino: string) => {
+    await cargarVehiculos(1, termino, undefined);
+  };
+
+  // Manejar los filtros
+  const handleFilter = async (nuevosFiltros: FilterOptions) => {
+    await cargarVehiculos(1, undefined, nuevosFiltros);
+  };
+
+  // Manejar reset de búsqueda y filtros
+  const handleReset = async () => {
+    const filtrosVacios = {
+      sedes: [],
+      tiposIdentificacion: [],
+      tiposContrato: [],
+      estados: [],
+    };
+
+    await cargarVehiculos(1, "", filtrosVacios);
+  };
+
+  // Manejar cambio de página
+  const handlePageChange = (page: number) => {
+    cargarVehiculos(page);
+  };
+
+  // Manejar la selección de conductores
+  const handleSelectItem = (vehiculo: Vehiculo) => {
+    if (selectedIds.includes(vehiculo.id)) {
+      setSelectedIds(selectedIds.filter((id) => id !== vehiculo.id));
+    } else {
+      setSelectedIds([...selectedIds, vehiculo.id]);
+    }
+  };
+
+  // Funciones para el modal de detalle
+  const abrirModalDetalle = (id: string) => {
+    setSelectedVehiculoId(id);
+    setModalDetalleOpen(true);
+  };
+
+  // Funciones para el modal de formulario (crear/editar)
+  const abrirModalCrear = () => {
+    setVehiculoParaEditar(null);
+    setModalFormOpen(true);
+  };
+
+  const abrirModalEditar = (vehiculo: Vehiculo) => {
+    setVehiculoParaEditar(vehiculo);
+    setModalFormOpen(true);
+  };
+
+  const cerrarModalForm = () => {
+    setModalFormOpen(false);
+    setVehiculoParaEditar(null);
+  };
+
+  const cerrarModalDetalle = () => {
+    setModalDetalleOpen(false);
+    setSelectedVehiculoId(null);
+  };
+
+  // Función para guardar vehiculo (nueva o editada)
+  const guardarVehiculo = async (vehiculoData: Vehiculo) => {
+    try {
+      setLoading(true);
+      if (vehiculoData.id) {
+        // Editar vehiculo existente
+        await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
+      } else {
+        console.log("creando");
+        // Crear nuevo vehiculo
+        await crearVehiculoBasico(vehiculoData);
+      }
+
+      // Si llegamos aquí, significa que la operación fue exitosa
+      // Cerrar modal después de guardar correctamente
+      cerrarModalForm();
+
+      // Recargar la lista de conductores con los filtros actuales
+      await cargarVehiculos(vehiculosState.currentPage);
+    } catch (error) {
+      // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
+      console.log(
+        "Error al guardar el vehiculo, el modal permanece abierto:",
+        error,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex-grow px-4 py-8">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-900">Vehiculos</h1>
-          <Link
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-colors"
-            href={"agregar"}
-          >
-            <PlusIcon className="h-5 w-5" />
-            <span>Nuevo Vehículo</span>
-          </Link>
-        </div>
-
-        {/* Resumen de estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4`}
-            role="button"
-            onClick={resetearFiltros}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-emerald-100 text-emerald-600">
-                <TruckIcon className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Vehículos
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {vehiculos.length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4 border ${filtros.estado === "DISPONIBLE" ? "border-emerald-400" : ""} transition-all animate-ease-in-out`}
-            role="button"
-            onClick={() => {
-              if (filtros.estado === "DISPONIBLE") {
-                setFiltros({
-                  ...filtros,
-                  estado: "",
-                });
-              } else {
-                setFiltros({
-                  ...filtros,
-                  estado: "DISPONIBLE",
-                });
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-emerald-100 text-emerald-600">
-                <CheckCircleIcon className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Disponibles
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {vehiculos.filter((v) => v.estado === "DISPONIBLE").length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4 border ${filtros.estado === "MANTENIMIENTO" ? "border-primary-400" : ""} transition-all animate-ease-in-out`}
-            role="button"
-            onClick={() => {
-              if (filtros.estado === "MANTENIMIENTO") {
-                setFiltros({
-                  ...filtros,
-                  estado: "",
-                });
-              } else {
-                setFiltros({
-                  ...filtros,
-                  estado: "MANTENIMIENTO",
-                });
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-primary-100 text-primary-600">
-                <HammerIcon className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    En mantenimiento
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {
-                      vehiculos.filter((v) => v.estado === "MANTENIMIENTO")
-                        .length
-                    }
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4 border ${filtros.estado === "INACTIVO" ? "border-gray-400" : ""} transition-all animate-ease-in-out`}
-            role="button"
-            onClick={() => {
-              if (filtros.estado === "INACTIVO") {
-                setFiltros({
-                  ...filtros,
-                  estado: "",
-                });
-              } else {
-                setFiltros({
-                  ...filtros,
-                  estado: "INACTIVO",
-                });
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-gray-100 text-gray-600">
-                <BanIcon className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Inactivos
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {vehiculos.filter((v) => v.estado === "INACTIVO").length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4 border ${filtros.vencimientoProximo ? "border-amber-400" : ""} transition-all animate-ease-in-out`}
-            role="button"
-            onClick={() => {
-              if (filtros.vencimientoProximo) {
-                setFiltros({ ...filtros, vencimientoProximo: false });
-              } else {
-                setFiltros({ ...filtros, vencimientoProximo: true });
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-amber-100 text-amber-600">
-                <ClockIcon className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Documentos próximos a vencer
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {
-                      vehiculos.filter(
-                        (v) =>
-                          checkDocumentStatus(v.soatVencimiento) ===
-                            "PRÓXIMO" ||
-                          checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "PRÓXIMO" ||
-                          checkDocumentStatus(
-                            v.polizaContractualVencimiento,
-                          ) === "PRÓXIMO" ||
-                          checkDocumentStatus(
-                            v.polizaExtraContractualVencimiento,
-                          ) === "PRÓXIMO" ||
-                          checkDocumentStatus(v.polizaTodoRiesgoVencimiento) ===
-                            "PRÓXIMO" ||
-                          checkDocumentStatus(
-                            v.tarjetaDeOperacionVencimiento,
-                          ) === "PRÓXIMO",
-                      ).length
-                    }
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`select-none bg-white shadow rounded-lg p-4 border ${filtros.documentosVencidos ? "border-red-400" : ""} transition-all animate-ease-in-out`}
-            role="button"
-            onClick={() => {
-              if (filtros.documentosVencidos) {
-                setFiltros({ ...filtros, documentosVencidos: false });
-              } else {
-                setFiltros({ ...filtros, documentosVencidos: true });
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 rounded-md bg-red-100 text-red-600">
-                <CircleAlert className="h-6 w-6" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Documentos vencidos
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {
-                      vehiculos.filter(
-                        (v) =>
-                          checkDocumentStatus(v.soatVencimiento) ===
-                            "VENCIDO" ||
-                          checkDocumentStatus(v.tecnomecanicaVencimiento) ===
-                            "VENCIDO" ||
-                          checkDocumentStatus(
-                            v.polizaContractualVencimiento,
-                          ) === "VENCIDO" ||
-                          checkDocumentStatus(
-                            v.polizaExtraContractualVencimiento,
-                          ) === "VENCIDO" ||
-                          checkDocumentStatus(v.polizaTodoRiesgoVencimiento) ===
-                            "VENCIDO" ||
-                          checkDocumentStatus(
-                            v.tarjetaDeOperacionVencimiento,
-                          ) === "VENCIDO",
-                      ).length
-                    }
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filtros y búsqueda */}
-        <div className="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-          <div className="relative sm:w-96">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-              placeholder="Buscar por placa, marca o propietario..."
-              type="text"
-              value={filtros.busqueda}
-              onChange={(e) =>
-                setFiltros({ ...filtros, busqueda: e.target.value })
-              }
-            />
-          </div>
-        </div>
-
-        {/* Lista de vehículos */}
-        <div className="bg-white shadow overflow-hidden rounded-lg">
-          {socketConnected && (
-            <div className="px-6 py-2 bg-green-50 text-green-700 border-b border-green-100 flex items-center text-sm">
-              <div className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
-              <span>Sincronización en tiempo real activa</span>
-            </div>
-          )}
-          <div className="px-6 py-3 border-b border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900">
-              Visualizando ({vehiculosFiltrados.length}) vehiculo
-              {vehiculosFiltrados.length > 1 ? "s" : ""}
-            </h3>
-          </div>
-
-          {vehiculosFiltrados.length > 0 ? (
-            <div className="grid grid-cols-3 gap-4 p-5">
-              {vehiculosFiltrados.map((vehiculo) => (
-                <VehiculoCard
-                  key={vehiculo.id}
-                  vehiculo={vehiculo}
-                  onPress={abrirModalDetalle}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="grid place-items-center p-5">
-              <TruckIcon className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No hay vehículos
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                No se encontraron vehículos con los criterios de búsqueda
-                actuales.
-              </p>
-            </div>
-          )}
-        </div>
+    <div className="container mx-auto p-5 sm:p-10 space-y-5">
+      <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
+        <Button
+          className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+          color="primary"
+          isDisabled={loading}
+          radius="sm"
+          startContent={<PlusIcon />}
+          onPress={abrirModalCrear}
+        >
+          Nuevo Vehiculo
+        </Button>
       </div>
+      <Alert
+        className="py-2"
+        color="success"
+        radius="sm"
+        title="Obteniendo cambios en tiempo real"
+        variant="faded"
+      />
+
+      {/* Componente de búsqueda y filtros */}
+      <BuscadorFiltrosVehiculo
+        onFilter={handleFilter}
+        onReset={handleReset}
+        onSearch={handleSearch}
+      />
+
+      {/* Información sobre resultados filtrados */}
+      {(searchTerm || Object.values(filtros).some((f) => f.length > 0)) && (
+        <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
+          Mostrando {vehiculosState.data.length} resultado(s) de{" "}
+          {vehiculosState.count} vehiculo(es) total(es)
+          {searchTerm && <span> - Búsqueda: {searchTerm}</span>}
+        </div>
+      )}
+
+      {/* Tabla de conductores con paginación */}
+      <VehiculosTable
+        abrirModalDetalle={abrirModalDetalle}
+        abrirModalEditar={abrirModalEditar}
+        currentItems={vehiculosState.data}
+        isLoading={loading}
+        selectedIds={selectedIds}
+        sortDescriptor={sortDescriptor}
+        totalCount={vehiculosState.count}
+        totalPages={vehiculosState.totalPages}
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+        onSelectItem={handleSelectItem}
+        // Propiedades de paginación
+        currentPage={vehiculosState.currentPage}
+      />
+
+      {/* Modal de formulario (crear/editar) */}
+      <ModalForm
+        isOpen={modalFormOpen}
+        titulo={
+          vehiculoParaEditar ? "Editar Vehiculo" : "Registrar Nuevo Vehiculo"
+        }
+        vehiculoEditar={vehiculoParaEditar}
+        onClose={cerrarModalForm}
+        onSave={guardarVehiculo}
+      />
+
+      {/* Modal de detalle */}
+      <ModalDetalleVehiculo
+        vehiculo={
+          vehiculosState.data.find(
+            (vehiculo) => vehiculo.id === selectedVehiculoId,
+          ) || null
+        }
+        isOpen={modalDetalleOpen}
+        onClose={cerrarModalDetalle}
+        onEdit={() => {
+          setModalDetalleOpen(false);
+          setModalFormOpen(true);
+          setVehiculoParaEditar(
+            vehiculosState.data.find(
+              (vehiculo) => vehiculo.id === selectedVehiculoId,
+            ) || null,
+          );
+        }}
+      />
     </div>
   );
 }
