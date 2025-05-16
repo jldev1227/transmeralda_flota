@@ -113,7 +113,7 @@ export interface CrearVehiculoRequest {
   vin?: string;
 }
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest> {}
+  extends Partial<CrearVehiculoRequest> { }
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -548,11 +548,11 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       );
 
       if (response.data && response.data.success) {
-        const conductorActualizado = response.data.data;
+        const vehiculoActualizado = response.data.data;
 
         // Actualizar el currentVehiculo si corresponde al mismo ID
         if (currentVehiculo && currentVehiculo.id === id) {
-          setCurrentVehiculo(conductorActualizado);
+          setCurrentVehiculo(vehiculoActualizado);
         }
 
         const params: BusquedaParams = {
@@ -562,7 +562,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Actualizar la lista de conductores
         fetchVehiculos(params);
 
-        return conductorActualizado;
+        return vehiculoActualizado;
       } else {
         throw new Error("Respuesta no exitosa del servidor");
       }
@@ -655,14 +655,60 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         setSocketConnected(false);
       };
 
+      const handleVehiculoCreado = (data: Vehiculo) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:creado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        addToast({
+          title: "Nuevo Vehículo",
+          description: `Se ha creado un nuevo vehículo: ${data.placa}`,
+          color: "success",
+        });
+      };
+
+      const handleVehiculoActualizado = (data: Vehiculo) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:actualizado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        console.log(data)
+
+        addToast({
+          title: "Vehículo Actualizado",
+          description: `Se ha actualizado la información del vehículo: ${data.placa}`,
+          color: "primary",
+        });
+      };
+
       // Registrar manejadores de eventos
       socketService.on("connect", handleConnect);
       socketService.on("disconnect", handleDisconnect);
+
+
+      // Registrar manejadores de eventos de vehículos
+      socketService.on("vehiculo:creado", handleVehiculoCreado);
+      socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
+
 
       return () => {
         // Limpiar al desmontar
         socketService.off("connect");
         socketService.off("disconnect");
+
+        // Limpiar manejadores de eventos de conductores
+        socketService.off("vehiculo:creado");
+        socketService.off("vehiculo:actualizado");
       };
     }
   }, [user?.id]);
