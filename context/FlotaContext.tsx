@@ -96,20 +96,20 @@ export interface CrearVehiculoRequest {
   longitud?: number;
   marca: string;
   modelo?: string;
-  numeroChasis?: string;
-  numeroMotor?: string;
-  numeroSerie?: string;
+  numero_chasis?: string;
+  numero_motor?: string;
+  numero_serie?: string;
   placa: string;
-  polizaContractualVencimiento?: string;
-  polizaExtraContractualVencimiento?: string;
-  polizaTodoRiesgoVencimiento?: string;
-  propietarioIdentificacion?: string;
-  propietarioNombre?: string;
+  poliza_contractual_vencimiento?: string;
+  poliza_extra_contractual_vencimiento?: string;
+  poliza_todo_riesgo_vencimiento?: string;
+  propietario_identificacion?: string;
+  propietario_nombre?: string;
   propietario_id?: string;
-  soatVencimiento?: string;
-  tarjetaDeOperacionVencimiento?: string;
-  tecnomecanicaVencimiento?: string;
-  tipoCarroceria?: string;
+  soat_vencimiento?: string;
+  tarjeta_de_operacion_vencimiento?: string;
+  tecnomecanica_vencimiento?: string;
+  tipo_varroceria?: string;
   vin?: string;
 }
 export interface ActualizarVehiculoRequest
@@ -414,7 +414,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
     try {
       const response = await apiClient.post<ApiResponse<Vehiculo>>(
-        "/api/conductores",
+        "/api/flota/basico",
         data,
       );
 
@@ -447,14 +447,11 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             ) {
               // Mapeo de nombres de campos para mensajes más amigables
               const fieldLabels: Record<string, string> = {
-                nombre: "Nombre",
-                apellido: "Apellido",
-                tipo_identificacion: "Tipo de identificación",
-                numero_identificacion: "Número de identificación",
-                email: "Correo electrónico",
-                telefono: "Teléfono",
-                password: "Contraseña",
-                // Añadir más campos según sea necesario
+                placa: "Placa",
+                marca: "Marca",
+                linea: "Linea del vehículo",
+                color: "Color del vehículo",
+                clase_vehiculo: "Clase del vehículo",
               };
 
               // Mostrar cada error de validación como un toast separado
@@ -501,20 +498,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
               // Intentar ser más específico basado en el mensaje completo
               if (
-                errorDescription.toLowerCase().includes("email") ||
-                errorDescription.toLowerCase().includes("correo")
+                errorDescription.toLowerCase().includes("placa")
               ) {
-                errorTitle = "Correo electrónico duplicado";
+                errorTitle = "Placa duplicada";
                 errorDescription =
-                  "Ya existe un conductor con este correo electrónico.";
-              } else if (
-                errorDescription.toLowerCase().includes("identificacion") ||
-                errorDescription.toLowerCase().includes("identificación")
-              ) {
-                errorTitle = "Identificación duplicada";
-                errorDescription =
-                  "Ya existe un conductor con este número de identificación.";
-              }
+                  "Ya existe un conductor con este placa.";
+              } 
             }
             break;
 

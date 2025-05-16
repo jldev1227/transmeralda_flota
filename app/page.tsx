@@ -31,7 +31,7 @@ export default function GestionVehiculos() {
 
   // Estados para los modales
   const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
-  const [selectedConductorId, setSelectedConductorId] = useState<string | null>(
+  const [selectedVehiculoId, setSelectedVehiculoId] = useState<string | null>(
     null,
   );
   const [modalFormOpen, setModalFormOpen] = useState(false);
@@ -122,17 +122,17 @@ export default function GestionVehiculos() {
   };
 
   // Manejar la selección de conductores
-  const handleSelectItem = (conductor: Vehiculo) => {
-    if (selectedIds.includes(conductor.id)) {
-      setSelectedIds(selectedIds.filter((id) => id !== conductor.id));
+  const handleSelectItem = (vehiculo: Vehiculo) => {
+    if (selectedIds.includes(vehiculo.id)) {
+      setSelectedIds(selectedIds.filter((id) => id !== vehiculo.id));
     } else {
-      setSelectedIds([...selectedIds, conductor.id]);
+      setSelectedIds([...selectedIds, vehiculo.id]);
     }
   };
 
   // Funciones para el modal de detalle
   const abrirModalDetalle = (id: string) => {
-    setSelectedConductorId(id);
+    setSelectedVehiculoId(id);
     setModalDetalleOpen(true);
   };
 
@@ -142,8 +142,8 @@ export default function GestionVehiculos() {
     setModalFormOpen(true);
   };
 
-  const abrirModalEditar = (conductor: Vehiculo) => {
-    setVehiculoParaEditar(conductor);
+  const abrirModalEditar = (vehiculo: Vehiculo) => {
+    setVehiculoParaEditar(vehiculo);
     setModalFormOpen(true);
   };
 
@@ -154,18 +154,20 @@ export default function GestionVehiculos() {
 
   const cerrarModalDetalle = () => {
     setModalDetalleOpen(false);
-    setSelectedConductorId(null);
+    setSelectedVehiculoId(null);
   };
 
-  // Función para guardar conductor (nueva o editada)
+  // Función para guardar vehiculo (nueva o editada)
   const guardarVehiculo = async (vehiculoData: Vehiculo) => {
     try {
       setLoading(true);
       if (vehiculoData.id) {
-        // Editar conductor existente
+        // Editar vehiculo existente
         await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
       } else {
-        // Crear nuevo conductor
+
+        console.log("creando")
+        // Crear nuevo vehiculo
         await crearVehiculoBasico(vehiculoData);
       }
 
@@ -178,7 +180,7 @@ export default function GestionVehiculos() {
     } catch (error) {
       // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
       console.log(
-        "Error al guardar el conductor, el modal permanece abierto:",
+        "Error al guardar el vehiculo, el modal permanece abierto:",
         error,
       );
     } finally {
@@ -210,7 +212,7 @@ export default function GestionVehiculos() {
       />
 
       {/* Componente de búsqueda y filtros
-      <BuscadorFiltrosConductores
+      <BuscadorFiltrosVehiculo
         onFilter={handleFilter}
         onReset={handleReset}
         onSearch={handleSearch}
@@ -220,7 +222,7 @@ export default function GestionVehiculos() {
       {(searchTerm || Object.values(filtros).some((f) => f.length > 0)) && (
         <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
           Mostrando {vehiculosState.data.length} resultado(s) de{" "}
-          {vehiculosState.count} conductor(es) total(es)
+          {vehiculosState.count} vehiculo(es) total(es)
           {searchTerm && <span> - Búsqueda: {searchTerm}</span>}
         </div>
       )}
@@ -254,10 +256,10 @@ export default function GestionVehiculos() {
       />
 
       {/* Modal de detalle
-      <ModalDetalleConductor
-        conductor={
+      <ModalDetalleVehiculo
+        vehiculo={
           vehiculosState.data.find(
-            (conductor) => conductor.id === selectedConductorId,
+            (vehiculo) => vehiculo.id === selectedVehiculoId,
           ) || null
         }
         isOpen={modalDetalleOpen}
@@ -267,7 +269,7 @@ export default function GestionVehiculos() {
           setModalFormOpen(true);
           setVehiculoParaEditar(
             vehiculosState.data.find(
-              (conductor) => conductor.id === selectedConductorId,
+              (vehiculo) => vehiculo.id === selectedVehiculoId,
             ) || null,
           );
         }}

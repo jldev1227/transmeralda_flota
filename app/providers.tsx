@@ -8,9 +8,8 @@ import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 import { FlotaProvider } from "@/context/FlotaContext";
-import { NotificationContainer } from "@/components/ui/notificacionContainer";
-import { NotificationProvider } from "@/context/NotificacionContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ToastProvider } from "@heroui/toast";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -30,13 +29,11 @@ export function Providers({ children, themeProps }: ProvidersProps) {
 
   return (
     <HeroUIProvider navigate={router.push}>
+      <ToastProvider maxVisibleToasts={2} placement="bottom-center" />
       <AuthProvider>
-        <NotificationProvider>
-          <FlotaProvider>
-            <NotificationContainer />
-            <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
-          </FlotaProvider>
-        </NotificationProvider>
+        <FlotaProvider>
+          <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+        </FlotaProvider>
       </AuthProvider>
     </HeroUIProvider>
   );

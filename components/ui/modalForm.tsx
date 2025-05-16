@@ -110,6 +110,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       "clase_vehiculo",
       "modelo",
       "linea",
+      "color"
     ];
 
     // Validar campos requeridos
@@ -138,7 +139,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     { key: "microbus", label: "Microbús" },
   ];
 
-    // Efecto para cargar datos cuando se está editando
+  // Efecto para cargar datos cuando se está editando
   useEffect(() => {
     if (vehiculoEditar) {
       setFormData({
@@ -207,6 +208,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <Select
+                      isRequired
+                      errorMessage={
+                        errores.clase_vehiculo ? "La clase es requerida" : ""
+                      }
+                      isInvalid={errores.clase_vehiculo}
                       label="Clase de Vehículo"
                       name="clase_vehiculo"
                       placeholder="Seleccione una clase"
@@ -221,6 +227,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
                     {/* Color */}
                     <Input
+                      isRequired
+                      errorMessage={
+                        errores.color ? "El color es requerido" : ""
+                      }
+                      isInvalid={errores.color}
                       label="Color"
                       name="color"
                       placeholder="Ingrese color del vehículo"
