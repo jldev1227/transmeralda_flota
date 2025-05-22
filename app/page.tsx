@@ -11,8 +11,12 @@ import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
+import { useAuth } from "@/context/AuthContext";
+import { LogoutButton } from "@/components/logout";
+import { formatDate } from "@/helpers";
 
 export default function GestionVehiculos() {
+  const { user } = useAuth()
   const {
     vehiculosState,
     sortDescriptor,
@@ -184,8 +188,32 @@ export default function GestionVehiculos() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-emerald-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-emerald-700">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-5 sm:p-10 space-y-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-2xl font-bold shadow">
+            {user.nombre.split(' ').map(name => name[0]).join('')}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-emerald-700">{user.nombre}</h2>
+            <p className="text-sm text-gray-500">{user.correo}</p>
+            <p className="text-xs text-gray-400 mt-1">Último acceso: <span className="text-emerald-600">{formatDate(user.ultimo_acceso)}</span></p>
+          </div>
+        </div>
+        <LogoutButton>Cerrar sesión</LogoutButton>
+      </div>
       <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
         <Button

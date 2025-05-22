@@ -23,6 +23,7 @@
     "@heroui/checkbox": "^2.3.18",
     "@heroui/chip": "^2.2.15",
     "@heroui/code": "2.2.14",
+    "@heroui/date-picker": "^2.3.19",
     "@heroui/dropdown": "^2.3.19",
     "@heroui/input": "2.4.19",
     "@heroui/kbd": "2.2.15",

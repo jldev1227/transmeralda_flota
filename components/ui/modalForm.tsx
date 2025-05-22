@@ -10,8 +10,10 @@ import { Button } from "@heroui/button";
 import { SaveIcon, TruckIcon } from "lucide-react";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
+import { Switch } from "@heroui/switch";
 
 import { Vehiculo } from "@/context/FlotaContext";
+import SimpleDocumentUploader from "../documentSimpleUpload";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -39,6 +41,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     modelo: "",
     linea: "",
   });
+
+  const [subirDocumentos, setSubirDocumentos] = useState(true)
+  const [documentos, setDocumentos] = useState(true)
 
   // Estado para manejar la validación
   const [errores, setErrores] = useState<Record<string, boolean>>({
@@ -156,6 +161,77 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     }
   }, [vehiculoEditar, isOpen]);
 
+  // Manejar cambios en los switches
+  const handleSwitchChange = (name: string, checked: boolean) => {
+    if (name === "subirDocumentos") {
+      setSubirDocumentos(checked);
+      return;
+    }
+  };
+
+  const documentTypes = [
+    {
+      key: "TARJETA_PROPIEDAD",
+      label: "Tarjeta de Propiedad",
+      required: true,
+      vigencia: false,
+    },
+    {
+      key: "SOAT",
+      label: "SOAT",
+      required: true,
+      vigencia: true, // Tiene fecha de vigencia
+    },
+    {
+      key: "TECNOMECANICA",
+      label: "Tecnomecánica",
+      required: true,
+      vigencia: true, // Tiene fecha de vigencia
+    },
+    {
+      key: "TARJETA_OPERACION",
+      label: "Tarjeta de Operación",
+      required: false,
+      vigencia: true,
+    },
+    {
+      key: "POLIZA_CONTRACTUAL",
+      label: "Póliza Contractual",
+      required: false,
+      vigencia: true,
+    },
+  ];
+
+  // Manejar cambio de documento
+  const handleDocumentChange = (key, file, fechaVigencia) => {
+    setDocumentos(prev => ({
+      ...prev,
+      [key]: {
+        file,
+        fechaVigencia,
+        uploadedAt: new Date()
+      }
+    }));
+  };
+
+  // Manejar eliminación de documento
+  const handleDocumentRemove = (key) => {
+    setDocumentos(prev => {
+      const newDocs = { ...prev };
+      delete newDocs[key];
+      return newDocs;
+    });
+  };
+
+  // Validar documentos requeridos
+  const validateRequiredDocuments = () => {
+    const missingDocs = documentTypes
+      .filter(doc => doc.required && !documentos[doc.key])
+      .map(doc => doc.label);
+
+    return missingDocs;
+  };
+
   return (
     <Modal
       backdrop={"blur"}
@@ -178,6 +254,23 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
             <ModalBody>
               <div className="space-y-6">
+
+                {/* Switch para determinar si es de planta */}
+                <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
+                  <div>
+                    <span className="font-medium">Registrar con documentación</span>
+                    <p className="text-sm text-gray-500">
+                      Marque esta opción si adjuntara documentación del vehículo
+                    </p>
+                  </div>
+                  <Switch
+                    color="success"
+                    isSelected={subirDocumentos}
+                    onChange={(e) =>
+                      handleSwitchChange("subirDocumentos", e.target.checked)
+                    }
+                  />
+                </div>
                 <div className="border p-4 rounded-md">
                   <h4 className="text-md font-semibold mb-4 border-b pb-2">
                     Información Básica
@@ -279,6 +372,54 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                     />
                   </div>
                 </div>
+
+                {subirDocumentos && (
+                  <div className="border p-4 rounded-md">
+                    <h4 className="text-md font-semibold mb-4 border-b pb-2">
+                      Documentación
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {documentTypes.map((docType) => (
+                        <SimpleDocumentUploader
+                          key={docType.key}
+                          docKey={docType.key}
+                          label={docType.label}
+                          required={docType.required}
+                          vigencia={docType.vigencia}
+                          file={documentos[docType.key]?.file || null}
+                          fechaVigencia={documentos[docType.key]?.fechaVigencia || null}
+                          onChange={handleDocumentChange}
+                          onRemove={handleDocumentRemove}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Resumen de documentos cargados */}
+                    {Object.keys(documentos).length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 className="font-medium text-blue-900 mb-2">
+                          Documentos cargados ({Object.keys(documentos).length})
+                        </h3>
+                        <ul className="text-sm text-blue-800 space-y-1">
+                          {Object.entries(documentos).map(([key, doc]) => {
+                            const docType = documentTypes.find(d => d.key === key);
+                            return (
+                              <li key={key} className="flex justify-between">
+                                <span>{docType?.label}</span>
+                                <span className="text-blue-600">
+                                  {doc.fechaVigencia
+                                    ? `Vigente hasta: ${doc.fechaVigencia.toLocaleDateString('es-ES')}`
+                                    : "✓"
+                                  }
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </ModalBody>
 
