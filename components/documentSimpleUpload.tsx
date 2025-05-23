@@ -1,36 +1,49 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { DatePicker } from "@heroui/date-picker";
 import { Upload, FileText, XCircle, Calendar } from "lucide-react";
+import { CalendarDate, parseDate, today, getLocalTimeZone } from "@internationalized/date";
 
 interface SimpleDocumentUploaderProps {
-  key: string;
+  documentKey: string;
   label: string;
   required?: boolean;
   vigencia?: boolean;
   file?: File | null;
   fechaVigencia?: Date | null;
-  onChange?: (key: string, file: File, fechaVigencia?: Date) => void;
-  onRemove?: (key: string) => void;
+  onChange?: (documentKey: string, file: File, fechaVigencia?: Date) => void;
+  onRemove?: (documentKey: string) => void;
   disabled?: boolean;
 }
 
+// Formatter para fechas en español
+const formatter = new Intl.DateTimeFormat('es-ES', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+
 const SimpleDocumentUploader = ({
-  key: docKey,
+  documentKey,
   label,
   required = false,
   vigencia = false,
   file = null,
-  fechaVigencia = null,
   onChange,
   onRemove,
   disabled = false,
 }: SimpleDocumentUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(fechaVigencia);
+  const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Convertir CalendarDate a Date
+  const calendarDateToDate = (calendarDate: CalendarDate | null): Date | null => {
+    if (!calendarDate) return null;
+    return new Date(calendarDate.year, calendarDate.month - 1, calendarDate.day);
+  };
 
   // Manejar drag and drop
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -52,7 +65,8 @@ const SimpleDocumentUploader = ({
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFile = e.dataTransfer.files[0];
-      onChange?.(docKey, newFile, selectedDate || undefined);
+      const dateValue = calendarDateToDate(selectedDate);
+      onChange?.(documentKey, newFile, dateValue || undefined);
     }
   };
 
@@ -62,15 +76,8 @@ const SimpleDocumentUploader = ({
 
     if (e.target.files && e.target.files.length > 0) {
       const newFile = e.target.files[0];
-      onChange?.(docKey, newFile, selectedDate || undefined);
-    }
-  };
-
-  // Manejar cambio de fecha
-  const handleDateChange = (date: Date | null) => {
-    setSelectedDate(date);
-    if (file) {
-      onChange?.(docKey, file, date || undefined);
+      const dateValue = calendarDateToDate(selectedDate);
+      onChange?.(documentKey, newFile, dateValue || undefined);
     }
   };
 
@@ -79,7 +86,7 @@ const SimpleDocumentUploader = ({
     if (disabled) return;
     
     setSelectedDate(null);
-    onRemove?.(docKey);
+    onRemove?.(documentKey);
     
     // Limpiar el input file
     if (fileInputRef.current) {
@@ -104,7 +111,7 @@ const SimpleDocumentUploader = ({
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </h4>
-        
+
         {file && (
           <div className="flex items-center text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
             <FileText className="h-4 w-4 mr-1" />
@@ -118,8 +125,8 @@ const SimpleDocumentUploader = ({
         <div
           className={`
             border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
-            ${isDragging 
-              ? "border-blue-400 bg-blue-50" 
+            ${isDragging
+              ? "border-blue-400 bg-blue-50"
               : "border-gray-300 hover:border-gray-400"
             }
             ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}
@@ -137,7 +144,7 @@ const SimpleDocumentUploader = ({
             disabled={disabled}
             onChange={handleFileChange}
           />
-          
+
           <Upload className="mx-auto h-8 w-8 text-gray-400 mb-3" />
           <p className="text-gray-600 font-medium mb-1">
             {isDragging ? "Suelta el archivo aquí" : "Arrastra y suelta o haz clic"}
@@ -156,7 +163,7 @@ const SimpleDocumentUploader = ({
               <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
             </div>
           </div>
-          
+
           {!disabled && (
             <Button
               size="sm"
@@ -179,19 +186,18 @@ const SimpleDocumentUploader = ({
             Fecha de vigencia
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
-          
+
           <DatePicker
             value={selectedDate}
-            onChange={handleDateChange}
-            disabled={disabled}
-            placeholder="Seleccionar fecha de vigencia"
+            onChange={setSelectedDate}
+            isDisabled={disabled}
             className="w-full"
             size="sm"
           />
-          
+
           {selectedDate && (
             <p className="text-xs text-gray-500">
-              Vigente hasta: {selectedDate.toLocaleDateString('es-ES')}
+              Vigente hasta: {selectedDate ? formatter.format(selectedDate.toDate(getLocalTimeZone())) : "--"}
             </p>
           )}
         </div>

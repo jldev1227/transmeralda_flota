@@ -42,8 +42,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     linea: "",
   });
 
-  const [subirDocumentos, setSubirDocumentos] = useState(true)
-  const [documentos, setDocumentos] = useState(true)
+  const [subirDocumentos, setSubirDocumentos] = useState(true);
+  const [documentos, setDocumentos] = useState<Record<string, any>>({});
 
   // Estado para manejar la validación
   const [errores, setErrores] = useState<Record<string, boolean>>({
@@ -71,6 +71,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       modelo: false,
       linea: false,
     });
+    setDocumentos({});
   };
 
   // Manejar cambios en los inputs
@@ -139,6 +140,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       return;
     }
 
+    // Validar documentos requeridos si está habilitado
+    if (subirDocumentos) {
+      const missingDocs = validateRequiredDocuments();
+      if (missingDocs.length > 0) {
+        alert(`Faltan documentos requeridos: ${missingDocs.join(', ')}`);
+        return;
+      }
+    }
+
     // Enviar datos
     onSave(formData as Vehiculo);
   };
@@ -165,6 +175,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   const handleSwitchChange = (name: string, checked: boolean) => {
     if (name === "subirDocumentos") {
       setSubirDocumentos(checked);
+      if (!checked) {
+        setDocumentos({});
+      }
       return;
     }
   };
@@ -203,10 +216,10 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   ];
 
   // Manejar cambio de documento
-  const handleDocumentChange = (key, file, fechaVigencia) => {
+  const handleDocumentChange = (docKey: string, file: File, fechaVigencia?: Date) => {
     setDocumentos(prev => ({
       ...prev,
-      [key]: {
+      [docKey]: {
         file,
         fechaVigencia,
         uploadedAt: new Date()
@@ -215,10 +228,10 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   };
 
   // Manejar eliminación de documento
-  const handleDocumentRemove = (key) => {
+  const handleDocumentRemove = (docKey: string) => {
     setDocumentos(prev => {
       const newDocs = { ...prev };
-      delete newDocs[key];
+      delete newDocs[docKey];
       return newDocs;
     });
   };
@@ -382,7 +395,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       {documentTypes.map((docType) => (
                         <SimpleDocumentUploader
                           key={docType.key}
-                          docKey={docType.key}
+                          documentKey={docType.key}
                           label={docType.label}
                           required={docType.required}
                           vigencia={docType.vigencia}
@@ -393,31 +406,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         />
                       ))}
                     </div>
-
-                    {/* Resumen de documentos cargados */}
-                    {Object.keys(documentos).length > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h3 className="font-medium text-blue-900 mb-2">
-                          Documentos cargados ({Object.keys(documentos).length})
-                        </h3>
-                        <ul className="text-sm text-blue-800 space-y-1">
-                          {Object.entries(documentos).map(([key, doc]) => {
-                            const docType = documentTypes.find(d => d.key === key);
-                            return (
-                              <li key={key} className="flex justify-between">
-                                <span>{docType?.label}</span>
-                                <span className="text-blue-600">
-                                  {doc.fechaVigencia
-                                    ? `Vigente hasta: ${doc.fechaVigencia.toLocaleDateString('es-ES')}`
-                                    : "✓"
-                                  }
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
