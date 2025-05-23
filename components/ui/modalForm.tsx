@@ -14,6 +14,7 @@ import { Switch } from "@heroui/switch";
 
 import { Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
+import { addToast } from "@heroui/toast";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -54,6 +55,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     linea: false,
   });
 
+  // Estado para errores de documentos
+  const [erroresDocumentos, setErroresDocumentos] = useState<Record<string, boolean>>({});
+
   // Función para resetear el formulario
   const resetForm = () => {
     setFormData({
@@ -72,6 +76,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       linea: false,
     });
     setDocumentos({});
+    setErroresDocumentos({});
   };
 
   // Manejar cambios en los inputs
@@ -144,13 +149,51 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     if (subirDocumentos) {
       const missingDocs = validateRequiredDocuments();
       if (missingDocs.length > 0) {
-        alert(`Faltan documentos requeridos: ${missingDocs.join(', ')}`);
+        addToast({
+          title: `Falta documentación!`,
+          description: `Faltan documentos requeridos: ${missingDocs.join(', ')}`,
+          color: "danger",
+        });
+        return;
+      }
+
+      // Validar fechas de vigencia requeridas
+      const missingVigencias = validateRequiredVigencias();
+      if (missingVigencias.length > 0) {
+        addToast({
+          title: `Falta documentación!`,
+          description: `Faltan fechas de vigencia requeridas para: ${missingVigencias.join(', ')}`,
+          color: "danger",
+        });
         return;
       }
     }
 
-    // Enviar datos
-    onSave(formData as Vehiculo);
+    // Preparar datos completos incluyendo documentos
+    const datosCompletos = {
+      ...formData,
+      documentos: subirDocumentos ? preparearDocumentosParaEnvio() : null
+    };
+
+    // Enviar datos completos
+    onSave(datosCompletos as Vehiculo);
+  };
+
+  // Función para preparar los documentos para envío
+  const preparearDocumentosParaEnvio = () => {
+    const documentosParaEnvio: Record<string, any> = {};
+
+    Object.keys(documentos).forEach((key) => {
+      const documento = documentos[key];
+      if (documento) {
+        documentosParaEnvio[key] = {
+          file: documento.file,
+          ...(documento.fechaVigencia && { fechaVigencia: documento.fechaVigencia })
+        };
+      }
+    });
+
+    return documentosParaEnvio;
   };
 
   const clasesVehiculo = [
@@ -158,18 +201,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     { key: "BUS", label: "Bus" },
     { key: "MICROBUS", label: "Microbús" },
   ];
-
-  // Efecto para cargar datos cuando se está editando
-  useEffect(() => {
-    if (vehiculoEditar) {
-      setFormData({
-        ...vehiculoEditar,
-      });
-    } else {
-      // Resetear el formulario si no hay conductor para editar
-      resetForm();
-    }
-  }, [vehiculoEditar, isOpen]);
 
   // Manejar cambios en los switches
   const handleSwitchChange = (name: string, checked: boolean) => {
@@ -184,7 +215,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
   const documentTypes = [
     {
-      key: "TARJETA_PROPIEDAD",
+      key: "TARJETA_DE_PROPIEDAD",
       label: "Tarjeta de Propiedad",
       required: true,
       vigencia: false,
@@ -202,15 +233,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       vigencia: true, // Tiene fecha de vigencia
     },
     {
-      key: "TARJETA_OPERACION",
+      key: "TARJETA_DE_OPERACION",
       label: "Tarjeta de Operación",
-      required: false,
+      required: true,
       vigencia: true,
     },
     {
       key: "POLIZA_CONTRACTUAL",
       label: "Póliza Contractual",
-      required: false,
+      required: true,
       vigencia: true,
     },
   ];
@@ -225,6 +256,14 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
         uploadedAt: new Date()
       }
     }));
+
+    // Limpiar error al cambiar documento
+    if (erroresDocumentos[docKey]) {
+      setErroresDocumentos(prev => ({
+        ...prev,
+        [docKey]: false,
+      }));
+    }
   };
 
   // Manejar eliminación de documento
@@ -243,6 +282,26 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       .map(doc => doc.label);
 
     return missingDocs;
+  };
+
+  // Validar fechas de vigencia requeridas
+  const validateRequiredVigencias = () => {
+    const nuevosErroresDocumentos: Record<string, boolean> = {};
+    const missingVigencias: string[] = [];
+
+    documentTypes.forEach(doc => {
+      if (doc.required && doc.vigencia && documentos[doc.key]) {
+
+        // Si el documento existe pero no tiene fecha de vigencia
+        if (!documentos[doc.key].fechaVigencia) {
+          nuevosErroresDocumentos[doc.key] = true;
+          missingVigencias.push(doc.label);
+        }
+      }
+    });
+
+    setErroresDocumentos(nuevosErroresDocumentos);
+    return missingVigencias;
   };
 
   return (
@@ -403,9 +462,35 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                           fechaVigencia={documentos[docType.key]?.fechaVigencia || null}
                           onChange={handleDocumentChange}
                           onRemove={handleDocumentRemove}
+                          errores={erroresDocumentos}
                         />
                       ))}
                     </div>
+
+                    {/* Resumen de documentos cargados */}
+                    {Object.keys(documentos).length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <h3 className="font-medium text-blue-900 mb-2">
+                          Documentos cargados ({Object.keys(documentos).length})
+                        </h3>
+                        <ul className="text-sm text-blue-800 space-y-1">
+                          {Object.entries(documentos).map(([key, doc]) => {
+                            const docType = documentTypes.find(d => d.key === key);
+                            return (
+                              <li key={key} className="flex justify-between">
+                                <span>{docType?.label}</span>
+                                <span className="text-blue-600">
+                                  {doc.fechaVigencia
+                                    ? `Vigente hasta: ${doc.fechaVigencia.toLocaleDateString('es-ES')}`
+                                    : "✓"
+                                  }
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

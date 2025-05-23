@@ -21,7 +21,7 @@ export default function GestionVehiculos() {
     vehiculosState,
     sortDescriptor,
     fetchVehiculos,
-    crearVehiculoBasico,
+    crearVehiculo,
     actualizarVehiculoBasico,
     handleSortChange,
   } = useFlota();
@@ -161,6 +161,7 @@ export default function GestionVehiculos() {
 
   // Función para guardar vehiculo (nueva o editada)
   const guardarVehiculo = async (vehiculoData: Vehiculo) => {
+    console.log(vehiculoData)
     try {
       setLoading(true);
       if (vehiculoData.id) {
@@ -168,7 +169,7 @@ export default function GestionVehiculos() {
         await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
       } else {
         // Crear nuevo vehiculo
-        await crearVehiculoBasico(vehiculoData);
+        await crearVehiculo(vehiculoData);
       }
 
       // Si llegamos aquí, significa que la operación fue exitosa

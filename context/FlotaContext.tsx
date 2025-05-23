@@ -83,7 +83,32 @@ export interface ValidationError {
   mensaje: string;
 }
 
+export interface DocumentoVehiculo {
+  file: File;
+  fechaVigencia?: string;
+}
+
+export interface DocumentosVehiculo {
+  TARJETA_DE_PROPIEDAD?: DocumentoVehiculo;
+  SOAT?: DocumentoVehiculo;
+  TECNOMECANICA?: DocumentoVehiculo;
+  TARJETA_DE_OPERACION?: DocumentoVehiculo;
+  POLIZA_CONTRACTUAL?: DocumentoVehiculo;
+  POLIZA_EXTRACONTRACTUAL?: DocumentoVehiculo;
+  POLIZA_TODO_RIESGO?: DocumentoVehiculo;
+}
+
+export interface FechasVigenciaVehiculo {
+  SOAT?: string;
+  TECNOMECANICA?: string;
+  TARJETA_DE_OPERACION?: string;
+  POLIZA_CONTRACTUAL?: string;
+  POLIZA_EXTRACONTRACTUAL?: string;
+  POLIZA_TODO_RIESGO?: string;
+}
+
 export interface CrearVehiculoRequest {
+  // Campos básicos del vehículo
   clase_vehiculo: string;
   color?: string;
   combustible?: string;
@@ -100,20 +125,39 @@ export interface CrearVehiculoRequest {
   numero_motor?: string;
   numero_serie?: string;
   placa: string;
+
+  // Fechas de vencimiento de documentos
   poliza_contractual_vencimiento?: string;
   poliza_extra_contractual_vencimiento?: string;
   poliza_todo_riesgo_vencimiento?: string;
-  propietario_identificacion?: string;
-  propietario_nombre?: string;
-  propietario_id?: string;
   soat_vencimiento?: string;
   tarjeta_de_operacion_vencimiento?: string;
   tecnomecanica_vencimiento?: string;
+
+  // Información del propietario
+  propietario_identificacion?: string;
+  propietario_nombre?: string;
+  propietario_id?: string;
+
+  // Otros campos
   tipo_varroceria?: string;
   vin?: string;
+
+  // NUEVOS CAMPOS PARA DOCUMENTOS
+  documentos?: DocumentosVehiculo;
+  fechasVigencia?: FechasVigenciaVehiculo;
 }
+
+// Tipos específicos para diferentes tipos de creación
+export interface crearVehiculoRequest extends Omit<CrearVehiculoRequest, 'documentos' | 'fechasVigencia'> { }
+
+export interface CrearVehiculoConDocumentosRequest extends CrearVehiculoRequest {
+  documentos: DocumentosVehiculo;
+  fechasVigencia?: FechasVigenciaVehiculo;
+}
+
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest> {}
+  extends Partial<CrearVehiculoRequest> { }
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -222,7 +266,7 @@ interface FlotaContextType {
   // Operaciones CRUD
   fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
   getVehiculo: (id: string) => Promise<Vehiculo | null>;
-  crearVehiculoBasico: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
+  crearVehiculo: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
   actualizarVehiculoBasico: (
     id: string,
     data: ActualizarVehiculoRequest,
@@ -403,26 +447,93 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     }
   };
 
-  const crearVehiculoBasico = async (
+  const crearVehiculo = async (
     data: CrearVehiculoRequest,
   ): Promise<Vehiculo> => {
-    // Cambiado el tipo de retorno para no permitir null
     clearError();
-
     try {
+      // Determinar si hay documentos en la solicitud
+      const tieneDocumentos = data.documentos && Object.keys(data.documentos).length > 0;
+
+      // Seleccionar endpoint y configurar datos según el tipo de creación
+      let endpoint: string;
+      let requestData: any;
+      let headers: Record<string, string> = {};
+
+      if (tieneDocumentos) {
+        // Creación con documentos - usar FormData
+        endpoint = "/api/flota";
+
+        const formData = new FormData();
+
+        // Agregar datos básicos del vehículo
+        Object.keys(data).forEach((key) => {
+          if (key !== 'documentos' && key !== 'fechasVigencia') {
+            const value = data[key as keyof CrearVehiculoRequest];
+            if (value !== undefined && value !== null) {
+              formData.append(key, value.toString());
+            }
+          }
+        });
+
+        // Extraer fechas de vigencia del objeto documentos
+        const fechasVigencia: Record<string, string> = {};
+        Object.entries(data.documentos).forEach(([categoria, documento]) => {
+          if (documento?.fechaVigencia) {
+            fechasVigencia[categoria] = documento.fechaVigencia;
+          }
+        });
+
+        // Agregar fechas de vigencia como JSON string si existen
+        if (Object.keys(fechasVigencia).length > 0) {
+          formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
+        }
+
+        // Si también hay fechasVigencia en el nivel superior (fallback)
+        if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
+          formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
+        }
+
+        // Agregar archivos y categorías
+        const categorias: string[] = [];
+        Object.entries(data.documentos).forEach(([categoria, documento]) => {
+          if (documento?.file) {
+            categorias.push(categoria);
+            formData.append('documentos', documento.file);
+          }
+        });
+
+        // Agregar categorías como JSON string
+        formData.append('categorias', JSON.stringify(categorias));
+
+        requestData = formData;
+        headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        // Creación básica sin documentos - usar JSON
+        endpoint = "/api/flota/basico";
+
+        // Excluir documentos y fechas de vigencia para creación básica
+        const { documentos, fechasVigencia, ...vehiculoBasico } = data;
+        requestData = vehiculoBasico;
+        headers['Content-Type'] = 'application/json';
+      }
+
       const response = await apiClient.post<ApiResponse<Vehiculo>>(
-        "/api/flota/basico",
-        data,
+        endpoint,
+        requestData,
+        { headers }
       );
 
       if (response.data && response.data.success) {
         return response.data.data;
       } else {
-        throw new Error(response.data.message || "Error al crear conductor");
+        throw new Error(response.data.message || "Error al crear vehículo");
       }
     } catch (err: any) {
+
+      console.log(err)
       // Definir un mensaje de error predeterminado
-      let errorTitle = "Error al crear conductor";
+      let errorTitle = "Error al crear vehículo";
       let errorDescription = "Ha ocurrido un error inesperado.";
 
       // Manejar errores específicos por código de estado
@@ -430,7 +541,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         switch (err.response.status) {
           case 400: // Bad Request
             errorTitle = "Error en los datos enviados";
-
             // Verificar si tenemos detalles específicos del error en la respuesta
             if (err.response.data && err.response.data.message) {
               errorDescription = err.response.data.message;
@@ -446,14 +556,16 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
               const fieldLabels: Record<string, string> = {
                 placa: "Placa",
                 marca: "Marca",
-                linea: "Linea del vehículo",
+                linea: "Línea del vehículo",
                 color: "Color del vehículo",
                 clase_vehiculo: "Clase del vehículo",
+                modelo: "Modelo",
+                documentos: "Documentos",
+                fechasVigencia: "Fechas de vigencia"
               };
 
               // Mostrar cada error de validación como un toast separado
               let errorShown = false;
-
               err.response.data.errores.forEach(
                 (error: { campo: string; mensaje: string }) => {
                   errorShown = true;
@@ -461,9 +573,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
                   // Personalizar mensajes para errores comunes
                   let customMessage = error.mensaje;
-
                   if (error.mensaje.includes("must be unique")) {
                     customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
+                  } else if (error.mensaje.includes("vigencia")) {
+                    customMessage = `La fecha de vigencia para ${fieldLabel.toLowerCase()} es inválida o está vencida`;
+                  } else if (error.mensaje.includes("required")) {
+                    customMessage = `${fieldLabel} es requerido`;
                   }
 
                   addToast({
@@ -474,11 +589,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
                 },
               );
 
-              // IMPORTANTE: Ya no hacemos return null aquí
-              // Solo actualizamos el mensaje de error general
+              // Actualizar el mensaje de error general si se mostraron errores específicos
               if (errorShown) {
-                setError(errorDescription);
-                // Arrojamos un nuevo error en lugar de retornar null
+                setError("Error de validación en los campos");
                 throw new Error("Error de validación en los campos");
               }
             }
@@ -488,20 +601,63 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
               errorDescription.includes("unique") ||
               errorDescription.includes("duplicado")
             ) {
-              // Error genérico de duplicación
               errorTitle = "Datos duplicados";
               errorDescription =
                 "Algunos de los datos ingresados ya existen en el sistema.";
 
-              // Intentar ser más específico basado en el mensaje completo
               if (errorDescription.toLowerCase().includes("placa")) {
                 errorTitle = "Placa duplicada";
-                errorDescription = "Ya existe un conductor con este placa.";
+                errorDescription = "Ya existe un vehículo con esta placa.";
+              }
+            }
+
+            // Errores específicos de documentos
+            if (errorDescription.includes("documento")) {
+              errorTitle = "Error en documentos";
+              if (errorDescription.includes("vigencia")) {
+                errorDescription = "Una o más fechas de vigencia de los documentos son inválidas.";
+              } else if (errorDescription.includes("obligatorio")) {
+                errorDescription = "Falta documentación obligatoria.";
               }
             }
             break;
 
-          // Los demás casos igual que antes...
+          case 401: // Unauthorized
+            errorTitle = "No autorizado";
+            errorDescription = "No tienes permisos para realizar esta acción.";
+            break;
+
+          case 403: // Forbidden
+            errorTitle = "Acceso denegado";
+            errorDescription = "No tienes los permisos necesarios para crear vehículos.";
+            break;
+
+          case 413: // Payload Too Large
+            errorTitle = "Archivos demasiado grandes";
+            errorDescription = "Uno o más archivos exceden el tamaño máximo permitido.";
+            break;
+
+          case 422: // Unprocessable Entity
+            errorTitle = "Datos no procesables";
+            errorDescription = "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
+            break;
+
+          case 500: // Internal Server Error
+            errorTitle = "Error del servidor";
+            // Usar el mensaje del servidor si está disponible, sino mensaje genérico
+            errorDescription = err.response.data?.message || "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
+            break;
+
+          case 502: // Bad Gateway
+          case 503: // Service Unavailable
+          case 504: // Gateway Timeout
+            errorTitle = "Servicio no disponible";
+            errorDescription = "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
+            break;
+
+          default:
+            errorTitle = `Error ${err.response.status}`;
+            errorDescription = err.response.data?.message || "Ha ocurrido un error inesperado.";
         }
       } else if (err.request) {
         // La solicitud fue hecha pero no se recibió respuesta
@@ -531,7 +687,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Siempre lanzamos el error, nunca retornamos null
       throw err;
     }
-    // Ya no necesitamos un bloque finally aquí, el setLoading lo manejamos en guardarConductor
   };
 
   const actualizarVehiculoBasico = async (
@@ -725,7 +880,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
     fetchVehiculos,
     getVehiculo,
-    crearVehiculoBasico,
+    crearVehiculo,
     actualizarVehiculoBasico,
 
     // Propiedades para Socket.IO
