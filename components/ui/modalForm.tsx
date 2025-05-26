@@ -43,6 +43,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     linea: "",
   });
 
+  const [loading, setLoading] = useState<boolean>(false)
   const [subirDocumentos, setSubirDocumentos] = useState(true);
   const [documentos, setDocumentos] = useState<Record<string, any>>({});
 
@@ -78,6 +79,17 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     setDocumentos({});
     setErroresDocumentos({});
   };
+ // Efecto para cargar datos cuando se está editando
+  useEffect(() => {
+    if (vehiculoEditar) {
+      setFormData({
+        ...vehiculoEditar,
+      });
+    } else {
+      // Resetear el formulario si no hay conductor para editar
+      resetForm();
+    }
+  }, [vehiculoEditar, isOpen]);
 
   // Manejar cambios en los inputs
   const handleChange = (
@@ -118,7 +130,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   };
 
   // Validar y guardar datos
-  const handleSave = () => {
+  const handleSave = async () => {
+    setLoading(true);
+
     // Campos requeridos para todos los vehículos
     const camposRequeridos: VehiculoKey[] = [
       "placa",
@@ -142,6 +156,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
     // Si hay errores, no continuar
     if (Object.values(nuevosErrores).some((error) => error)) {
+      setLoading(false);
       return;
     }
 
@@ -154,6 +169,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
           description: `Faltan documentos requeridos: ${missingDocs.join(', ')}`,
           color: "danger",
         });
+        setLoading(false);
         return;
       }
 
@@ -165,6 +181,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
           description: `Faltan fechas de vigencia requeridas para: ${missingVigencias.join(', ')}`,
           color: "danger",
         });
+        setLoading(false);
         return;
       }
     }
@@ -175,8 +192,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       documentos: subirDocumentos ? preparearDocumentosParaEnvio() : null
     };
 
-    // Enviar datos completos
-    onSave(datosCompletos as Vehiculo);
+    try {
+      await onSave(datosCompletos as Vehiculo);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para preparar los documentos para envío
@@ -507,10 +527,17 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
               </Button>
               <Button
                 className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-                startContent={<SaveIcon className="h-4 w-4" />}
+                startContent={loading ? '' : <SaveIcon className="h-4 w-4" />}
                 onPress={handleSave}
+                isLoading={loading}
               >
-                {vehiculoEditar ? "Actualizar" : "Guardar"}
+                {loading
+                  ? vehiculoEditar
+                  ? "Actualizando..."
+                  : "Guardando..."
+                  : vehiculoEditar
+                  ? "Actualizar"
+                  : "Guardar"}
               </Button>
             </ModalFooter>
           </>

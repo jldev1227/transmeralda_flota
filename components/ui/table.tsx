@@ -109,7 +109,7 @@ export default function ConductoresTable({
               alt={`${vehiculo.placa} ${vehiculo.modelo}`}
               className="h-16 w-16 rounded-full mr-3"
               height={200}
-              src={`/assets/${vehiculo.clase_vehiculo === "CAMIONETA" ? "car.jpg" : "bus.jpg"}`}
+              src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
               width={200}
             />
           ) : (

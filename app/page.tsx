@@ -161,7 +161,6 @@ export default function GestionVehiculos() {
 
   // Función para guardar vehiculo (nueva o editada)
   const guardarVehiculo = async (vehiculoData: Vehiculo) => {
-    console.log(vehiculoData)
     try {
       setLoading(true);
       if (vehiculoData.id) {
@@ -173,7 +172,7 @@ export default function GestionVehiculos() {
       }
 
       // Si llegamos aquí, significa que la operación fue exitosa
-      // Cerrar modal después de guardar correctamente
+      // // Cerrar modal después de guardar correctamente
       cerrarModalForm();
 
       // Recargar la lista de conductores con los filtros actuales

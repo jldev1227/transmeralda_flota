@@ -169,11 +169,52 @@ export interface ApiResponse<T> {
   errores?: ValidationError[];
 }
 
+interface CrearVehiculoConDocumentosResponse {
+  vehiculo: Vehiculo;
+  documentos: Documento[]
+}
+
+export interface Documento {
+  // Campos principales
+  id: string; // UUID
+  vehiculo_id: string; // UUID - Referencia al vehículo
+  
+  // Campos de información del documento
+  categoria: string; // TARJETA_DE_PROPIEDAD, SEGURO, etc.
+  nombre_original: string; // Nombre original del archivo subido
+  nombre_archivo: string; // Nombre generado para almacenamiento
+  ruta_archivo: string; // Ruta donde se almacena el archivo
+  s3_key?: string; // Clave del objeto en S3 (opcional)
+  filename?: string; // Nombre del archivo (opcional, duplica nombre_original)
+  mimetype: string; // Tipo MIME del archivo
+  tamaño: number; // Tamaño del archivo en bytes
+  
+  // Campos de fechas y estado
+  fechaVigencia?: Date; // Fecha de vigencia del documento (opcional)
+  estado: string; // Estado del documento (ACTIVO, INACTIVO, etc.)
+  fechaSubida: Date; // Fecha cuando se subió el documento
+  upload_date: Date; // Fecha de carga (duplica fechaSubida)
+  
+  // Metadata adicional
+  metadata: {
+    [key: string]: any; // Objeto JSON con información adicional
+  };
+  
+  // Campos de timestamp automáticos (por Sequelize)
+  created_at?: Date;
+  updated_at?: Date;
+}
+
 export interface VehiculosState {
   data: Vehiculo[];
   count: number;
   totalPages: number;
   currentPage: number;
+}
+
+interface ErrorProcesamiento {
+  error: string;
+  mensaje: string
 }
 
 // Funciones utilitarias
@@ -525,6 +566,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       );
 
       if (response.data && response.data.success) {
+        console.log(response)
         return response.data.data;
       } else {
         throw new Error(response.data.message || "Error al crear vehículo");
@@ -809,7 +851,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         setSocketConnected(false);
       };
 
-      const handleVehiculoCreado = (data: Vehiculo) => {
+      const handleVehiculoCreado = (data: CrearVehiculoConDocumentosResponse) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -818,10 +860,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             timestamp: new Date(),
           },
         ]);
+        
+        console.log(data)
 
         addToast({
           title: "Nuevo Vehículo",
-          description: `Se ha creado un nuevo vehículo: ${data.placa}`,
+          description: `Se ha creado un nuevo vehículo: ${data.vehiculo.placa}`,
           color: "success",
         });
       };
@@ -843,6 +887,23 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         });
       };
 
+      const handleErrorProcesamiento = (data: ErrorProcesamiento) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:procesamiento:error",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        addToast({
+          title: data.mensaje,
+          description: data.error,
+          color: "danger",
+        });
+      };
+
       // Registrar manejadores de eventos
       socketService.on("connect", handleConnect);
       socketService.on("disconnect", handleDisconnect);
@@ -850,6 +911,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Registrar manejadores de eventos de vehículos
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
+      socketService.on("vehiculo:procesamiento:error", handleErrorProcesamiento);
 
       return () => {
         // Limpiar al desmontar
@@ -859,6 +921,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Limpiar manejadores de eventos de conductores
         socketService.off("vehiculo:creado");
         socketService.off("vehiculo:actualizado");
+        socketService.off("vehiculo:procesamiento:error");
       };
     }
   }, [user?.id]);

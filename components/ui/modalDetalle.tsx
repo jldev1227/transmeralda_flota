@@ -157,7 +157,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                       alt={`${vehiculo.placa} ${vehiculo.modelo}`}
                       className="h-48 w-48 rounded-full mr-3"
                       height={200}
-                      src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "CAMIONETA" ? "car.jpg" : "bus.jpg"}`}
+                      src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
                       width={200}
                     />
                   </div>
