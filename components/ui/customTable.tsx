@@ -218,7 +218,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                   tabIndex={0}
                   onClick={() => onRowClick?.(item)}
                 >
-                  {columns.map((column, columnIndex) => (
+                  {columns.map((column) => (
                     <td
                       key={column.key}
                       className="px-6 py-4 whitespace-nowrap"
