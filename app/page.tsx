@@ -22,7 +22,7 @@ export default function GestionVehiculos() {
     sortDescriptor,
     fetchVehiculos,
     crearVehiculo,
-    actualizarVehiculoBasico,
+    actualizarVehiculo,
     handleSortChange,
   } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -167,7 +167,7 @@ export default function GestionVehiculos() {
       setLoading(true);
       if ('id' in vehiculoData && vehiculoData.id) {
         // Editar vehiculo existente
-        await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
+        await actualizarVehiculo(vehiculoData.id, vehiculoData);
       } else {
         // Crear nuevo vehiculo
         await crearVehiculo(vehiculoData);

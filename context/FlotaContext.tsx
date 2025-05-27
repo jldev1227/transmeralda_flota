@@ -159,7 +159,7 @@ export interface CrearVehiculoConDocumentosRequest extends CrearVehiculoRequest 
 }
 
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest> { }
+  extends Partial<CrearVehiculoRequest & { id: string }> { }
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -292,7 +292,7 @@ interface FlotaContextType {
   fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
   getVehiculo: (id: string) => Promise<Vehiculo | null>;
   crearVehiculo: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
-  actualizarVehiculoBasico: (
+  actualizarVehiculo: (
     id: string,
     data: ActualizarVehiculoRequest,
   ) => Promise<Vehiculo | null>;
@@ -516,7 +516,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   };
 
   // ✅ VERSION MEJORADA usando las funciones helper:
-  const crearVehiculo  = async (
+  const crearVehiculo = async (
     data: CrearVehiculoRequest,
   ): Promise<Vehiculo> => {
     clearError();
@@ -743,49 +743,262 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     }
   };
 
-  const actualizarVehiculoBasico = async (
+  // ✅ VERSION MEJORADA para actualización de vehículo usando las funciones helper:
+  const actualizarVehiculo = async (
     id: string,
     data: ActualizarVehiculoRequest,
-  ): Promise<Vehiculo | null> => {
-    setLoading(true);
+  ): Promise<Vehiculo> => {
     clearError();
-
     try {
+      const tieneDocumentos = validarDocumentos(data.documentos);
+
+      let endpoint: string;
+      let requestData: any;
+      let headers: Record<string, string> = {};
+
+      if (tieneDocumentos) {
+        endpoint = `/api/flota/${id}`;
+        const formData = new FormData();
+
+        // Agregar datos básicos del vehículo
+        Object.keys(data).forEach((key) => {
+          if (key !== 'documentos' && key !== 'fechasVigencia' && key !== 'id') {
+            const value = data[key as keyof CrearVehiculoRequest];
+            if (value !== undefined && value !== null) {
+              formData.append(key, value.toString());
+            }
+          }
+        });
+
+        // Extraer fechas de vigencia usando función helper
+        const fechasVigencia = extraerFechasVigencia(data.documentos);
+
+        if (Object.keys(fechasVigencia).length > 0) {
+          formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
+        }
+
+        if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
+          formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
+        }
+
+        // Agregar archivos usando función helper
+        const categorias = extraerCategorias(data.documentos);
+
+        // ✅ NUEVO: Separar documentos nuevos de actualizaciones de existentes
+        const documentosNuevos: string[] = [];
+        const documentosActualizados: any[] = [];
+
+        if (data.documentos) {
+          Object.entries(data.documentos).forEach(([categoria, documento]) => {
+            if (documento?.file) {
+              // Es un documento nuevo
+              formData.append('documentos', documento.file);
+              documentosNuevos.push(categoria);
+            } else if (documento?.tipo === 'existente' && documento?.id) {
+              // Es una actualización de documento existente (solo fecha de vigencia)
+              documentosActualizados.push({
+                id: documento.id,
+                categoria,
+                fecha_vigencia: documento.fecha_vigencia?.toISOString() || null
+              });
+            }
+          });
+        }
+
+        // ✅ Agregar metadatos sobre documentos
+        formData.append('categorias', JSON.stringify(categorias));
+        if (documentosActualizados.length > 0) {
+          formData.append('documentosActualizados', JSON.stringify(documentosActualizados));
+        }
+
+        requestData = formData;
+        headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        // ✅ Sin documentos - endpoint básico con PUT
+        endpoint = `/api/flota/basico/${id}`;
+        const { documentos, fechasVigencia, id: vehiculoId, ...vehiculoBasico } = data;
+        requestData = vehiculoBasico;
+        headers['Content-Type'] = 'application/json';
+      }
+
+      // ✅ Usar PUT en lugar de POST para actualización
       const response = await apiClient.put<ApiResponse<Vehiculo>>(
-        `/api/flota/${id}/basico`,
-        data,
+        endpoint,
+        requestData,
+        { headers }
       );
 
       if (response.data && response.data.success) {
-        const vehiculoActualizado = response.data.data;
-
-        // Actualizar el currentVehiculo si corresponde al mismo ID
-        if (currentVehiculo && currentVehiculo.id === id) {
-          setCurrentVehiculo(vehiculoActualizado);
-        }
-
-        const params: BusquedaParams = {
-          page: vehiculosState.currentPage,
-        };
-
-        // Actualizar la lista de conductores
-        fetchVehiculos(params);
-
-        return vehiculoActualizado;
+        return response.data.data;
       } else {
-        throw new Error("Respuesta no exitosa del servidor");
+        throw new Error(response.data.message || "Error al actualizar vehículo");
       }
-    } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Error al actualizar el conductor",
-      );
+    } catch (err: any) {
 
-      setError(errorMessage);
+      // Definir un mensaje de error predeterminado
+      let errorTitle = "Error al actualizar vehículo";
+      let errorDescription = "Ha ocurrido un error inesperado.";
 
-      return null;
-    } finally {
-      setLoading(false);
+      // Manejar errores específicos por código de estado
+      if (err.response) {
+        switch (err.response.status) {
+          case 400: // Bad Request
+            errorTitle = "Error en los datos enviados";
+            // Verificar si tenemos detalles específicos del error en la respuesta
+            if (err.response.data && err.response.data.message) {
+              errorDescription = err.response.data.message;
+            }
+
+            // Verificar si hay errores específicos en formato español (errores)
+            if (
+              err.response.data &&
+              err.response.data.errores &&
+              Array.isArray(err.response.data.errores)
+            ) {
+              // Mapeo de nombres de campos para mensajes más amigables
+              const fieldLabels: Record<string, string> = {
+                placa: "Placa",
+                marca: "Marca",
+                linea: "Línea del vehículo",
+                color: "Color del vehículo",
+                clase_vehiculo: "Clase del vehículo",
+                modelo: "Modelo",
+                documentos: "Documentos",
+                fechasVigencia: "Fechas de vigencia"
+              };
+
+              // Mostrar cada error de validación como un toast separado
+              let errorShown = false;
+              err.response.data.errores.forEach(
+                (error: { campo: string; mensaje: string }) => {
+                  errorShown = true;
+                  const fieldLabel = fieldLabels[error.campo] || error.campo;
+
+                  // Personalizar mensajes para errores comunes
+                  let customMessage = error.mensaje;
+                  if (error.mensaje.includes("must be unique")) {
+                    customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
+                  } else if (error.mensaje.includes("vigencia")) {
+                    customMessage = `La fecha de vigencia para ${fieldLabel.toLowerCase()} es inválida o está vencida`;
+                  } else if (error.mensaje.includes("required")) {
+                    customMessage = `${fieldLabel} es requerido`;
+                  }
+
+                  addToast({
+                    title: `Error en ${fieldLabel}`,
+                    description: customMessage,
+                    color: "danger",
+                  });
+                },
+              );
+
+              // Actualizar el mensaje de error general si se mostraron errores específicos
+              if (errorShown) {
+                setError("Error de validación en los campos");
+                throw new Error("Error de validación en los campos");
+              }
+            }
+
+            // Verificar errores específicos comunes en el mensaje
+            if (
+              errorDescription.includes("unique") ||
+              errorDescription.includes("duplicado")
+            ) {
+              errorTitle = "Datos duplicados";
+              errorDescription =
+                "Algunos de los datos ingresados ya existen en el sistema.";
+
+              if (errorDescription.toLowerCase().includes("placa")) {
+                errorTitle = "Placa duplicada";
+                errorDescription = "Ya existe otro vehículo con esta placa.";
+              }
+            }
+
+            // Errores específicos de documentos
+            if (errorDescription.includes("documento")) {
+              errorTitle = "Error en documentos";
+              if (errorDescription.includes("vigencia")) {
+                errorDescription = "Una o más fechas de vigencia de los documentos son inválidas.";
+              } else if (errorDescription.includes("obligatorio")) {
+                errorDescription = "Falta documentación obligatoria.";
+              }
+            }
+            break;
+
+          case 401: // Unauthorized
+            errorTitle = "No autorizado";
+            errorDescription = "No tienes permisos para realizar esta acción.";
+            break;
+
+          case 403: // Forbidden
+            errorTitle = "Acceso denegado";
+            errorDescription = "No tienes los permisos necesarios para actualizar vehículos.";
+            break;
+
+          case 404: // Not Found
+            errorTitle = "Vehículo no encontrado";
+            errorDescription = "El vehículo que intentas actualizar no existe o ha sido eliminado.";
+            break;
+
+          case 409: // Conflict
+            errorTitle = "Conflicto de datos";
+            errorDescription = "Los datos que intentas actualizar entran en conflicto con información existente.";
+            break;
+
+          case 413: // Payload Too Large
+            errorTitle = "Archivos demasiado grandes";
+            errorDescription = "Uno o más archivos exceden el tamaño máximo permitido.";
+            break;
+
+          case 422: // Unprocessable Entity
+            errorTitle = "Datos no procesables";
+            errorDescription = "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
+            break;
+
+          case 500: // Internal Server Error
+            errorTitle = "Error del servidor";
+            // Usar el mensaje del servidor si está disponible, sino mensaje genérico
+            errorDescription = err.response.data?.message || "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
+            break;
+
+          case 502: // Bad Gateway
+          case 503: // Service Unavailable
+          case 504: // Gateway Timeout
+            errorTitle = "Servicio no disponible";
+            errorDescription = "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
+            break;
+
+          default:
+            errorTitle = `Error ${err.response.status}`;
+            errorDescription = err.response.data?.message || "Ha ocurrido un error inesperado.";
+        }
+      } else if (err.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        errorTitle = "Error de conexión";
+        errorDescription =
+          "No se pudo conectar con el servidor. Verifica tu conexión a internet.";
+      } else {
+        // Algo sucedió al configurar la solicitud que desencadenó un error
+        errorTitle = "Error en la solicitud";
+        errorDescription =
+          err.message || "Ha ocurrido un error al procesar la solicitud.";
+      }
+
+      // Guardar el mensaje de error para referencia en el componente
+      setError(errorDescription);
+
+      // Mostrar el toast con el mensaje de error
+      addToast({
+        title: errorTitle,
+        description: errorDescription,
+        color: "danger",
+      });
+
+      // Registrar el error en la consola para depuración
+      console.error("Error detallado al actualizar vehículo:", err);
+
+      // Siempre lanzamos el error, nunca retornamos null
+      throw err;
     }
   };
 
@@ -954,7 +1167,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     fetchVehiculos,
     getVehiculo,
     crearVehiculo,
-    actualizarVehiculoBasico,
+    actualizarVehiculo,
 
     // Propiedades para Socket.IO
     socketConnected,

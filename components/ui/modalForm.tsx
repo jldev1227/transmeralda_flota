@@ -32,10 +32,33 @@ interface Procesamiento {
   procesados: number;
   total: number;
   progreso: number;
-  estado: string | null; // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  estado: string | null;
   mensaje: string;
   error: string | null;
   porcentaje: number;
+}
+
+// Interfaz para documentos existentes
+interface DocumentoExistente {
+  id: string;
+  categoria: string;
+  nombre_original: string;
+  fecha_vigencia: string | null;
+  estado: string;
+  s3_key: string;
+  tamaño: number;
+  upload_date: string;
+}
+
+// Interfaz extendida para el estado de documentos
+interface DocumentoState {
+  file?: File;
+  fecha_vigencia?: Date;
+  uploadedAt?: Date;
+  // Para documentos existentes
+  existente?: DocumentoExistente;
+  // Flag para saber si es un documento nuevo o existente
+  esNuevo?: boolean;
 }
 
 const initialProcesamientoState: Procesamiento = {
@@ -43,7 +66,7 @@ const initialProcesamientoState: Procesamiento = {
   procesados: 0,
   total: 0,
   progreso: 0,
-  estado: null, // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  estado: null,
   mensaje: "",
   error: '{}',
   porcentaje: 0,
@@ -56,6 +79,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
+
+  console.log(vehiculoEditar)
+  
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
     placa: "",
@@ -73,7 +99,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
   const [loading, setLoading] = useState<boolean>(false)
   const [subirDocumentos, setSubirDocumentos] = useState(true);
-  const [documentos, setDocumentos] = useState<Record<string, any>>({});
+  
+  // ✅ Estado actualizado para manejar documentos existentes y nuevos
+  const [documentos, setDocumentos] = useState<Record<string, DocumentoState>>({});
 
   // Estado para manejar la validación
   const [errores, setErrores] = useState<Record<string, boolean>>({
@@ -108,12 +136,32 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     setErroresDocumentos({});
   };
 
+  // ✅ Función para cargar documentos existentes desde vehiculoEditar
+  const cargarDocumentosExistentes = (documentosExistentes: DocumentoExistente[]) => {
+    const documentosState: Record<string, DocumentoState> = {};
+    
+    documentosExistentes.forEach(doc => {
+      documentosState[doc.categoria] = {
+        existente: doc,
+        esNuevo: false,
+        fecha_vigencia: doc.fecha_vigencia ? new Date(doc.fecha_vigencia) : undefined
+      };
+    });
+    
+    setDocumentos(documentosState);
+  };
+
   // Efecto para cargar datos cuando se está editando
   useEffect(() => {
     if (vehiculoEditar) {
       setFormData({
         ...vehiculoEditar,
       });
+      
+      // ✅ Cargar documentos existentes directamente desde vehiculoEditar
+      if (vehiculoEditar.documentos && vehiculoEditar.documentos.length > 0) {
+        cargarDocumentosExistentes(vehiculoEditar.documentos);
+      }
     } else {
       // Resetear el formulario si no hay conductor para editar
       resetForm();
@@ -285,17 +333,28 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     }
   };
 
-  // Función para preparar los documentos para envío
+  // ✅ Función actualizada para preparar los documentos para envío
   const preparearDocumentosParaEnvio = () => {
     const documentosParaEnvio: Record<string, any> = {};
 
     Object.keys(documentos).forEach((key) => {
       const documento = documentos[key];
       if (documento) {
-        documentosParaEnvio[key] = {
-          file: documento.file,
-          ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia })
-        };
+        if (documento.esNuevo && documento.file) {
+          // Documento nuevo
+          documentosParaEnvio[key] = {
+            file: documento.file,
+            ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia }),
+            tipo: 'nuevo'
+          };
+        } else if (!documento.esNuevo && documento.existente) {
+          // Documento existente (solo enviar si se cambió la fecha de vigencia)
+          documentosParaEnvio[key] = {
+            id: documento.existente.id,
+            ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia }),
+            tipo: 'existente'
+          };
+        }
       }
     });
 
@@ -330,13 +389,13 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       key: "SOAT",
       label: "SOAT",
       required: false,
-      vigencia: true, // Tiene fecha de vigencia
+      vigencia: true,
     },
     {
       key: "TECNOMECANICA",
       label: "Tecnomecánica",
       required: false,
-      vigencia: true, // Tiene fecha de vigencia
+      vigencia: true,
     },
     {
       key: "TARJETA_DE_OPERACION",
@@ -370,14 +429,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     },
   ];
 
-  // Manejar cambio de documento
+  // ✅ Manejar cambio de documento (actualizado)
   const handleDocumentChange = (docKey: string, file: File, fecha_vigencia?: Date) => {
     setDocumentos(prev => ({
       ...prev,
       [docKey]: {
         file,
         fecha_vigencia,
-        uploadedAt: new Date()
+        uploadedAt: new Date(),
+        esNuevo: true // Marcar como nuevo documento
       }
     }));
 
@@ -390,7 +450,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     }
   };
 
-  // Manejar eliminación de documento
+  // ✅ Manejar eliminación de documento (actualizado)
   const handleDocumentRemove = (docKey: string) => {
     setDocumentos(prev => {
       const newDocs = { ...prev };
@@ -399,27 +459,36 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     });
   };
 
-  // Validar documentos requeridos
+  // ✅ Validar documentos requeridos (actualizado)
   const validateRequiredDocuments = () => {
     const missingDocs = documentTypes
-      .filter(doc => doc.required && !documentos[doc.key])
+      .filter(doc => {
+        if (!doc.required) return false;
+        
+        const documento = documentos[doc.key];
+        // Un documento existe si es nuevo con file o existente
+        return !(documento && (documento.file || documento.existente));
+      })
       .map(doc => doc.label);
 
     return missingDocs;
   };
 
-  // Validar fechas de vigencia requeridas
+  // ✅ Validar fechas de vigencia requeridas (actualizado)
   const validateRequiredVigencias = () => {
     const nuevosErroresDocumentos: Record<string, boolean> = {};
     const missingVigencias: string[] = [];
 
     documentTypes.forEach(doc => {
-      if (doc.required && doc.vigencia && documentos[doc.key]) {
-
-        // Si el documento existe pero no tiene fecha de vigencia
-        if (!documentos[doc.key].fecha_vigencia) {
-          nuevosErroresDocumentos[doc.key] = true;
-          missingVigencias.push(doc.label);
+      if (doc.required && doc.vigencia) {
+        const documento = documentos[doc.key];
+        
+        if (documento && (documento.file || documento.existente)) {
+          // Si el documento existe pero no tiene fecha de vigencia
+          if (!documento.fecha_vigencia) {
+            nuevosErroresDocumentos[doc.key] = true;
+            missingVigencias.push(doc.label);
+          }
         }
       }
     });
@@ -427,6 +496,19 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     setErroresDocumentos(nuevosErroresDocumentos);
     return missingVigencias;
   };
+
+  // ✅ Eliminar funciones innecesarias
+  // Interfaz simplificada para documentos existentes
+  interface DocumentoExistente {
+    id: string;
+    categoria: string;
+    nombre_original: string;
+    fecha_vigencia: string | null;
+    estado: string;
+    s3_key: string;
+    tamaño: number;
+    upload_date: string;
+  }
 
   return (
     <Modal
@@ -467,6 +549,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                     }
                   />
                 </div>
+                
                 <div className="border p-4 rounded-md">
                   <h4 className="text-md font-semibold mb-4 border-b pb-2">
                     Información Básica
@@ -575,23 +658,30 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       Documentación
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {documentTypes.map((docType) => (
-                        <SimpleDocumentUploader
-                          key={docType.key}
-                          documentKey={docType.key}
-                          label={docType.label}
-                          required={docType.required}
-                          vigencia={docType.vigencia}
-                          file={documentos[docType.key]?.file || null}
-                          fecha_vigencia={documentos[docType.key]?.fecha_vigencia || null}
-                          onChange={handleDocumentChange}
-                          onRemove={handleDocumentRemove}
-                          errores={erroresDocumentos}
-                        />
-                      ))}
+                      {documentTypes.map((docType) => {
+                        const documento = documentos[docType.key];
+                        
+                        return (
+                          <SimpleDocumentUploader
+                            key={docType.key}
+                            documentKey={docType.key}
+                            label={docType.label}
+                            required={docType.required}
+                            vigencia={docType.vigencia}
+                            file={documento?.file || null}
+                            fecha_vigencia={documento?.fecha_vigencia || null}
+                            onChange={handleDocumentChange}
+                            onRemove={handleDocumentRemove}
+                            errores={erroresDocumentos}
+                            // ✅ Pasar documento existente
+                            existingDocument={documento?.existente || null}
+                            isExisting={!documento?.esNuevo && !!documento?.existente}
+                          />
+                        );
+                      })}
                     </div>
 
-                    {/* Resumen de documentos cargados */}
+                    {/* ✅ Resumen de documentos cargados (actualizado) */}
                     {Object.keys(documentos).length > 0 && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                         <h3 className="font-medium text-blue-900 mb-2">
@@ -600,9 +690,24 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         <ul className="text-sm text-blue-800 space-y-1">
                           {Object.entries(documentos).map(([key, doc]) => {
                             const docType = documentTypes.find(d => d.key === key);
+                            const isNew = doc.esNuevo && doc.file;
+                            const isExisting = !doc.esNuevo && doc.existente;
+                            
                             return (
-                              <li key={key} className="flex justify-between">
-                                <span>{docType?.label}</span>
+                              <li key={key} className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <span>{docType?.label}</span>
+                                  {isNew && (
+                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      Nuevo
+                                    </span>
+                                  )}
+                                  {isExisting && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      Existente
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-blue-600">
                                   {doc.fecha_vigencia
                                     ? `Vigente hasta: ${doc.fecha_vigencia.toLocaleDateString('es-ES')}`

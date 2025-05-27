@@ -3,8 +3,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { DatePicker } from "@heroui/date-picker";
-import { Upload, FileText, XCircle, Calendar } from "lucide-react";
+import { Upload, FileText, XCircle, Calendar, Download } from "lucide-react";
 import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
+
 
 // Formatter para fechas en español
 const formatter = new Intl.DateTimeFormat('es-ES', {
@@ -12,6 +13,19 @@ const formatter = new Intl.DateTimeFormat('es-ES', {
   month: 'long',
   day: 'numeric'
 });
+
+
+// ✅ Interfaz para documentos existentes
+interface DocumentoExistente {
+  id: string;
+  categoria: string;
+  nombre_original: string;
+  fecha_vigencia: string | null;
+  estado: string;
+  s3_key: string;
+  tamaño: number;
+  upload_date: string;
+}
 
 interface SimpleDocumentUploaderProps {
   documentKey: string;
@@ -24,6 +38,10 @@ interface SimpleDocumentUploaderProps {
   onRemove?: (documentKey: string) => void;
   disabled?: boolean;
   errores?: Record<string, boolean>;
+  // ✅ Nuevas props para documentos existentes
+  existingDocument?: DocumentoExistente | null;
+  isExisting?: boolean;
+  onDownload?: (s3Key: string, filename: string) => void;
 }
 
 const SimpleDocumentUploader = ({
@@ -32,14 +50,30 @@ const SimpleDocumentUploader = ({
   required = false,
   vigencia = false,
   file = null,
+  fecha_vigencia = null,
   onChange,
   onRemove,
   disabled = false,
-  errores = {}
+  errores = {},
+  // ✅ Nuevas props
+  existingDocument = null,
+  isExisting = false,
+  onDownload
 }: SimpleDocumentUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Inicializar fecha desde documento existente o fecha_vigencia prop
+  useEffect(() => {
+    if (fecha_vigencia) {
+      const date = new Date(fecha_vigencia);
+      setSelectedDate(new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate()));
+    } else if (existingDocument?.fecha_vigencia) {
+      const date = new Date(existingDocument.fecha_vigencia);
+      setSelectedDate(new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate()));
+    }
+  }, [fecha_vigencia, existingDocument]);
 
   // Convertir CalendarDate a Date
   const calendarDateToDate = (calendarDate: CalendarDate | null): Date | null => {
@@ -104,6 +138,13 @@ const SimpleDocumentUploader = ({
     }
   };
 
+  // ✅ Manejar descarga de documento existente
+  const handleDownload = () => {
+    if (existingDocument && onDownload) {
+      onDownload(existingDocument.s3_key, existingDocument.nombre_original);
+    }
+  };
+
   // Formatear tamaño del archivo
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -112,6 +153,11 @@ const SimpleDocumentUploader = ({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
+
+  // ✅ Determinar qué mostrar: archivo nuevo o documento existente
+  const hasContent = file || existingDocument;
+  const displayName = file ? file.name : existingDocument?.nombre_original || "";
+  const displaySize = file ? file.size : existingDocument?.tamaño || 0;
 
   return (
     <div className="border border-gray-300 rounded-lg p-4 space-y-4">
@@ -122,16 +168,26 @@ const SimpleDocumentUploader = ({
           {required && <span className="text-red-500 ml-1">*</span>}
         </h4>
         
-        {file && (
-          <div className="flex items-center text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
-            <FileText className="h-4 w-4 mr-1" />
-            Archivo cargado
+        {hasContent && (
+          <div className="flex items-center gap-2">
+            {isExisting && !file && (
+              <div className="flex items-center text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                <FileText className="h-4 w-4 mr-1" />
+                Documento existente
+              </div>
+            )}
+            {file && (
+              <div className="flex items-center text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                <FileText className="h-4 w-4 mr-1" />
+                Nuevo archivo
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Upload Area */}
-      {!file ? (
+      {/* Upload Area o File Preview */}
+      {!hasContent ? (
         <div
           className={`
             border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
@@ -165,26 +221,75 @@ const SimpleDocumentUploader = ({
         </div>
       ) : (
         /* File Preview */
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center">
-            <FileText className="h-5 w-5 text-blue-600 mr-3" />
-            <div>
-              <p className="font-medium text-gray-900 text-sm">{file.name}</p>
-              <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center">
+              <FileText className={`h-5 w-5 mr-3 ${file ? 'text-green-600' : 'text-blue-600'}`} />
+              <div>
+                <p className="font-medium text-gray-900 text-sm">{displayName}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span>{formatFileSize(displaySize)}</span>
+                  {existingDocument && (
+                    <span>• Subido: {new Date(existingDocument.upload_date).toLocaleDateString('es-ES')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* ✅ Botón de descarga para documentos existentes */}
+              {existingDocument && !file && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="primary"
+                  onPress={handleDownload}
+                  className="min-w-0 px-2"
+                  title="Descargar documento"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+              
+              {/* Botón para reemplazar archivo existente */}
+              {existingDocument && !disabled && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="secondary"
+                  onPress={() => fileInputRef.current?.click()}
+                  className="min-w-0 px-2"
+                  title="Reemplazar archivo"
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+              )}
+              
+              {/* Botón de eliminación */}
+              {!disabled && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="danger"
+                  onPress={handleRemove}
+                  className="min-w-0 px-2"
+                  title="Eliminar"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           
-          {!disabled && (
-            <Button
-              size="sm"
-              variant="light"
-              color="danger"
-              onPress={handleRemove}
-              className="min-w-0 px-2"
-            >
-              <XCircle className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Input oculto para reemplazar archivos */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            disabled={disabled}
+            onChange={handleFileChange}
+          />
         </div>
       )}
 
@@ -211,6 +316,13 @@ const SimpleDocumentUploader = ({
           {selectedDate && (
             <p className="text-xs text-gray-500">
               Vigente hasta: {selectedDate ? formatter.format(selectedDate.toDate(getLocalTimeZone())) : "--"}
+            </p>
+          )}
+          
+          {/* ✅ Mostrar fecha de vigencia actual del documento existente */}
+          {existingDocument?.fecha_vigencia && !selectedDate && (
+            <p className="text-xs text-blue-600">
+              Vigencia actual: {new Date(existingDocument.fecha_vigencia).toLocaleDateString('es-ES')}
             </p>
           )}
         </div>
