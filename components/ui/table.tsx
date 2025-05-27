@@ -3,7 +3,7 @@ import { useMediaQuery } from "react-responsive";
 import { Edit, Eye, Trash2, Check, AlertCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 
-import { Vehiculo, EstadoVehiculo } from "@/context/FlotaContext";
+import { Vehiculo, EstadoVehiculo, Documento } from "@/context/FlotaContext";
 import CustomTable, {
   Column,
   SortDescriptor,
@@ -42,7 +42,7 @@ export default function ConductoresTable({
   sortDescriptor,
   onSortChange,
   selectedIds = [],
-  onSelectItem = () => {},
+  onSelectItem = () => { },
   isLoading = false,
   columnKeys,
   currentPage,
@@ -137,11 +137,10 @@ export default function ConductoresTable({
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
           <span
-            className={`px-2 py-1 rounded-full ${
-              vehiculo.clase_vehiculo === "CAMIONETA"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-purple-100 text-purple-800"
-            }`}
+            className={`px-2 py-1 rounded-full ${vehiculo.clase_vehiculo === "CAMIONETA"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-purple-100 text-purple-800"
+              }`}
           >
             {vehiculo.clase_vehiculo}
           </span>
@@ -188,52 +187,95 @@ export default function ConductoresTable({
       allowsSorting: false,
       renderCell: (vehiculo: Vehiculo) => {
         const today = new Date();
+        
+        // Agrupar y ordenar documentos por categoría según prioridad
+        const documentosAgrupados = vehiculo.documentos
+          ? Object.values(vehiculo.documentos).reduce((acc, doc) => {
+            if (!acc[doc.categoria]) {
+              acc[doc.categoria] = [];
+            }
+            acc[doc.categoria].push(doc);
+            return acc;
+          }, {} as { [key: string]: Documento[] })
+          : {};
 
         // Función para calcular días de diferencia y determinar si está próximo a vencer
         const getDaysRemaining = (dateStr: string) => {
           if (!dateStr) return null;
           const vencimiento = new Date(dateStr);
           const diffTime = vencimiento.getTime() - today.getTime();
-
           return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         };
 
-        // Función para obtener el estilo según los días restantes
-        const getStatusStyle = (days: number | null) => {
-          if (days === null) return "bg-gray-100 text-gray-600";
-          if (days < 0) return "bg-red-100 text-red-800";
-          if (days < 30) return "bg-yellow-100 text-yellow-800";
-
-          return "bg-green-100 text-green-800";
-        };
-
-        const soatDays = getDaysRemaining(vehiculo.soat_vencimiento);
-        const tecnoMecanicaDays = getDaysRemaining(
-          vehiculo.tecnomecanica_vencimiento,
-        );
-
         return (
           <div className="flex flex-col space-y-1">
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(soatDays)}`}
-            >
-              SOAT:{" "}
-              {soatDays !== null
-                ? soatDays < 0
-                  ? "Vencido"
-                  : `${soatDays} días`
-                : "N/A"}
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(tecnoMecanicaDays)}`}
-            >
-              Tecno:{" "}
-              {tecnoMecanicaDays !== null
-                ? tecnoMecanicaDays < 0
-                  ? "Vencido"
-                  : `${tecnoMecanicaDays} días`
-                : "N/A"}
-            </span>
+            {(() => {
+              // Categorías a considerar
+              const categorias = [
+                "TARJETA_DE_PROPIEDAD",
+                "SOAT",
+                "TECNOMECANICA",
+                "TARJETA_DE_OPERACION",
+                "POLIZA_CONTRACTUAL",
+                "POLIZA_EXTRACONTRACTUAL",
+                "POLIZA_TODO_RIESGO",
+                "CERTIFICADO_GPS"
+              ];
+
+              let vigentes = 0;
+              let proximos = 0;
+              let vencidos = 0;
+              let noRegistrados = 0;
+
+              categorias.forEach((cat) => {
+                const docs = documentosAgrupados[cat];
+                if (!docs || docs.length === 0) {
+                  noRegistrados++;
+                  return;
+                }
+                // Tomar el documento más reciente por fecha_vigencia
+                const doc = docs.reduce((latest, curr) => {
+                  if (!latest) return curr;
+                  const latestDate = new Date(latest.fecha_vigencia || "");
+                  const currDate = new Date(curr.fecha_vigencia || "");
+                  return currDate > latestDate ? curr : latest;
+                }, null as typeof docs[number] | null);
+
+                // La tarjeta de propiedad no tiene vigencia, solo cuenta como registrado
+                if (cat === "TARJETA_DE_PROPIEDAD") {
+                  // No la sumes a vigentes ni a ningún estado de vigencia
+                  return;
+                }
+
+                const days = getDaysRemaining(doc?.fecha_vigencia || "");
+                if (days === null) {
+                  noRegistrados++;
+                } else if (days < 0) {
+                  vencidos++;
+                } else if (days < 30) {
+                  proximos++;
+                } else {
+                  vigentes++;
+                }
+              });
+
+              return (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                    Vigentes: {vigentes}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+                    Próximos a vencer: {proximos}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">
+                    Vencidos: {vencidos}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                    No registrados: {noRegistrados}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         );
       },
@@ -361,22 +403,20 @@ export default function ConductoresTable({
       <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
         <div className="flex flex-1 justify-between sm:hidden">
           <button
-            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
-              currentPage === 1
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
+            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === 1
+              ? "text-gray-300 cursor-not-allowed"
+              : "text-gray-700 hover:bg-gray-50"
+              }`}
             disabled={currentPage === 1}
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           >
             Anterior
           </button>
           <button
-            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
-              currentPage === totalPages
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
+            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === totalPages
+              ? "text-gray-300 cursor-not-allowed"
+              : "text-gray-700 hover:bg-gray-50"
+              }`}
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           >
@@ -403,11 +443,10 @@ export default function ConductoresTable({
               className="isolate inline-flex -space-x-px rounded-md shadow-sm"
             >
               <button
-                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${
-                  currentPage === 1
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
+                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${currentPage === 1
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:bg-gray-50"
+                  }`}
                 disabled={currentPage === 1}
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               >
@@ -438,11 +477,10 @@ export default function ConductoresTable({
                 ) : (
                   <button
                     key={`page-${page}`}
-                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                      currentPage === page
-                        ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                        : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
-                    }`}
+                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === page
+                      ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                      : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                      }`}
                     onClick={() =>
                       typeof page === "number" && onPageChange(page)
                     }
@@ -453,11 +491,10 @@ export default function ConductoresTable({
               )}
 
               <button
-                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${
-                  currentPage === totalPages
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
+                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${currentPage === totalPages
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:bg-gray-50"
+                  }`}
                 disabled={currentPage === totalPages}
                 onClick={() =>
                   onPageChange(Math.min(totalPages, currentPage + 1))

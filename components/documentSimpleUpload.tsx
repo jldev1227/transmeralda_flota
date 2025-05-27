@@ -19,8 +19,8 @@ interface SimpleDocumentUploaderProps {
   required?: boolean;
   vigencia?: boolean;
   file?: File | null;
-  fechaVigencia?: Date | null;
-  onChange?: (documentKey: string, file: File, fechaVigencia?: Date) => void;
+  fecha_vigencia?: Date | null;
+  onChange?: (documentKey: string, file: File, fecha_vigencia?: Date) => void;
   onRemove?: (documentKey: string) => void;
   disabled?: boolean;
   errores?: Record<string, boolean>;
@@ -32,7 +32,6 @@ const SimpleDocumentUploader = ({
   required = false,
   vigencia = false,
   file = null,
-  fechaVigencia = null,
   onChange,
   onRemove,
   disabled = false,

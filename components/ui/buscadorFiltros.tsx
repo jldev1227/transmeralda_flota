@@ -62,6 +62,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
 
   // Aplicar búsqueda al presionar Enter o el botón
   const aplicarBusqueda = () => {
+    if(searchTerm === "") return
     onSearch(searchTerm);
   };
 

@@ -23,7 +23,7 @@ export interface Vehiculo {
   conductor_id: string;
   createdAt: string;
   estado: string;
-  fechaMatricula: string;
+  fecha_matricula: string;
   galeria?: string[];
   id: string;
   kilometraje: number;
@@ -48,6 +48,7 @@ export interface Vehiculo {
   tipo_carroceria: string;
   updatedAt: string;
   vin: string;
+  documentos?: Documento[];
 }
 
 export enum EstadoVehiculo {
@@ -59,7 +60,7 @@ export enum EstadoVehiculo {
 
 export interface FiltrosVehiculos {
   conductor_id: string;
-  fechaMatricula: string;
+  fecha_matricula: string;
   estado: string;
   busqueda: string;
   marca: string;
@@ -85,7 +86,7 @@ export interface ValidationError {
 
 export interface DocumentoVehiculo {
   file: File;
-  fechaVigencia?: string;
+  fecha_vigencia?: string;
 }
 
 export interface DocumentosVehiculo {
@@ -113,7 +114,7 @@ export interface CrearVehiculoRequest {
   color?: string;
   combustible?: string;
   estado?: string;
-  fechaMatricula?: string;
+  fecha_matricula?: string;
   galeria?: string[];
   kilometraje?: number;
   latitud?: number;
@@ -175,34 +176,31 @@ interface CrearVehiculoConDocumentosResponse {
 }
 
 export interface Documento {
-  // Campos principales
-  id: string; // UUID
-  vehiculo_id: string; // UUID - Referencia al vehículo
-
-  // Campos de información del documento
-  categoria: string; // TARJETA_DE_PROPIEDAD, SEGURO, etc.
-  nombre_original: string; // Nombre original del archivo subido
-  nombre_archivo: string; // Nombre generado para almacenamiento
-  ruta_archivo: string; // Ruta donde se almacena el archivo
-  s3_key?: string; // Clave del objeto en S3 (opcional)
-  filename?: string; // Nombre del archivo (opcional, duplica nombre_original)
-  mimetype: string; // Tipo MIME del archivo
-  tamaño: number; // Tamaño del archivo en bytes
-
-  // Campos de fechas y estado
-  fechaVigencia?: Date; // Fecha de vigencia del documento (opcional)
-  estado: string; // Estado del documento (ACTIVO, INACTIVO, etc.)
-  fechaSubida: Date; // Fecha cuando se subió el documento
-  upload_date: Date; // Fecha de carga (duplica fechaSubida)
-
-  // Metadata adicional
+  id: string;
+  vehiculo_id: string;
+  categoria: string;
+  nombre_original: string;
+  nombre_archivo: string;
+  ruta_archivo: string;
+  s3_key: string;
+  filename: string;
+  mimetype: string;
+  tamaño: number;
+  fecha_vigencia: string | null;
+  estado: string;
+  upload_date: string;
   metadata: {
-    [key: string]: any; // Objeto JSON con información adicional
+    size: number;
+    bucket: string;
+    s3Location: string;
+    processedAt: string;
+    originalPath: string;
+    fileExtension: string;
+    uploadSession: string;
   };
-
-  // Campos de timestamp automáticos (por Sequelize)
-  created_at?: Date;
-  updated_at?: Date;
+  createdAt: string;
+  updatedAt: string;
+  modelo_id: string | null;
 }
 
 export interface VehiculosState {
@@ -488,23 +486,54 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     }
   };
 
-  const crearVehiculo = async (
+  // ✅ ALTERNATIVA: Función helper para validar documentos de forma más segura
+  const validarDocumentos = (documentos: DocumentosVehiculo | undefined): boolean => {
+    if (!documentos) return false;
+    return Object.keys(documentos).length > 0;
+  };
+
+  const extraerFechasVigencia = (documentos: DocumentosVehiculo | undefined): Record<string, string> => {
+    const fechas: Record<string, string> = {};
+
+    if (!documentos) return fechas;
+
+    Object.entries(documentos).forEach(([categoria, documento]) => {
+      if (documento?.fecha_vigencia) {
+        fechas[categoria] = documento.fecha_vigencia;
+      }
+    });
+
+    return fechas;
+  };
+
+  const extraerCategorias = (documentos: DocumentosVehiculo | undefined): string[] => {
+    const categorias: string[] = [];
+
+    if (!documentos) return categorias;
+
+    Object.entries(documentos).forEach(([categoria, documento]) => {
+      if (documento?.file) {
+        categorias.push(categoria);
+      }
+    });
+
+    return categorias;
+  };
+
+  // ✅ VERSION MEJORADA usando las funciones helper:
+  const crearVehiculo  = async (
     data: CrearVehiculoRequest,
   ): Promise<Vehiculo> => {
     clearError();
     try {
-      // ✅ Validar que documentos existe antes de usarlo
-      const tieneDocumentos = data.documentos && Object.keys(data.documentos).length > 0;
+      const tieneDocumentos = validarDocumentos(data.documentos);
 
-      // Seleccionar endpoint y configurar datos según el tipo de creación
       let endpoint: string;
       let requestData: any;
       let headers: Record<string, string> = {};
 
       if (tieneDocumentos) {
-        // Creación con documentos - usar FormData
         endpoint = "/api/flota";
-
         const formData = new FormData();
 
         // Agregar datos básicos del vehículo
@@ -517,47 +546,33 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           }
         });
 
-        // ✅ Validar que documentos existe antes de extraer fechas de vigencia
-        const fechasVigencia: Record<string, string> = {};
-        if (data.documentos) {
-          Object.entries(data.documentos).forEach(([categoria, documento]) => {
-            if (documento?.fechaVigencia) {
-              fechasVigencia[categoria] = documento.fechaVigencia;
-            }
-          });
-        }
+        // Extraer fechas de vigencia usando función helper
+        const fechasVigencia = extraerFechasVigencia(data.documentos);
 
-        // Agregar fechas de vigencia como JSON string si existen
         if (Object.keys(fechasVigencia).length > 0) {
           formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
         }
 
-        // Si también hay fechasVigencia en el nivel superior (fallback)
         if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
           formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
         }
 
-        // ✅ Validar que documentos existe antes de agregar archivos y categorías
-        const categorias: string[] = [];
+        // Agregar archivos usando función helper
+        const categorias = extraerCategorias(data.documentos);
+
         if (data.documentos) {
           Object.entries(data.documentos).forEach(([categoria, documento]) => {
             if (documento?.file) {
-              categorias.push(categoria);
               formData.append('documentos', documento.file);
             }
           });
         }
 
-        // Agregar categorías como JSON string
         formData.append('categorias', JSON.stringify(categorias));
-
         requestData = formData;
         headers['Content-Type'] = 'multipart/form-data';
       } else {
-        // Creación básica sin documentos - usar JSON
         endpoint = "/api/flota/basico";
-
-        // Excluir documentos y fechas de vigencia para creación básica
         const { documentos, fechasVigencia, ...vehiculoBasico } = data;
         requestData = vehiculoBasico;
         headers['Content-Type'] = 'application/json';
@@ -570,14 +585,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       );
 
       if (response.data && response.data.success) {
-        console.log(response);
         return response.data.data;
       } else {
         throw new Error(response.data.message || "Error al crear vehículo");
       }
     } catch (err: any) {
 
-      console.log(err);
       // Definir un mensaje de error predeterminado
       let errorTitle = "Error al crear vehículo";
       let errorDescription = "Ha ocurrido un error inesperado.";
@@ -731,115 +744,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       console.error("Error detallado:", err);
 
       // Siempre lanzamos el error, nunca retornamos null
-      throw err;
-    }
-  };
-
-  // ✅ ALTERNATIVA: Función helper para validar documentos de forma más segura
-  const validarDocumentos = (documentos: DocumentosVehiculo | undefined): boolean => {
-    if (!documentos) return false;
-    return Object.keys(documentos).length > 0;
-  };
-
-  const extraerFechasVigencia = (documentos: DocumentosVehiculo | undefined): Record<string, string> => {
-    const fechas: Record<string, string> = {};
-
-    if (!documentos) return fechas;
-
-    Object.entries(documentos).forEach(([categoria, documento]) => {
-      if (documento?.fechaVigencia) {
-        fechas[categoria] = documento.fechaVigencia;
-      }
-    });
-
-    return fechas;
-  };
-
-  const extraerCategorias = (documentos: DocumentosVehiculo | undefined): string[] => {
-    const categorias: string[] = [];
-
-    if (!documentos) return categorias;
-
-    Object.entries(documentos).forEach(([categoria, documento]) => {
-      if (documento?.file) {
-        categorias.push(categoria);
-      }
-    });
-
-    return categorias;
-  };
-
-  // ✅ VERSION MEJORADA usando las funciones helper:
-  const crearVehiculoMejorado = async (
-    data: CrearVehiculoRequest,
-  ): Promise<Vehiculo> => {
-    clearError();
-    try {
-      const tieneDocumentos = validarDocumentos(data.documentos);
-
-      let endpoint: string;
-      let requestData: any;
-      let headers: Record<string, string> = {};
-
-      if (tieneDocumentos) {
-        endpoint = "/api/flota";
-        const formData = new FormData();
-
-        // Agregar datos básicos del vehículo
-        Object.keys(data).forEach((key) => {
-          if (key !== 'documentos' && key !== 'fechasVigencia') {
-            const value = data[key as keyof CrearVehiculoRequest];
-            if (value !== undefined && value !== null) {
-              formData.append(key, value.toString());
-            }
-          }
-        });
-
-        // Extraer fechas de vigencia usando función helper
-        const fechasVigencia = extraerFechasVigencia(data.documentos);
-
-        if (Object.keys(fechasVigencia).length > 0) {
-          formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
-        }
-
-        if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
-          formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
-        }
-
-        // Agregar archivos usando función helper
-        const categorias = extraerCategorias(data.documentos);
-
-        if (data.documentos) {
-          Object.entries(data.documentos).forEach(([categoria, documento]) => {
-            if (documento?.file) {
-              formData.append('documentos', documento.file);
-            }
-          });
-        }
-
-        formData.append('categorias', JSON.stringify(categorias));
-        requestData = formData;
-        headers['Content-Type'] = 'multipart/form-data';
-      } else {
-        endpoint = "/api/flota/basico";
-        const { documentos, fechasVigencia, ...vehiculoBasico } = data;
-        requestData = vehiculoBasico;
-        headers['Content-Type'] = 'application/json';
-      }
-
-      const response = await apiClient.post<ApiResponse<Vehiculo>>(
-        endpoint,
-        requestData,
-        { headers }
-      );
-
-      if (response.data && response.data.success) {
-        return response.data.data;
-      } else {
-        throw new Error(response.data.message || "Error al crear vehículo");
-      }
-    } catch (err: any) {
-      // ... resto del manejo de errores igual
       throw err;
     }
   };

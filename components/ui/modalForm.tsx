@@ -15,6 +15,7 @@ import { Switch } from "@heroui/switch";
 import { Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
+import socketService from "@/services/socketServices";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -25,6 +26,28 @@ interface ModalFormVehiculoProps {
 }
 
 type VehiculoKey = keyof Vehiculo;
+
+interface Procesamiento {
+  sessionId: string | null;
+  procesados: number;
+  total: number;
+  progreso: number;
+  estado: string | null; // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  mensaje: string;
+  error: string | null;
+  porcentaje: number;
+}
+
+const initialProcesamientoState: Procesamiento = {
+  sessionId: "1728dfa2-00f5-43d4-921b-70c7d84d9468",
+  procesados: 0,
+  total: 0,
+  progreso: 0,
+  estado: null, // 'iniciando', 'en_proceso', 'completado', 'fallido'
+  mensaje: "",
+  error: '{}',
+  porcentaje: 0,
+};
 
 const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   isOpen,
@@ -42,6 +65,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     modelo: "",
     linea: "",
   });
+
+  // Estado para el procesamiento de documentos
+  const [procesamiento, setProcesamiento] = useState<Procesamiento>(
+    initialProcesamientoState,
+  );
 
   const [loading, setLoading] = useState<boolean>(false)
   const [subirDocumentos, setSubirDocumentos] = useState(true);
@@ -79,7 +107,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     setDocumentos({});
     setErroresDocumentos({});
   };
- // Efecto para cargar datos cuando se está editando
+
+  // Efecto para cargar datos cuando se está editando
   useEffect(() => {
     if (vehiculoEditar) {
       setFormData({
@@ -90,6 +119,63 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       resetForm();
     }
   }, [vehiculoEditar, isOpen]);
+
+  useEffect(() => {
+    if (!socketService || !procesamiento.sessionId) return;
+
+    const handleProgreso = (data: any) => {
+      setProcesamiento(prev => ({
+        ...prev,
+        procesados: data.procesados || prev.procesados,
+        progreso: data.progreso || prev.progreso,
+        mensaje: data.mensaje || prev.mensaje,
+        porcentaje: data.porcentaje || prev.porcentaje
+      }));
+    };
+
+    const handleCompletado = () => {
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'completado',
+        progreso: 100,
+        porcentaje: 100,
+        mensaje: 'Vehículo creado exitosamente'
+      }));
+
+      addToast({
+        title: "¡Éxito!",
+        description: "Vehículo creado correctamente",
+        color: "success"
+      });
+
+      onClose(); // Cerrar modal
+    };
+
+    const handleError = (data: any) => {
+      setProcesamiento(prev => ({
+        ...prev,
+        estado: 'error',
+        error: data.error,
+        mensaje: 'Error al procesar'
+      }));
+
+      addToast({
+        title: "Error",
+        description: data.error || "Error al crear vehículo",
+        color: "danger"
+      });
+    };
+
+    socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
+    socketService.on("vehiculo:procesamiento:completado", handleCompletado);
+    socketService.on("vehiculo:procesamiento:error", handleError);
+
+    return () => {
+      socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
+      socketService.off("vehiculo:procesamiento:completado", handleCompletado);
+      socketService.off("vehiculo:procesamiento:error", handleError);
+    };
+  }, [procesamiento.sessionId]);
 
   // Manejar cambios en los inputs
   const handleChange = (
@@ -208,7 +294,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       if (documento) {
         documentosParaEnvio[key] = {
           file: documento.file,
-          ...(documento.fechaVigencia && { fechaVigencia: documento.fechaVigencia })
+          ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia })
         };
       }
     });
@@ -243,36 +329,54 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     {
       key: "SOAT",
       label: "SOAT",
-      required: true,
+      required: false,
       vigencia: true, // Tiene fecha de vigencia
     },
     {
       key: "TECNOMECANICA",
       label: "Tecnomecánica",
-      required: true,
+      required: false,
       vigencia: true, // Tiene fecha de vigencia
     },
     {
       key: "TARJETA_DE_OPERACION",
       label: "Tarjeta de Operación",
-      required: true,
+      required: false,
       vigencia: true,
     },
     {
       key: "POLIZA_CONTRACTUAL",
       label: "Póliza Contractual",
-      required: true,
+      required: false,
+      vigencia: true,
+    },
+    {
+      key: "POLIZA_EXTRACONTRACTUAL",
+      label: "Póliza Extracontractual",
+      required: false,
+      vigencia: true,
+    },
+    {
+      key: "POLIZA_TODO_RIESGO",
+      label: "Póliza Todo Riesgo",
+      required: false,
+      vigencia: true,
+    },
+    {
+      key: "CERTIFICADO_GPS",
+      label: "Certificado GPS",
+      required: false,
       vigencia: true,
     },
   ];
 
   // Manejar cambio de documento
-  const handleDocumentChange = (docKey: string, file: File, fechaVigencia?: Date) => {
+  const handleDocumentChange = (docKey: string, file: File, fecha_vigencia?: Date) => {
     setDocumentos(prev => ({
       ...prev,
       [docKey]: {
         file,
-        fechaVigencia,
+        fecha_vigencia,
         uploadedAt: new Date()
       }
     }));
@@ -313,7 +417,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       if (doc.required && doc.vigencia && documentos[doc.key]) {
 
         // Si el documento existe pero no tiene fecha de vigencia
-        if (!documentos[doc.key].fechaVigencia) {
+        if (!documentos[doc.key].fecha_vigencia) {
           nuevosErroresDocumentos[doc.key] = true;
           missingVigencias.push(doc.label);
         }
@@ -479,7 +583,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                           required={docType.required}
                           vigencia={docType.vigencia}
                           file={documentos[docType.key]?.file || null}
-                          fechaVigencia={documentos[docType.key]?.fechaVigencia || null}
+                          fecha_vigencia={documentos[docType.key]?.fecha_vigencia || null}
                           onChange={handleDocumentChange}
                           onRemove={handleDocumentRemove}
                           errores={erroresDocumentos}
@@ -500,8 +604,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               <li key={key} className="flex justify-between">
                                 <span>{docType?.label}</span>
                                 <span className="text-blue-600">
-                                  {doc.fechaVigencia
-                                    ? `Vigente hasta: ${doc.fechaVigencia.toLocaleDateString('es-ES')}`
+                                  {doc.fecha_vigencia
+                                    ? `Vigente hasta: ${doc.fecha_vigencia.toLocaleDateString('es-ES')}`
                                     : "✓"
                                   }
                                 </span>
@@ -533,11 +637,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
               >
                 {loading
                   ? vehiculoEditar
-                  ? "Actualizando..."
-                  : "Guardando..."
+                    ? "Actualizando..."
+                    : "Guardando..."
                   : vehiculoEditar
-                  ? "Actualizar"
-                  : "Guardar"}
+                    ? "Actualizar"
+                    : "Guardar"}
               </Button>
             </ModalFooter>
           </>
