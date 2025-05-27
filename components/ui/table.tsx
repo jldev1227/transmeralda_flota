@@ -166,10 +166,16 @@ export default function ConductoresTable({
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
-          <div className="font-medium">{vehiculo.propietario_nombre}</div>
-          <div className="text-gray-500">
-            {vehiculo.propietario_identificacion}
-          </div>
+          {vehiculo.propietario_nombre ? (
+            <>
+              <div className="font-medium">{vehiculo.propietario_nombre}</div>
+              <div className="text-gray-500">
+                {vehiculo.propietario_identificacion}
+              </div>
+            </>
+          ) : (
+            <div className="text-gray-400 italic">Sin propietario registrado</div>
+          )}
         </div>
       ),
     },
@@ -187,7 +193,7 @@ export default function ConductoresTable({
       allowsSorting: false,
       renderCell: (vehiculo: Vehiculo) => {
         const today = new Date();
-        
+
         // Agrupar y ordenar documentos por categoría según prioridad
         const documentosAgrupados = vehiculo.documentos
           ? Object.values(vehiculo.documentos).reduce((acc, doc) => {

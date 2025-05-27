@@ -12,7 +12,7 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
-import { Vehiculo } from "@/context/FlotaContext";
+import { CrearVehiculoRequest, Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
 import socketService from "@/services/socketServices";
@@ -20,7 +20,7 @@ import socketService from "@/services/socketServices";
 interface ModalFormVehiculoProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (vehiculo: Vehiculo) => Promise<void>;
+  onSave: (vehiculoData: CrearVehiculoRequest | (CrearVehiculoRequest & { id: string })) => Promise<void>;
   vehiculoEditar?: Vehiculo | null;
   titulo?: string;
 }
@@ -279,7 +279,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     };
 
     try {
-      await onSave(datosCompletos as Vehiculo);
+      await onSave(datosCompletos as CrearVehiculoRequest | (CrearVehiculoRequest & { id: string }));
     } finally {
       setLoading(false);
     }

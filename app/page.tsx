@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
 import { Alert } from "@heroui/alert";
 
-import { Vehiculo, useFlota, BusquedaParams } from "@/context/FlotaContext";
+import { Vehiculo, useFlota, BusquedaParams, CrearVehiculoRequest } from "@/context/FlotaContext";
 import VehiculosTable from "@/components/ui/table";
 import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
@@ -160,10 +160,12 @@ export default function GestionVehiculos() {
   };
 
   // Función para guardar vehiculo (nueva o editada)
-  const guardarVehiculo = async (vehiculoData: Vehiculo) => {
+  const guardarVehiculo = async (
+    vehiculoData: CrearVehiculoRequest | (CrearVehiculoRequest & { id: string })
+  ) => {
     try {
       setLoading(true);
-      if (vehiculoData.id) {
+      if ('id' in vehiculoData && vehiculoData.id) {
         // Editar vehiculo existente
         await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
       } else {
