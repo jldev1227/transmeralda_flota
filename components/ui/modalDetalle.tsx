@@ -6,7 +6,6 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import { Badge } from "@heroui/badge";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Card, CardBody } from "@heroui/card";
@@ -42,16 +41,15 @@ interface ModalDetalleVehiculoProps {
 
 // Función para obtener el color de estado del vehículo
 const getEstadoColor = (estado: string) => {
-  switch (estado?.toLowerCase()) {
-    case "activo":
-    case "disponible":
-      return { badge: "bg-green-100 text-green-800" };
-    case "inactivo":
+  switch (estado) {
+    case "INACTIVO":
       return { badge: "bg-gray-100 text-gray-800" };
-    case "en mantenimiento":
-      return { badge: "bg-yellow-100 text-yellow-800" };
-    case "fuera de servicio":
-      return { badge: "bg-red-100 text-red-800" };
+    case "DISPONIBLE":
+      return { badge: "bg-green-100 text-green-800" };
+    case "NO DISPONIBLE":
+      return { badge: "bg-danger-100 text-danger-800" };
+    case "MANTENIMIENTO":
+      return { badge: "bg-warning-100 text-warning-800" };
     default:
       return { badge: "bg-blue-100 text-blue-800" };
   }
@@ -264,9 +262,9 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                 <Truck className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-lg font-semibold">Detalle del Vehículo</h3>
               </div>
-              <Badge className={`${estadoColor.badge} px-3 py-1`}>
+              <Chip className={`${estadoColor.badge} px-3 py-1`}>
                 {getEstadoLabel(vehiculo.estado)}
-              </Badge>
+              </Chip>
             </ModalHeader>
 
             <ModalBody>

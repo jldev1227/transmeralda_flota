@@ -52,7 +52,7 @@ export interface Vehiculo {
 }
 
 export enum EstadoVehiculo {
-  ACTIVO = "ACTIVO",
+  "NO DISPONIBLE" = "NO DISPONIBLE",
   INACTIVO = "INACTIVO",
   MANTENIMIENTO = "MANTENIMIENTO",
   DISPONIBLE = "DISPONIBLE",
@@ -218,7 +218,7 @@ interface ErrorProcesamiento {
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoVehiculo) => {
   switch (estado) {
-    case EstadoVehiculo.ACTIVO:
+    case EstadoVehiculo['NO DISPONIBLE']:
       return {
         bg: "bg-green-100",
         text: "text-green-800",
@@ -268,21 +268,6 @@ export const getEstadoColor = (estado: EstadoVehiculo) => {
         color: "#71717a",
         lightColor: "#f4f4f5",
       };
-  }
-};
-
-export const getEstadoLabel = (estado: EstadoVehiculo): string => {
-  switch (estado) {
-    case EstadoVehiculo.ACTIVO:
-      return "Activo";
-    case EstadoVehiculo.INACTIVO:
-      return "Inactivo";
-    case EstadoVehiculo.MANTENIMIENTO:
-      return "Suspendido";
-    case EstadoVehiculo.DISPONIBLE:
-      return "Retirado";
-    default:
-      return "Desconocido";
   }
 };
 

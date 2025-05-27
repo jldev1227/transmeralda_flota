@@ -1,6 +1,6 @@
 import React from "react";
 import { useMediaQuery } from "react-responsive";
-import { Edit, Eye, Trash2, Check, AlertCircle, XCircle } from "lucide-react";
+import { Edit, Eye, Ban, Check, AlertCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 
 import { Vehiculo, EstadoVehiculo, Documento } from "@/context/FlotaContext";
@@ -80,7 +80,7 @@ export default function ConductoresTable({
             {estado}
           </span>
         );
-      case EstadoVehiculo.ACTIVO:
+      case EstadoVehiculo["NO DISPONIBLE"]:
         return (
           <span className="inline-flex items-center px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
             <XCircle className="mr-1 h-3 w-3" />
@@ -106,25 +106,25 @@ export default function ConductoresTable({
         <div className="flex items-center">
           {vehiculo.placa ? (
             <Image
-              alt={`${vehiculo.placa} ${vehiculo.modelo}`}
+              alt={`${vehiculo.placa.trim()} ${vehiculo.modelo?.trim()}`}
               className="h-16 w-16 rounded-full mr-3"
               height={200}
-              src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
+              src={`/assets/${vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
               width={200}
             />
           ) : (
             <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center mr-3">
               <span className="text-emerald-700 font-semibold">
-                {vehiculo.placa?.substring(0, 2)}
+                {vehiculo.placa?.trim().substring(0, 2)}
               </span>
             </div>
           )}
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {vehiculo.placa} {vehiculo.marca}
+              {vehiculo.placa?.trim()} {vehiculo.marca?.trim()}
             </div>
             <div className="text-sm text-gray-500">
-              {vehiculo.modelo || "Modelo no especificado"} - {vehiculo.linea}
+              {(vehiculo.modelo?.trim() || "Modelo no especificado")} - {vehiculo.linea?.trim()}
             </div>
           </div>
         </div>
@@ -137,15 +137,18 @@ export default function ConductoresTable({
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
           <span
-            className={`px-2 py-1 rounded-full ${vehiculo.clase_vehiculo === "CAMIONETA"
+            className={`px-2 py-1 rounded-full ${vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta"
               ? "bg-blue-100 text-blue-800"
               : "bg-purple-100 text-purple-800"
               }`}
           >
-            {vehiculo.clase_vehiculo}
+            {vehiculo.clase_vehiculo?.trim()}
           </span>
           <div className="text-xs text-gray-500 mt-1">
-            {vehiculo.tipo_carroceria}
+            {vehiculo.tipo_carroceria?.trim()
+              ? vehiculo.tipo_carroceria.trim()
+              : <span className="text-gray-400 italic">Sin tipo de carrocería</span>
+            }
           </div>
         </div>
       ),
@@ -156,7 +159,7 @@ export default function ConductoresTable({
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
-          {vehiculo.kilometraje.toLocaleString()} km
+          {vehiculo.kilometraje?.toLocaleString()} km
         </div>
       ),
     },
@@ -166,11 +169,11 @@ export default function ConductoresTable({
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
-          {vehiculo.propietario_nombre ? (
+          {vehiculo.propietario_nombre?.trim() ? (
             <>
-              <div className="font-medium">{vehiculo.propietario_nombre}</div>
+              <div className="font-medium">{vehiculo.propietario_nombre.trim()}</div>
               <div className="text-gray-500">
-                {vehiculo.propietario_identificacion}
+                {vehiculo.propietario_identificacion?.trim()}
               </div>
             </>
           ) : (
@@ -184,7 +187,13 @@ export default function ConductoresTable({
       label: "ESTADO",
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
-        <div>{renderEstado(vehiculo.estado as EstadoVehiculo)}</div>
+        <div>
+          {renderEstado(
+            (Object.values(EstadoVehiculo) as string[]).includes(vehiculo.estado?.trim?.())
+              ? (EstadoVehiculo as any)[vehiculo.estado?.trim?.()]
+              : vehiculo.estado
+          )}
+        </div>
       ),
     },
     documentos: {
@@ -197,10 +206,11 @@ export default function ConductoresTable({
         // Agrupar y ordenar documentos por categoría según prioridad
         const documentosAgrupados = vehiculo.documentos
           ? Object.values(vehiculo.documentos).reduce((acc, doc) => {
-            if (!acc[doc.categoria]) {
-              acc[doc.categoria] = [];
+            const categoria = doc.categoria?.trim();
+            if (!acc[categoria]) {
+              acc[categoria] = [];
             }
-            acc[doc.categoria].push(doc);
+            acc[categoria].push(doc);
             return acc;
           }, {} as { [key: string]: Documento[] })
           : {};
@@ -208,7 +218,7 @@ export default function ConductoresTable({
         // Función para calcular días de diferencia y determinar si está próximo a vencer
         const getDaysRemaining = (dateStr: string) => {
           if (!dateStr) return null;
-          const vencimiento = new Date(dateStr);
+          const vencimiento = new Date(dateStr.trim());
           const diffTime = vencimiento.getTime() - today.getTime();
           return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         };
@@ -234,7 +244,7 @@ export default function ConductoresTable({
               let noRegistrados = 0;
 
               categorias.forEach((cat) => {
-                const docs = documentosAgrupados[cat];
+                const docs = documentosAgrupados[cat.trim()];
                 if (!docs || docs.length === 0) {
                   noRegistrados++;
                   return;
@@ -242,18 +252,18 @@ export default function ConductoresTable({
                 // Tomar el documento más reciente por fecha_vigencia
                 const doc = docs.reduce((latest, curr) => {
                   if (!latest) return curr;
-                  const latestDate = new Date(latest.fecha_vigencia || "");
-                  const currDate = new Date(curr.fecha_vigencia || "");
+                  const latestDate = new Date(latest.fecha_vigencia?.trim() || "");
+                  const currDate = new Date(curr.fecha_vigencia?.trim() || "");
                   return currDate > latestDate ? curr : latest;
                 }, null as typeof docs[number] | null);
 
                 // La tarjeta de propiedad no tiene vigencia, solo cuenta como registrado
-                if (cat === "TARJETA_DE_PROPIEDAD") {
+                if (cat.trim() === "TARJETA_DE_PROPIEDAD") {
                   // No la sumes a vigentes ni a ningún estado de vigencia
                   return;
                 }
 
-                const days = getDaysRemaining(doc?.fecha_vigencia || "");
+                const days = getDaysRemaining(doc?.fecha_vigencia?.trim() || "");
                 if (days === null) {
                   noRegistrados++;
                 } else if (days < 0) {
@@ -297,7 +307,7 @@ export default function ConductoresTable({
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation();
-              abrirModalDetalle(vehiculo.id);
+              abrirModalDetalle(vehiculo.id?.trim());
             }}
           >
             <Eye className="h-5 w-5" />
@@ -307,7 +317,18 @@ export default function ConductoresTable({
             title="Editar"
             onClick={(e) => {
               e.stopPropagation();
-              abrirModalEditar(vehiculo);
+              abrirModalEditar({
+                ...vehiculo,
+                id: vehiculo.id?.trim(),
+                placa: vehiculo.placa?.trim(),
+                marca: vehiculo.marca?.trim(),
+                modelo: vehiculo.modelo?.trim(),
+                linea: vehiculo.linea?.trim(),
+                propietario_nombre: vehiculo.propietario_nombre?.trim(),
+                propietario_identificacion: vehiculo.propietario_identificacion?.trim(),
+                clase_vehiculo: vehiculo.clase_vehiculo?.trim(),
+                tipo_carroceria: vehiculo.tipo_carroceria?.trim(),
+              });
             }}
           >
             <Edit className="h-5 w-5" />
@@ -319,7 +340,7 @@ export default function ConductoresTable({
               e.stopPropagation();
             }}
           >
-            <Trash2 className="h-5 w-5" />
+            <Ban className="h-5 w-5" />
           </button>
         </div>
       ),

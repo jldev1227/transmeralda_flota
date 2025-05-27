@@ -4,6 +4,27 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Search, X, RefreshCw } from "lucide-react";
 import { SharedSelection } from "@heroui/system";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
+
+const estados = [
+  { key: "DISPONIBLE", label: "Disponible" },
+  { key: "NO DISPONIBLE", label: "No disponible" },
+  { key: "MANTENIMIENTO", label: "Mantenimiento" },
+  { key: "INACTIVO", label: "Inactivo" },
+];
+
+const clases = [
+  { key: "CAMIONETA", label: "Camioneta" },
+  { key: "BUS", label: "Bus" },
+  { key: "BUSETA", label: "Buseta" },
+  { key: "MICROBUS", label: "Microbus" },
+  { key: "CAMION", label: "Camion" }
+];
 
 interface BuscadorFiltrosConductoresProps {
   onSearch: (searchTerm: string) => void;
@@ -12,18 +33,14 @@ interface BuscadorFiltrosConductoresProps {
 }
 
 export interface FilterOptions {
-  sedes: string[];
-  tiposIdentificacion: string[];
-  tiposContrato: string[];
-  estados: string[]; // Cambiado a string[] para consistencia
+  estados: string[];
+  clases: string[];
 }
 
 // Definir tipos para los Sets
 interface FilterSets {
-  sedes: Set<string>;
-  tiposIdentificacion: Set<string>;
-  tiposContrato: Set<string>;
   estados: Set<string>;
+  clases: Set<string>;
 }
 
 const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
@@ -36,20 +53,16 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
 
   // Estado para los filtros como Sets
   const [filtros, setFiltros] = useState<FilterSets>({
-    sedes: new Set([]),
-    tiposIdentificacion: new Set([]),
-    tiposContrato: new Set([]),
     estados: new Set([]),
+    clases: new Set([]),
   });
 
   // Efecto para aplicar filtros cuando cambian
   useEffect(() => {
     // Convertir los Sets a arrays para pasarlos a onFilter
     const filtrosArray: FilterOptions = {
-      sedes: Array.from(filtros.sedes),
-      tiposIdentificacion: Array.from(filtros.tiposIdentificacion),
-      tiposContrato: Array.from(filtros.tiposContrato),
       estados: Array.from(filtros.estados),
+      clases: Array.from(filtros.clases)
     };
 
     onFilter(filtrosArray);
@@ -62,7 +75,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
 
   // Aplicar búsqueda al presionar Enter o el botón
   const aplicarBusqueda = () => {
-    if(searchTerm === "") return
+    if (searchTerm === "") return
     onSearch(searchTerm);
   };
 
@@ -77,10 +90,8 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
   const limpiarFiltros = () => {
     setSearchTerm("");
     setFiltros({
-      sedes: new Set([]),
-      tiposIdentificacion: new Set([]),
-      tiposContrato: new Set([]),
       estados: new Set([]),
+      clases: new Set([])
     });
     onSearch("");
     onReset();
@@ -89,9 +100,6 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
   // Contar filtros activos
   const contarFiltrosActivos = () => {
     return (
-      filtros.sedes.size +
-      filtros.tiposIdentificacion.size +
-      filtros.tiposContrato.size +
       filtros.estados.size
     );
   };
@@ -106,11 +114,6 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
   // Renderizar tags de filtros seleccionados
   const renderFiltrosSeleccionados = () => {
     const todosLosFiltros = [
-      ...Array.from(filtros.sedes).map((sede) => ({
-        tipo: "sedes",
-        valor: sede,
-        label: `Sede: ${sede}`,
-      })),
       ...Array.from(filtros.estados).map((estado) => ({
         tipo: "estados",
         valor: estado,
@@ -178,12 +181,58 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
         {/* Botones de acción */}
         <div className="flex flex-wrap gap-2">
           <Button
-            className="w-full xs:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
             variant="solid"
             onPress={aplicarBusqueda}
           >
             Buscar
           </Button>
+
+          {/* Dropdown para estados */}
+          <Dropdown>
+            <DropdownTrigger>
+              <Button color="primary" radius="sm" variant="flat">
+                Estados{" "}
+                {filtros.estados.size > 0 &&
+                  `(${filtros.estados.size})`}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Tipos de estados"
+              closeOnSelect={false}
+              selectedKeys={filtros.estados}
+              selectionMode="multiple"
+              onSelectionChange={handleEstadosChange}
+            >
+              {estados.map((tipo) => (
+                <DropdownItem key={tipo.key}>{tipo.label}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+           {/* Dropdown para clase vehiculo */}
+          <Dropdown>
+            <DropdownTrigger>
+              <Button color="primary" radius="sm" variant="flat">
+                Clase{" "}
+                {filtros.clases.size > 0 &&
+                  `(${filtros.clases.size})`}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              disallowEmptySelection
+              aria-label="Tipos de clases"
+              closeOnSelect={false}
+              selectedKeys={filtros.clases}
+              selectionMode="multiple"
+              onSelectionChange={handleEstadosChange}
+            >
+              {clases.map((tipo) => (
+                <DropdownItem key={tipo.key}>{tipo.label}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
 
           {/* Botón para limpiar todos los filtros */}
           {contarFiltrosActivos() > 0 && (
