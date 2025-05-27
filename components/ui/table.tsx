@@ -164,7 +164,7 @@ export default function ConductoresTable({
       ),
     },
     propietario: {
-      key: "propietario",
+      key: "propietario_nombre",
       label: "PROPIETARIO",
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (

@@ -111,6 +111,13 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     }));
   };
 
+  const handleClassesChange = (keys: SharedSelection) => {
+    setFiltros((prev) => ({
+      ...prev,
+      clases: keys as unknown as Set<string>,
+    }));
+  };
+
   // Renderizar tags de filtros seleccionados
   const renderFiltrosSeleccionados = () => {
     const todosLosFiltros = [
@@ -226,7 +233,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
               closeOnSelect={false}
               selectedKeys={filtros.clases}
               selectionMode="multiple"
-              onSelectionChange={handleEstadosChange}
+              onSelectionChange={handleClassesChange}
             >
               {clases.map((tipo) => (
                 <DropdownItem key={tipo.key}>{tipo.label}</DropdownItem>

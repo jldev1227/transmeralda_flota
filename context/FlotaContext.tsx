@@ -75,6 +75,7 @@ export interface BusquedaParams {
   limit?: number;
   search?: string; // Para búsqueda general (placa, marca, modelo, linea.)
   estado?: EstadoVehiculo | EstadoVehiculo[];
+  clase?: string | string[];
   sort?: string;
   order?: "ascending" | "descending";
 }
@@ -410,6 +411,15 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           params.estado = paramsBusqueda.estado.join(",");
         } else {
           params.estado = paramsBusqueda.estado;
+        }
+      }
+
+      // Añade filtros de estado
+      if (paramsBusqueda.clase) {
+        if (Array.isArray(paramsBusqueda.clase)) {
+          params.clase = paramsBusqueda.clase.join(",");
+        } else {
+          params.clase = paramsBusqueda.clase;
         }
       }
 
@@ -862,8 +872,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             timestamp: new Date(),
           },
         ]);
-
-        console.log(data)
 
         addToast({
           title: "Nuevo Vehículo",

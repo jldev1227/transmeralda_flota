@@ -30,10 +30,8 @@ export default function GestionVehiculos() {
   // Estados para búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filtros, setFiltros] = useState<FilterOptions>({
-    sedes: [],
-    tiposIdentificacion: [],
-    tiposContrato: [],
     estados: [],
+    clases: []
   });
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -83,6 +81,10 @@ export default function GestionVehiculos() {
         params.estado = currentFiltros.estados as any;
       }
 
+      if (currentFiltros.clases.length > 0) {
+        params.clase = currentFiltros.clases as any;
+      }
+
       // Realizar la búsqueda
       await fetchVehiculos(params);
 
@@ -109,10 +111,8 @@ export default function GestionVehiculos() {
   // Manejar reset de búsqueda y filtros
   const handleReset = async () => {
     const filtrosVacios = {
-      sedes: [],
-      tiposIdentificacion: [],
-      tiposContrato: [],
       estados: [],
+      clases: [],
     };
 
     await cargarVehiculos(1, "", filtrosVacios);
