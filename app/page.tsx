@@ -167,7 +167,7 @@ export default function GestionVehiculos() {
       setLoading(true);
       if ('id' in vehiculoData && vehiculoData.id) {
         // Editar vehiculo existente
-        await actualizarVehiculo(vehiculoData.id, vehiculoData);
+        await actualizarVehiculo(vehiculoData);
       } else {
         // Crear nuevo vehiculo
         await crearVehiculo(vehiculoData);

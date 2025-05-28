@@ -36,15 +36,9 @@ export interface Vehiculo {
   numero_motor: string;
   numero_serie: string;
   placa: string;
-  poliza_contractual_vencimiento: string;
-  poliza_extra_contractual_vencimiento: string;
-  poliza_todo_riesgo_vencimiento: string;
   propietario_identificacion: string;
   propietario_nombre: string;
   propietario_id: string;
-  soat_vencimiento: string;
-  tarjeta_de_operacion_vencimiento: string;
-  tecnomecanica_vencimiento: string;
   tipo_carroceria: string;
   updatedAt: string;
   vin: string;
@@ -127,14 +121,6 @@ export interface CrearVehiculoRequest {
   numero_motor?: string;
   numero_serie?: string;
   placa: string;
-
-  // Fechas de vencimiento de documentos
-  poliza_contractual_vencimiento?: string;
-  poliza_extra_contractual_vencimiento?: string;
-  poliza_todo_riesgo_vencimiento?: string;
-  soat_vencimiento?: string;
-  tarjeta_de_operacion_vencimiento?: string;
-  tecnomecanica_vencimiento?: string;
 
   // Información del propietario
   propietario_identificacion?: string;
@@ -293,8 +279,7 @@ interface FlotaContextType {
   getVehiculo: (id: string) => Promise<Vehiculo | null>;
   crearVehiculo: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
   actualizarVehiculo: (
-    id: string,
-    data: ActualizarVehiculoRequest,
+    data: ActualizarVehiculoRequest
   ) => Promise<Vehiculo | null>;
 
   // Funciones de utilidad
@@ -745,10 +730,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
   // ✅ VERSION MEJORADA para actualización de vehículo usando las funciones helper:
   const actualizarVehiculo = async (
-    id: string,
-    data: ActualizarVehiculoRequest,
+    data: ActualizarVehiculoRequest
   ): Promise<Vehiculo> => {
     clearError();
+
     try {
       const tieneDocumentos = validarDocumentos(data.documentos);
 
@@ -757,7 +742,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       let headers: Record<string, string> = {};
 
       if (tieneDocumentos) {
-        endpoint = `/api/flota/${id}`;
+        endpoint = `/api/flota/${data.id}`;
         const formData = new FormData();
 
         // Agregar datos básicos del vehículo
@@ -815,7 +800,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         headers['Content-Type'] = 'multipart/form-data';
       } else {
         // ✅ Sin documentos - endpoint básico con PUT
-        endpoint = `/api/flota/basico/${id}`;
+        endpoint = `/api/flota/basico/${data.id}`;
         const { documentos, fechasVigencia, id: vehiculoId, ...vehiculoBasico } = data;
         requestData = vehiculoBasico;
         headers['Content-Type'] = 'application/json';
@@ -1086,6 +1071,15 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           },
         ]);
 
+        // Agregar el nuevo vehículo al estado
+        setVehiculosState((prev) => ({
+          ...prev,
+          data: [data.vehiculo, ...prev.data], // Agregar al inicio del array
+          count: prev.count + 1,
+          // Recalcular totalPages si es necesario (asumiendo un tamaño de página)
+          // totalPages: Math.ceil((prev.count + 1) / pageSize),
+        }));
+
         addToast({
           title: "Nuevo Vehículo",
           description: `Se ha creado un nuevo vehículo: ${data.vehiculo.placa}`,
@@ -1093,7 +1087,11 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         });
       };
 
-      const handleVehiculoActualizado = (data: Vehiculo) => {
+      const handleVehiculoActualizado = (data: {
+        vehiculo: Vehiculo;
+        documentosActualizados: Documento[];
+        categoriasActualizadas: string[];
+      }) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1103,13 +1101,34 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           },
         ]);
 
+        // Actualizar el vehículo específico en el estado
+        setVehiculosState((prev) => ({
+          ...prev,
+          data: prev.data.map((vehiculo) =>
+            vehiculo.id === data.vehiculo.id
+              ? {
+                ...data.vehiculo,
+                documentos: vehiculo.documentos?.map((docExistente) => {
+                  // Buscar si hay un documento actualizado para esta categoría
+                  const docActualizado = data.documentosActualizados.find(
+                    (docNuevo) => docNuevo.categoria === docExistente.categoria
+                  );
+
+                  // Si existe un documento actualizado para esta categoría, reemplazarlo
+                  return docActualizado || docExistente;
+                }) ?? [],
+              }
+              : vehiculo
+          ),
+        }));
+
         addToast({
           title: "Vehículo Actualizado",
-          description: `Se ha actualizado la información del vehículo: ${data.placa}`,
+          description: `Se ha actualizado la información del vehículo: ${data.vehiculo.placa}`,
           color: "primary",
         });
       };
-
+      
       const handleErrorProcesamiento = (data: ErrorProcesamiento) => {
         setSocketEventLogs((prev) => [
           ...prev,

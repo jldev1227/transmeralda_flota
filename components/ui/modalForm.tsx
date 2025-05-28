@@ -79,8 +79,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
-
-  console.log(vehiculoEditar)
   
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
@@ -189,12 +187,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
         porcentaje: 100,
         mensaje: 'Vehículo creado exitosamente'
       }));
-
-      addToast({
-        title: "¡Éxito!",
-        description: "Vehículo creado correctamente",
-        color: "success"
-      });
 
       onClose(); // Cerrar modal
     };
@@ -431,15 +423,26 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
   // ✅ Manejar cambio de documento (actualizado)
   const handleDocumentChange = (docKey: string, file: File, fecha_vigencia?: Date) => {
-    setDocumentos(prev => ({
-      ...prev,
-      [docKey]: {
-        file,
-        fecha_vigencia,
-        uploadedAt: new Date(),
-        esNuevo: true // Marcar como nuevo documento
+    setDocumentos(prev => {
+      const prevDoc = prev[docKey];
+      // Only update if file or fecha_vigencia actually changed
+      const isSameFile = prevDoc?.file === file;
+      const isSameVigencia =
+        (!prevDoc?.fecha_vigencia && !fecha_vigencia) ||
+        (prevDoc?.fecha_vigencia && fecha_vigencia && prevDoc.fecha_vigencia.getTime() === fecha_vigencia.getTime());
+      if (isSameFile && isSameVigencia) {
+        return prev;
       }
-    }));
+      return {
+        ...prev,
+        [docKey]: {
+          file,
+          fecha_vigencia,
+          uploadedAt: new Date(),
+          esNuevo: true // Marcar como nuevo documento
+        }
+      };
+    });
 
     // Limpiar error al cambiar documento
     if (erroresDocumentos[docKey]) {

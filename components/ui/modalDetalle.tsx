@@ -67,7 +67,7 @@ const getDocumentIcon = (categoria: string) => {
     case "TARJETA_DE_OPERACION":
       return <Truck className="h-4 w-4 text-orange-600" />;
     case "POLIZA_CONTRACTUAL":
-    case "POLIZA_EXTRA_CONTRACTUAL":
+    case "POLIZA_EXTRACONTRACTUAL":
     case "POLIZA_TODO_RIESGO":
       return <ShieldCheck className="h-4 w-4 text-red-600" />;
     default:
@@ -83,7 +83,7 @@ const formatearCategoria = (categoria: string) => {
     TARJETA_DE_PROPIEDAD: "Tarjeta de Propiedad",
     TARJETA_DE_OPERACION: "Tarjeta de Operación",
     POLIZA_CONTRACTUAL: "Póliza Contractual",
-    POLIZA_EXTRA_CONTRACTUAL: "Póliza Extra Contractual",
+    POLIZA_EXTRACONTRACTUAL: "Póliza Extra Contractual",
     POLIZA_TODO_RIESGO: "Póliza Todo Riesgo",
   };
   return categorias[categoria] || categoria;

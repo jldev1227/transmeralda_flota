@@ -5,6 +5,8 @@ import { Button } from "@heroui/button";
 import { DatePicker } from "@heroui/date-picker";
 import { Upload, FileText, XCircle, Calendar, Download } from "lucide-react";
 import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
+import { apiClient } from "@/config/apiClient";
+import { Documento } from "@/context/FlotaContext";
 
 
 // Formatter para fechas en español
@@ -41,7 +43,6 @@ interface SimpleDocumentUploaderProps {
   // ✅ Nuevas props para documentos existentes
   existingDocument?: DocumentoExistente | null;
   isExisting?: boolean;
-  onDownload?: (s3Key: string, filename: string) => void;
 }
 
 const SimpleDocumentUploader = ({
@@ -58,8 +59,8 @@ const SimpleDocumentUploader = ({
   // ✅ Nuevas props
   existingDocument = null,
   isExisting = false,
-  onDownload
 }: SimpleDocumentUploaderProps) => {
+
   const [isDragging, setIsDragging] = useState(false);
   const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,13 +139,6 @@ const SimpleDocumentUploader = ({
     }
   };
 
-  // ✅ Manejar descarga de documento existente
-  const handleDownload = () => {
-    if (existingDocument && onDownload) {
-      onDownload(existingDocument.s3_key, existingDocument.nombre_original);
-    }
-  };
-
   // Formatear tamaño del archivo
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -158,6 +152,48 @@ const SimpleDocumentUploader = ({
   const hasContent = file || existingDocument;
   const displayName = file ? file.name : existingDocument?.nombre_original || "";
   const displaySize = file ? file.size : existingDocument?.tamaño || 0;
+
+  // OPCIÓN 3: Descarga con fetch a través del backend
+    const handleDownload = async (documento: Documento | DocumentoExistente) => {
+      try {
+        const response = await apiClient.get(`/api/documentos/descargar/${documento.id}`, {
+          responseType: 'blob',
+          timeout: 30000, // 30 segundos
+        });
+  
+        if (!response.data) {
+          throw new Error("No se recibieron datos del servidor");
+        }
+  
+        // Crear blob y descargar
+        const blob = new Blob([response.data], {
+          type: response.headers['content-type'] || 'application/octet-stream'
+        });
+  
+        const blobUrl = window.URL.createObjectURL(blob);
+  
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = documento.nombre_original;
+        link.style.display = 'none';
+  
+        document.body.appendChild(link);
+        link.click();
+  
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+  
+      } catch (error) {
+        console.error("❌ Error al descargar documento:", error);
+        const errorMessage =
+          error && typeof error === "object" && "message" in error
+            ? (error as { message: string }).message
+            : "Error desconocido";
+        alert(`Error al descargar "${documento.nombre_original}": ${errorMessage}`);
+      }
+    };
 
   return (
     <div className="border border-gray-300 rounded-lg p-4 space-y-4">
@@ -243,7 +279,7 @@ const SimpleDocumentUploader = ({
                   size="sm"
                   variant="light"
                   color="primary"
-                  onPress={handleDownload}
+                  onPress={()=>handleDownload(existingDocument)}
                   className="min-w-0 px-2"
                   title="Descargar documento"
                 >
