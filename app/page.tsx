@@ -175,7 +175,7 @@ export default function GestionVehiculos() {
 
       // Si llegamos aquí, significa que la operación fue exitosa
       // // Cerrar modal después de guardar correctamente
-      cerrarModalForm();
+      // cerrarModalForm();
 
       // Recargar la lista de conductores con los filtros actuales
       await cargarVehiculos(vehiculosState.currentPage);

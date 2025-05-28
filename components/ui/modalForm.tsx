@@ -12,10 +12,10 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
-import { CrearVehiculoRequest, Vehiculo } from "@/context/FlotaContext";
+import { CrearVehiculoRequest, useFlota, Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
-import socketService from "@/services/socketServices";
+import { Progress } from "@heroui/progress";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -26,17 +26,6 @@ interface ModalFormVehiculoProps {
 }
 
 type VehiculoKey = keyof Vehiculo;
-
-interface Procesamiento {
-  sessionId: string | null;
-  procesados: number;
-  total: number;
-  progreso: number;
-  estado: string | null;
-  mensaje: string;
-  error: string | null;
-  porcentaje: number;
-}
 
 // Interfaz para documentos existentes
 interface DocumentoExistente {
@@ -61,17 +50,6 @@ interface DocumentoState {
   esNuevo?: boolean;
 }
 
-const initialProcesamientoState: Procesamiento = {
-  sessionId: "1728dfa2-00f5-43d4-921b-70c7d84d9468",
-  procesados: 0,
-  total: 0,
-  progreso: 0,
-  estado: null,
-  mensaje: "",
-  error: '{}',
-  porcentaje: 0,
-};
-
 const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   isOpen,
   onClose,
@@ -79,7 +57,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
-  
+
+  const { procesamiento } = useFlota()
+
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
     placa: "",
@@ -90,14 +70,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     linea: "",
   });
 
-  // Estado para el procesamiento de documentos
-  const [procesamiento, setProcesamiento] = useState<Procesamiento>(
-    initialProcesamientoState,
-  );
-
   const [loading, setLoading] = useState<boolean>(false)
   const [subirDocumentos, setSubirDocumentos] = useState(true);
-  
+
   // ✅ Estado actualizado para manejar documentos existentes y nuevos
   const [documentos, setDocumentos] = useState<Record<string, DocumentoState>>({});
 
@@ -137,7 +112,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   // ✅ Función para cargar documentos existentes desde vehiculoEditar
   const cargarDocumentosExistentes = (documentosExistentes: DocumentoExistente[]) => {
     const documentosState: Record<string, DocumentoState> = {};
-    
+
     documentosExistentes.forEach(doc => {
       documentosState[doc.categoria] = {
         existente: doc,
@@ -145,7 +120,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
         fecha_vigencia: doc.fecha_vigencia ? new Date(doc.fecha_vigencia) : undefined
       };
     });
-    
+
     setDocumentos(documentosState);
   };
 
@@ -155,7 +130,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       setFormData({
         ...vehiculoEditar,
       });
-      
+
       // ✅ Cargar documentos existentes directamente desde vehiculoEditar
       if (vehiculoEditar.documentos && vehiculoEditar.documentos.length > 0) {
         cargarDocumentosExistentes(vehiculoEditar.documentos);
@@ -165,57 +140,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       resetForm();
     }
   }, [vehiculoEditar, isOpen]);
-
-  useEffect(() => {
-    if (!socketService || !procesamiento.sessionId) return;
-
-    const handleProgreso = (data: any) => {
-      setProcesamiento(prev => ({
-        ...prev,
-        procesados: data.procesados || prev.procesados,
-        progreso: data.progreso || prev.progreso,
-        mensaje: data.mensaje || prev.mensaje,
-        porcentaje: data.porcentaje || prev.porcentaje
-      }));
-    };
-
-    const handleCompletado = () => {
-      setProcesamiento(prev => ({
-        ...prev,
-        estado: 'completado',
-        progreso: 100,
-        porcentaje: 100,
-        mensaje: 'Vehículo creado exitosamente'
-      }));
-
-      onClose(); // Cerrar modal
-    };
-
-    const handleError = (data: any) => {
-      setProcesamiento(prev => ({
-        ...prev,
-        estado: 'error',
-        error: data.error,
-        mensaje: 'Error al procesar'
-      }));
-
-      addToast({
-        title: "Error",
-        description: data.error || "Error al crear vehículo",
-        color: "danger"
-      });
-    };
-
-    socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
-    socketService.on("vehiculo:procesamiento:completado", handleCompletado);
-    socketService.on("vehiculo:procesamiento:error", handleError);
-
-    return () => {
-      socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
-      socketService.off("vehiculo:procesamiento:completado", handleCompletado);
-      socketService.off("vehiculo:procesamiento:error", handleError);
-    };
-  }, [procesamiento.sessionId]);
 
   // Manejar cambios en los inputs
   const handleChange = (
@@ -467,7 +391,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     const missingDocs = documentTypes
       .filter(doc => {
         if (!doc.required) return false;
-        
+
         const documento = documentos[doc.key];
         // Un documento existe si es nuevo con file o existente
         return !(documento && (documento.file || documento.existente));
@@ -485,7 +409,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     documentTypes.forEach(doc => {
       if (doc.required && doc.vigencia) {
         const documento = documentos[doc.key];
-        
+
         if (documento && (documento.file || documento.existente)) {
           // Si el documento existe pero no tiene fecha de vigencia
           if (!documento.fecha_vigencia) {
@@ -552,7 +476,13 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                     }
                   />
                 </div>
-                
+
+                {/* Progreso de procesamiento de documentos */}
+                <div>
+                  <Progress label={procesamiento.mensaje} aria-label="Loading..." size="sm" value={procesamiento.progreso
+                  } />
+                </div>
+
                 <div className="border p-4 rounded-md">
                   <h4 className="text-md font-semibold mb-4 border-b pb-2">
                     Información Básica
@@ -663,7 +593,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {documentTypes.map((docType) => {
                         const documento = documentos[docType.key];
-                        
+
                         return (
                           <SimpleDocumentUploader
                             key={docType.key}
@@ -695,7 +625,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                             const docType = documentTypes.find(d => d.key === key);
                             const isNew = doc.esNuevo && doc.file;
                             const isExisting = !doc.esNuevo && doc.existente;
-                            
+
                             return (
                               <li key={key} className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">

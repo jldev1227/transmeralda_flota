@@ -202,6 +202,31 @@ interface ErrorProcesamiento {
   mensaje: string
 }
 
+
+interface Procesamiento {
+  sessionId: string | null;
+  procesados: number;
+  total: number;
+  progreso: number;
+  estado: string | null;
+  mensaje: string;
+  error: string | null;
+  porcentaje: number;
+}
+
+
+const initialProcesamientoState: Procesamiento = {
+  sessionId: "",
+  procesados: 0,
+  total: 0,
+  progreso: 0,
+  estado: null,
+  mensaje: "",
+  error: '{}',
+  porcentaje: 0,
+};
+
+
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoVehiculo) => {
   switch (estado) {
@@ -273,6 +298,7 @@ interface FlotaContextType {
   error: string | null;
   validationErrors: ValidationError[] | null;
   sortDescriptor: SortDescriptor;
+  procesamiento: Procesamiento;
 
   // Operaciones CRUD
   fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
@@ -327,6 +353,11 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     column: "placa",
     direction: "ascending",
   });
+
+  // Estado para el procesamiento de documentos
+  const [procesamiento, setProcesamiento] = useState<Procesamiento>(
+    initialProcesamientoState,
+  );
 
   // Función para manejar errores de Axios
   const handleApiError = (err: unknown, defaultMessage: string): string => {
@@ -571,6 +602,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       }
     } catch (err: any) {
 
+      console.log(err)
       // Definir un mensaje de error predeterminado
       let errorTitle = "Error al crear vehículo";
       let errorDescription = "Ha ocurrido un error inesperado.";
@@ -713,7 +745,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Guardar el mensaje de error para referencia en el componente
       setError(errorDescription);
 
-      // Mostrar el toast con el mensaje de error
       addToast({
         title: errorTitle,
         description: errorDescription,
@@ -1128,16 +1159,19 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           color: "primary",
         });
       };
-      
+
       const handleErrorProcesamiento = (data: ErrorProcesamiento) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
-            eventName: "vehiculo:procesamiento:error",
-            data,
-            timestamp: new Date(),
+        eventName: "vehiculo:procesamiento:error",
+        data,
+        timestamp: new Date(),
           },
         ]);
+
+        // Resetear procesamiento a su valor inicial
+        setProcesamiento(initialProcesamientoState);
 
         addToast({
           title: data.mensaje,
@@ -1145,6 +1179,30 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           color: "danger",
         });
       };
+
+      const handleProgreso = (data: any) => {
+        console.log(data)
+        setProcesamiento(prev => ({
+          ...prev,
+          procesados: data.procesados,
+          mensaje: data.mensaje,
+          porcentaje: data.porcentaje
+        }));
+      };
+
+      const handleCompletado = (data: any) => {
+        console.log(data)
+        setProcesamiento(prev => ({
+          ...prev,
+          estado: 'completado',
+          progreso: 100,
+          porcentaje: 100,
+          mensaje: 'Vehículo creado exitosamente'
+        }));
+
+        // onClose(); // Cerrar modal
+      };
+
 
       // Registrar manejadores de eventos
       socketService.on("connect", handleConnect);
@@ -1154,6 +1212,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
       socketService.on("vehiculo:procesamiento:error", handleErrorProcesamiento);
+      socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
+      socketService.on("vehiculo:procesamiento:completado", handleCompletado);
+
 
       return () => {
         // Limpiar al desmontar
@@ -1163,6 +1224,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Limpiar manejadores de eventos de conductores
         socketService.off("vehiculo:creado");
         socketService.off("vehiculo:actualizado");
+        socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
+        socketService.off("vehiculo:procesamiento:completado", handleCompletado);
         socketService.off("vehiculo:procesamiento:error");
       };
     }
@@ -1182,6 +1245,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     error,
     validationErrors,
     sortDescriptor,
+    procesamiento,
 
     fetchVehiculos,
     getVehiculo,
