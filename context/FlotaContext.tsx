@@ -6,6 +6,8 @@ import React, {
   useEffect,
   useCallback,
   ReactNode,
+  Dispatch,
+  SetStateAction,
 } from "react";
 import { AxiosError, isAxiosError } from "axios";
 import { addToast } from "@heroui/toast";
@@ -199,33 +201,29 @@ export interface VehiculosState {
 
 interface ErrorProcesamiento {
   error: string;
-  mensaje: string
+  mensaje: string;
+  sessionId: string
 }
-
 
 interface Procesamiento {
   sessionId: string | null;
   procesados: number;
   total: number;
-  progreso: number;
   estado: string | null;
   mensaje: string;
   error: string | null;
-  porcentaje: number;
+  progreso: number;
 }
 
-
-const initialProcesamientoState: Procesamiento = {
+export const initialProcesamientoState: Procesamiento = {
   sessionId: "",
   procesados: 0,
   total: 0,
   progreso: 0,
   estado: null,
   mensaje: "",
-  error: '{}',
-  porcentaje: 0,
+  error: '',
 };
-
 
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoVehiculo) => {
@@ -299,6 +297,7 @@ interface FlotaContextType {
   validationErrors: ValidationError[] | null;
   sortDescriptor: SortDescriptor;
   procesamiento: Procesamiento;
+  setProcesamiento: Dispatch<SetStateAction<Procesamiento>>;
 
   // Operaciones CRUD
   fetchVehiculos: (paramsBusqueda: BusquedaParams) => Promise<void>;
@@ -588,6 +587,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         requestData = vehiculoBasico;
         headers['Content-Type'] = 'application/json';
       }
+
+      setProcesamiento(initialProcesamientoState)
 
       const response = await apiClient.post<ApiResponse<Vehiculo>>(
         endpoint,
@@ -1105,7 +1106,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Agregar el nuevo vehículo al estado
         setVehiculosState((prev) => ({
           ...prev,
-          data: [data.vehiculo, ...prev.data], // Agregar al inicio del array
+          data: [{...data.vehiculo, documentos: data.documentos}, ...prev.data], // Agregar al inicio del array
           count: prev.count + 1,
           // Recalcular totalPages si es necesario (asumiendo un tamaño de página)
           // totalPages: Math.ceil((prev.count + 1) / pageSize),
@@ -1164,29 +1165,46 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
-        eventName: "vehiculo:procesamiento:error",
-        data,
-        timestamp: new Date(),
+            eventName: "vehiculo:procesamiento:error",
+            data,
+            timestamp: new Date(),
           },
         ]);
 
         // Resetear procesamiento a su valor inicial
-        setProcesamiento(initialProcesamientoState);
+        setProcesamiento(prev => ({
+          ...prev,
+          sessionId: data.sessionId,
+          error: data.error,
+          estado: "error",
+          mensaje: data.mensaje,
+          progreso: 0
+        }));
 
-        addToast({
-          title: data.mensaje,
-          description: data.error,
-          color: "danger",
-        });
+        setTimeout(() => {
+          setProcesamiento(initialProcesamientoState)
+        }, 3000);
+      };
+
+      const handleInicio = (data: any) => {
+        setProcesamiento(prev => ({
+          ...prev,
+          sessionId: data.sessionId,
+          estado: "iniciando",
+          procesados: data.procesados,
+          mensaje: data.mensaje,
+          progreso: data.progreso
+        }));
       };
 
       const handleProgreso = (data: any) => {
-        console.log(data)
         setProcesamiento(prev => ({
           ...prev,
+          sessionId: data.sessionId,
+          estado: "procesando",
           procesados: data.procesados,
           mensaje: data.mensaje,
-          porcentaje: data.porcentaje
+          progreso: data.progreso
         }));
       };
 
@@ -1196,11 +1214,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           ...prev,
           estado: 'completado',
           progreso: 100,
-          porcentaje: 100,
-          mensaje: 'Vehículo creado exitosamente'
+          mensaje: 'Vehículo creado exitosamente',
+          error: ''
         }));
-
-        // onClose(); // Cerrar modal
       };
 
 
@@ -1212,6 +1228,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
       socketService.on("vehiculo:procesamiento:error", handleErrorProcesamiento);
+      socketService.on("vehiculo:procesamiento:inicio", handleInicio);
       socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
       socketService.on("vehiculo:procesamiento:completado", handleCompletado);
 
@@ -1246,6 +1263,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     validationErrors,
     sortDescriptor,
     procesamiento,
+    setProcesamiento,
 
     fetchVehiculos,
     getVehiculo,

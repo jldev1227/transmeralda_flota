@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
 import { Alert } from "@heroui/alert";
 
-import { Vehiculo, useFlota, BusquedaParams, CrearVehiculoRequest } from "@/context/FlotaContext";
+import { Vehiculo, useFlota, BusquedaParams, CrearVehiculoRequest, initialProcesamientoState } from "@/context/FlotaContext";
 import VehiculosTable from "@/components/ui/table";
 import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
@@ -24,6 +24,7 @@ export default function GestionVehiculos() {
     crearVehiculo,
     actualizarVehiculo,
     handleSortChange,
+    setProcesamiento
   } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -152,6 +153,7 @@ export default function GestionVehiculos() {
   const cerrarModalForm = () => {
     setModalFormOpen(false);
     setVehiculoParaEditar(null);
+    setProcesamiento(initialProcesamientoState)
   };
 
   const cerrarModalDetalle = () => {

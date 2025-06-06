@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -15,7 +15,7 @@ import { Switch } from "@heroui/switch";
 import { CrearVehiculoRequest, useFlota, Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
-import { Progress } from "@heroui/progress";
+import { Alert } from "@heroui/alert";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -183,31 +183,34 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   const handleSave = async () => {
     setLoading(true);
 
-    // Campos requeridos para todos los vehículos
-    const camposRequeridos: VehiculoKey[] = [
-      "placa",
-      "marca",
-      "clase_vehiculo",
-      "modelo",
-      "linea",
-      "color",
-    ];
+    if (!subirDocumentos) {
+      const camposRequeridos: VehiculoKey[] = [
+        "placa",
+        "marca",
+        "clase_vehiculo",
+        "modelo",
+        "linea",
+        "color",
+      ];
 
-    // Validar campos requeridos
-    const nuevosErrores: Record<string, boolean> = {};
+      // Campos requeridos para todos los vehículos
 
-    camposRequeridos.forEach((campo) => {
-      if (!formData[campo]) {
-        nuevosErrores[campo] = true;
+      // Validar campos requeridos
+      const nuevosErrores: Record<string, boolean> = {};
+
+      camposRequeridos.forEach((campo) => {
+        if (!formData[campo]) {
+          nuevosErrores[campo] = true;
+        }
+      });
+
+      setErrores(nuevosErrores);
+
+      // Si hay errores, no continuar
+      if (Object.values(nuevosErrores).some((error) => error)) {
+        setLoading(false);
+        return;
       }
-    });
-
-    setErrores(nuevosErrores);
-
-    // Si hay errores, no continuar
-    if (Object.values(nuevosErrores).some((error) => error)) {
-      setLoading(false);
-      return;
     }
 
     // Validar documentos requeridos si está habilitado
@@ -477,115 +480,155 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   />
                 </div>
 
-                {/* Progreso de procesamiento de documentos */}
-                <div>
-                  <Progress label={procesamiento.mensaje} aria-label="Loading..." size="sm" value={procesamiento.progreso
-                  } />
-                </div>
-
-                <div className="border p-4 rounded-md">
-                  <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                    Información Básica
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.placa ? "La placa es requerida" : ""
+                {/* Alert para mostrar el estado del procesamiento */}
+                {procesamiento.mensaje !== '' && procesamiento.mensaje.length > 0 && (
+                  <div className="flex justify-between gap-4 items-center mb-5">
+                    <Alert
+                      color={
+                        procesamiento.error !== '' || procesamiento.estado === "error"
+                          ? "danger"
+                          : procesamiento.estado === "completado"
+                            ? "success"
+                            : "primary"
                       }
-                      isInvalid={errores.placa}
-                      label="Placa"
-                      name="placa"
-                      placeholder="Ingrese placa"
-                      value={formData.placa || ""}
-                      onChange={handleChange}
-                    />
-
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.marca ? "La marca es requerida" : ""
-                      }
-                      isInvalid={errores.marca}
-                      label="Marca"
-                      name="marca"
-                      placeholder="Ingrese marca"
-                      value={formData.marca || ""}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <Select
-                      isRequired
-                      errorMessage={
-                        errores.clase_vehiculo ? "La clase es requerida" : ""
-                      }
-                      isInvalid={errores.clase_vehiculo}
-                      label="Clase de Vehículo"
-                      name="clase_vehiculo"
-                      placeholder="Seleccione una clase"
-                      selectedKeys={
-                        formData.clase_vehiculo ? [formData.clase_vehiculo] : []
-                      }
-                      value={formData.clase_vehiculo || ""}
-                      onChange={(e) =>
-                        handleSelectChange("clase_vehiculo", e.target.value)
-                      }
+                      variant="faded"
+                      className="w-full"
                     >
-                      {clasesVehiculo.map((clase) => (
-                        <SelectItem key={clase.key} textValue={clase.label}>
-                          {clase.label}
-                        </SelectItem>
-                      ))}
-                    </Select>
-
-                    {/* Color */}
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.color ? "El color es requerido" : ""
-                      }
-                      isInvalid={errores.color}
-                      label="Color"
-                      name="color"
-                      placeholder="Ingrese color del vehículo"
-                      value={formData.color || ""}
-                      onChange={handleChange}
-                    />
+                      {procesamiento.error || procesamiento.mensaje}
+                    </Alert>
                   </div>
+                )}
 
-                  {/* Campos para línea y modelo */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.linea ? "La línea es requerida" : ""
-                      }
-                      isInvalid={errores.linea}
-                      label="Línea"
-                      name="linea"
-                      placeholder="Ingrese línea del vehículo (ej. Hilux, Corolla)"
-                      value={formData.linea || ""}
-                      onChange={handleChange}
-                    />
+                {/* Barra de progreso - Solo mostrar si NO hay error y NO está completado */}
+                {procesamiento.sessionId &&
+                  !procesamiento.error &&
+                  procesamiento.estado !== "error" &&
+                  procesamiento.estado !== "completado" && (
+                    <div className="mb-6">
+                      <div className="flex justify-between mb-2">
+                        <p>Progreso del procesamiento</p>
+                        <p>{procesamiento.progreso || 0}%</p>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-primary h-2.5 rounded-full transition-width ease-in-out duration-300"
+                          style={{ width: `${procesamiento.progreso || 0}%` }}
+                        />
+                      </div>
 
-                    <Input
-                      isRequired
-                      errorMessage={
-                        errores.modelo ? "El modelo es requerido" : ""
-                      }
-                      isInvalid={errores.modelo}
-                      label="Modelo (Año)"
-                      name="modelo"
-                      placeholder="Ingrese modelo/año del vehículo"
-                      value={formData.modelo || ""}
-                      onChange={handleChange}
-                    />
+                      {procesamiento.procesados && procesamiento.total && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {procesamiento.procesados} de {procesamiento.total} documentos procesados
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                {!subirDocumentos && !procesamiento.mensaje && (
+                  <div className="border p-4 rounded-md">
+                    <h4 className="text-md font-semibold mb-4 border-b pb-2">
+                      Información Básica
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        isRequired
+                        errorMessage={
+                          errores.placa ? "La placa es requerida" : ""
+                        }
+                        isInvalid={errores.placa}
+                        label="Placa"
+                        name="placa"
+                        placeholder="Ingrese placa"
+                        value={formData.placa || ""}
+                        onChange={handleChange}
+                      />
+
+                      <Input
+                        isRequired
+                        errorMessage={
+                          errores.marca ? "La marca es requerida" : ""
+                        }
+                        isInvalid={errores.marca}
+                        label="Marca"
+                        name="marca"
+                        placeholder="Ingrese marca"
+                        value={formData.marca || ""}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <Select
+                        isRequired
+                        errorMessage={
+                          errores.clase_vehiculo ? "La clase es requerida" : ""
+                        }
+                        isInvalid={errores.clase_vehiculo}
+                        label="Clase de Vehículo"
+                        name="clase_vehiculo"
+                        placeholder="Seleccione una clase"
+                        selectedKeys={
+                          formData.clase_vehiculo ? [formData.clase_vehiculo] : []
+                        }
+                        value={formData.clase_vehiculo || ""}
+                        onChange={(e) =>
+                          handleSelectChange("clase_vehiculo", e.target.value)
+                        }
+                      >
+                        {clasesVehiculo.map((clase) => (
+                          <SelectItem key={clase.key} textValue={clase.label}>
+                            {clase.label}
+                          </SelectItem>
+                        ))}
+                      </Select>
+
+                      {/* Color */}
+                      <Input
+                        isRequired
+                        errorMessage={
+                          errores.color ? "El color es requerido" : ""
+                        }
+                        isInvalid={errores.color}
+                        label="Color"
+                        name="color"
+                        placeholder="Ingrese color del vehículo"
+                        value={formData.color || ""}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    {/* Campos para línea y modelo */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <Input
+                        isRequired
+                        errorMessage={
+                          errores.linea ? "La línea es requerida" : ""
+                        }
+                        isInvalid={errores.linea}
+                        label="Línea"
+                        name="linea"
+                        placeholder="Ingrese línea del vehículo (ej. Hilux, Corolla)"
+                        value={formData.linea || ""}
+                        onChange={handleChange}
+                      />
+
+                      <Input
+                        isRequired
+                        errorMessage={
+                          errores.modelo ? "El modelo es requerido" : ""
+                        }
+                        isInvalid={errores.modelo}
+                        label="Modelo (Año)"
+                        name="modelo"
+                        placeholder="Ingrese modelo/año del vehículo"
+                        value={formData.modelo || ""}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {subirDocumentos && (
+                {subirDocumentos && !procesamiento.mensaje && (
                   <div className="border p-4 rounded-md">
                     <h4 className="text-md font-semibold mb-4 border-b pb-2">
                       Documentación

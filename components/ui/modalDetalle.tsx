@@ -269,8 +269,8 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
             <ModalBody>
               {/* Encabezado con la información principal */}
-              <div className="flex flex-col items-center md:flex-row border-b pb-6 mb-6">
-                <div className="mb-4 md:mb-0 md:mr-6">
+              <div className="flex flex-col items-center sm:flex-row border-b pb-6 mb-6">
+                <div className="mb-4 sm:mb-0 sm:mr-6">
                   <Image
                     alt={`${vehiculo.placa} ${vehiculo.modelo}`}
                     className="h-32 w-32 rounded-full mr-3"
@@ -279,14 +279,14 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                     width={128}
                   />
                 </div>
-                <div className="flex-1 text-center md:text-left">
+                <div className="flex-1 text-center sm:text-left">
                   <h2 className="text-2xl font-bold text-gray-800">
                     {vehiculo.marca} {vehiculo.linea}
                   </h2>
-                  <p className="text-md text-gray-600 mb-2">
+                  <p className="text-sm text-gray-600 mb-2">
                     Placa: <strong>{vehiculo.placa}</strong> | Modelo: {vehiculo.modelo}
                   </p>
-                  <div className="flex flex-col md:flex-row md:items-center text-sm text-gray-500 space-y-1 md:space-y-0 md:space-x-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4">
                     <span className="flex items-center capitalize">
                       <Truck className="h-4 w-4 mr-1" />
                       {vehiculo.clase_vehiculo}
@@ -303,16 +303,16 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                 </div>
               </div>
 
-              <Tabs color="primary" aria-label="Información del Vehículo" className="w-full">
+              <Tabs color="primary" aria-label="Información del Vehículo" className="mx-auto">
                 <Tab key="general" title="Información General">
                   <Card shadow="sm">
                     <CardBody className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {/* Columna izquierda */}
                         <div className="space-y-6">
                           {/* Información básica */}
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-md font-semibold mb-3 flex items-center border-b pb-2">
+                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
                               <Car className="h-4 w-4 mr-2 text-gray-500" />
                               Información Básica
                             </h4>
@@ -350,34 +350,38 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
                           {/* Información técnica */}
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-md font-semibold mb-3 flex items-center border-b pb-2">
+                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
                               <PenTool className="h-4 w-4 mr-2 text-gray-500" />
                               Información Técnica
                             </h4>
                             <ul className="space-y-2">
                               <li className="flex items-start">
-                                <span className="font-medium w-28">VIN:</span>
+                                <span className="font-medium w-32">VIN:</span>
                                 <span>{vehiculo.vin || "No registrado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">No. Motor:</span>
+                                <span className="font-medium w-32">No. Motor:</span>
                                 <span>{vehiculo.numero_motor || "No registrado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">No. Chasis:</span>
+                                <span className="font-medium w-32">No. Chasis:</span>
                                 <span>{vehiculo.numero_chasis || "No registrado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">No. Serie:</span>
+                                <span className="font-medium w-32">No. Serie:</span>
                                 <span>{vehiculo.numero_serie || "No registrado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Combustible:</span>
+                                <span className="font-medium w-32">Combustible:</span>
                                 <span>{vehiculo.combustible || "No especificado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Kilometraje:</span>
+                                <span className="font-medium w-32">Kilometraje:</span>
                                 <span>{formatearKilometraje(vehiculo.kilometraje)}</span>
+                              </li>
+                              <li className="flex items-start">
+                                <span className="font-medium w-32">Fecha Matricula:</span>
+                                <span>{formatearFecha(vehiculo.fecha_matricula)}</span>
                               </li>
                             </ul>
                           </div>
@@ -387,7 +391,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                         <div className="space-y-6">
                           {/* Información del propietario */}
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-md font-semibold mb-3 flex items-center border-b pb-2">
+                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
                               <User className="h-4 w-4 mr-2 text-gray-500" />
                               Propietario
                             </h4>
@@ -406,7 +410,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                           {/* Información de ubicación */}
                           {(vehiculo.latitud || vehiculo.longitud) && (
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="text-md font-semibold mb-3 flex items-center border-b pb-2">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
                                 <MapPin className="h-4 w-4 mr-2 text-gray-500" />
                                 Ubicación Actual
                               </h4>
@@ -425,7 +429,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
                           {/* Información adicional */}
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-md font-semibold mb-3 flex items-center border-b pb-2">
+                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
                               <Calendar className="h-4 w-4 mr-2 text-gray-500" />
                               Registro en el Sistema
                             </h4>
@@ -468,7 +472,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                         <div className="space-y-6">
                           {Object.entries(documentosAgrupadosOrdenados).map(([categoria, docs]) => (
                             <div key={categoria} className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="text-md font-semibold mb-4 flex items-center border-b pb-2">
+                              <h4 className="text-sm font-semibold mb-4 flex items-center border-b pb-2">
                                 {getDocumentIcon(categoria)}
                                 <span className="ml-2">{formatearCategoria(categoria)}</span>
                               </h4>
@@ -483,7 +487,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                         <h5 className="font-medium text-gray-900 mb-2">
                                           {documento.nombre_original}
                                         </h5>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
                                           <div className="flex items-center">
                                             <FileText className="h-3 w-3 mr-1" />
                                             <span>Tamaño: {formatearTamaño(documento.tamaño)}</span>
