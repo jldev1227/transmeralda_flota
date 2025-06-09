@@ -20,11 +20,22 @@ export default function GestionVehiculos() {
   const {
     vehiculosState,
     sortDescriptor,
+    loading,
+    modalDetalleOpen,
+    modalFormOpen,
+    vehiculoParaEditar,
+    selectedVehiculoId,
+    setModalDetalleOpen,
+    setModalFormOpen,
+    setVehiculoParaEditar,
+    setSelectedVehiculoId,
+  
     fetchVehiculos,
     crearVehiculo,
     actualizarVehiculo,
     handleSortChange,
-    setProcesamiento
+    setProcesamiento,
+    setLoading
   } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -34,17 +45,7 @@ export default function GestionVehiculos() {
     estados: [],
     clases: []
   });
-  const [loading, setLoading] = useState<boolean>(false);
 
-  // Estados para los modales
-  const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
-  const [selectedVehiculoId, setSelectedVehiculoId] = useState<string | null>(
-    null,
-  );
-  const [modalFormOpen, setModalFormOpen] = useState(false);
-  const [vehiculoParaEditar, setVehiculoParaEditar] = useState<Vehiculo | null>(
-    null,
-  );
 
   // Inicialización: cargar conductores
   useEffect(() => {

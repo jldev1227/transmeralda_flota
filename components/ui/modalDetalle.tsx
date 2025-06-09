@@ -31,6 +31,7 @@ import Image from "next/image";
 import { apiClient } from "@/config/apiClient";
 import { Documento, Vehiculo } from "@/context/FlotaContext";
 import { Chip } from "@heroui/chip";
+import { formatearFecha, formatearKilometraje } from "@/helpers";
 
 interface ModalDetalleVehiculoProps {
   isOpen: boolean;
@@ -113,25 +114,9 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
   const estadoColor = getEstadoColor(vehiculo.estado);
 
-  // Función para formatear fecha YYYY-MM-DD a formato legible
-  const formatearFecha = (fecha?: string) => {
-    if (!fecha) return "No especificada";
-    return new Date(fecha).toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  // Función para formatear el kilometraje
-  const formatearKilometraje = (km?: number) => {
-    if (!km && km !== 0) return "No registrado";
-    return `${new Intl.NumberFormat("es-CO").format(km)} km`;
-  };
-
   // Función para verificar el estado de vigencia de una póliza
   const obtenerEstadoVigencia = (
-    fecha?: string
+    fecha?: string | Date
   ): { msg: string; color: "default" | "danger" | "warning" | "success" | "primary" | "secondary" | undefined } => {
     if (!fecha) {
       return { msg: "Sin vigencia", color: "default" };
@@ -451,7 +436,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                 </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Conductor ID:</span>
+                                <span className="font-medium w-28">Conductor:</span>
                                 <span>{vehiculo.conductor_id || "No asignado"}</span>
                               </li>
                             </ul>
@@ -499,24 +484,34 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                             </span>
                                           </div>
                                           <div className="flex items-center">
-                                            {documento.estado === "ACTIVO" ? (
-                                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
-                                            ) : (
-                                              <AlertCircle className="h-3 w-3 mr-1 text-red-600" />
-                                            )}
-                                            <span>Estado: {documento.estado}</span>
-                                          </div>
-                                          {documento.fecha_vigencia && (
-                                            <div className="flex items-center">
-                                              <Calendar className="h-3 w-3 mr-1" />
-                                              <span>
-                                                Vigencia: {formatearFecha(documento.fecha_vigencia)}
-                                              </span>
+                                            {(() => {
+                                              const vigencia = obtenerEstadoVigencia(documento.fecha_vigencia);
+                                              let Icon;
+                                              let iconColor = "";
 
-                                              {(() => {
-                                                const vigencia = obtenerEstadoVigencia(documento.fecha_vigencia);
+                                              switch (vigencia.color) {
+                                                case "success":
+                                                  Icon = CheckCircle;
+                                                  iconColor = "text-green-600";
+                                                  break;
+                                                case "warning":
+                                                  Icon = AlertCircle;
+                                                  iconColor = "text-yellow-600";
+                                                  break;
+                                                case "danger":
+                                                  Icon = AlertCircle;
+                                                  iconColor = "text-red-600";
+                                                  break;
+                                                default:
+                                                  Icon = AlertCircle;
+                                                  iconColor = "text-gray-400";
+                                                  break;
+                                              }
 
-                                                return (
+                                              return (
+                                                <>
+                                                  <Icon className={`h-3 w-3 mr-1 ${iconColor}`} />
+                                                  <span>Estado: </span>
                                                   <Chip
                                                     className="ml-2"
                                                     color={vigencia.color ? vigencia.color : 'default'}
@@ -525,8 +520,16 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                                   >
                                                     {vigencia.msg}
                                                   </Chip>
-                                                );
-                                              })()}
+                                                </>
+                                              );
+                                            })()}
+                                          </div>
+                                          {documento.fecha_vigencia && (
+                                            <div className="flex items-center">
+                                              <Calendar className="h-3 w-3 mr-1" />
+                                              <span>
+                                                Vigencia: {formatearFecha(documento.fecha_vigencia)}
+                                              </span>
                                             </div>
                                           )}
                                         </div>

@@ -15,3 +15,20 @@ export const formatDate = (dateString?: string) => {
     minute: '2-digit'
   }).format(date);
 };
+
+
+// Función para formatear fecha YYYY-MM-DD a formato legible
+export const formatearFecha = (fecha?: string) => {
+  if (!fecha) return "No especificada";
+  return new Date(fecha).toLocaleDateString("es-CO", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+// Función para formatear el kilometraje
+export const formatearKilometraje = (km?: number) => {
+  if (!km && km !== 0) return "No registrado";
+  return `${new Intl.NumberFormat("es-CO").format(km)} km`;
+};

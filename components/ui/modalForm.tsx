@@ -1,21 +1,27 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   ModalBody,
   ModalContent,
   ModalFooter,
   ModalHeader,
+  useDisclosure,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { SaveIcon, TruckIcon } from "lucide-react";
+import { Calendar, Car, Edit, FileText, Hash, PenTool, Save, SaveIcon, TruckIcon, User, X } from "lucide-react";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
-import { CrearVehiculoRequest, useFlota, Vehiculo } from "@/context/FlotaContext";
+import { CrearVehiculoRequest, initialProcesamientoState, useFlota, Vehiculo } from "@/context/FlotaContext";
 import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
 import { Alert } from "@heroui/alert";
+import { Card, CardHeader, CardBody } from "@heroui/card";
+import { Divider } from "@heroui/divider";
+import { formatearFecha, formatearKilometraje } from "@/helpers";
+import { Chip } from "@heroui/chip";
+import socketService from "@/services/socketServices";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
@@ -58,7 +64,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   titulo = "Registrar Nuevo Vehículo",
 }) => {
 
-  const { procesamiento } = useFlota()
+  const { procesamiento, setProcesamiento, currentVehiculo } = useFlota()
 
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
@@ -88,6 +94,152 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   // Estado para errores de documentos
   const [erroresDocumentos, setErroresDocumentos] = useState<Record<string, boolean>>({});
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Modal para confirmaciones
+  const { isOpen: isOpenConfirm, onOpen, onOpenChange } = useDisclosure();
+  const [modalAction, setModalAction] = useState('');
+
+  const editableFields = ['propietario_nombre', 'propietario_identificacion', 'modelo', 'linea', 'color', 'numero_motor', 'numero_chasis', 'numero_serie', 'vin', 'fecha_matricula'];
+
+  useEffect(() => {
+    if (!currentVehiculo) return
+
+    setFormData(currentVehiculo)
+  }, [currentVehiculo])
+
+  // Función para manejar cambios en los inputs
+  const handleInputChange = (field: string, value: string) => {
+    if (!editableFields.includes(field) || !currentVehiculo) return;
+
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Verificar si hay cambios
+    const hasChangesNow = Object.keys(formData).some(key =>
+      editableFields.includes(key) && formData[key] !== currentVehiculo[key]
+    ) || value !== currentVehiculo[field];
+
+    setHasChanges(hasChangesNow);
+  };
+
+  // Función para verificar si un campo es editable
+  const isFieldEditable = (field: string) => {
+    return isEditing && editableFields.includes(field);
+  };
+
+  // Función para validar los datos
+  const validateData = () => {
+    const errors = [];
+
+    if (!formData.propietario_nombre?.trim()) {
+      errors.push('El nombre del propietario es obligatorio');
+    }
+
+    if (!formData.propietario_identificacion?.trim()) {
+      errors.push('La identificación del propietario es obligatoria');
+    }
+
+    if (!formData.modelo?.trim()) {
+      errors.push('El modelo es obligatorio');
+    }
+
+    if (!formData.fecha_matricula?.trim()) {
+      errors.push('La fecha de matrícula es obligatoria');
+    }
+
+    return errors;
+  };
+
+  const handleEditar = () => {
+    if (isEditing) {
+      // Guardar cambios
+      const errors = validateData();
+      if (errors.length > 0) {
+        alert('Errores de validación:\n' + errors.join('\n'));
+        return;
+      }
+
+      setModalAction('guardar');
+      onOpen();
+    } else {
+      // Activar modo edición
+      setIsEditing(true);
+    }
+  };
+
+  const handleConfirmar = () => {
+    if (isEditing && hasChanges) {
+      // Si está en modo edición con cambios, primero guardar
+      const errors = validateData();
+      if (errors.length > 0) {
+        alert('Errores de validación:\n' + errors.join('\n'));
+        return;
+      }
+    }
+
+    setModalAction('confirmar');
+    onOpen();
+  };
+
+  const handleCancelEdit = () => {
+    if (!currentVehiculo) return
+
+    setFormData(currentVehiculo);
+    setIsEditing(false);
+    setHasChanges(false);
+  };
+
+  const handleCancelar = () => {
+    setModalAction('cancelar');
+    onOpen();
+  };
+
+  // Función para ejecutar acciones confirmadas
+  const executeAction = async () => {
+    setIsLoading(true);
+
+    try {
+      switch (modalAction) {
+        case 'cancelar':
+          // Aquí iría la llamada al backend para cancelar
+          socketService.emit('vehiculo:confirmacion:respuesta', {
+            sessionId: procesamiento.sessionId,
+            accion: 'cancelar'
+          });
+          break;
+
+        case 'guardar':
+          setIsEditing(false);
+          break;
+
+        case 'confirmar':
+          if (hasChanges) {
+            socketService.emit('vehiculo:confirmacion:respuesta', {
+              sessionId: procesamiento.sessionId,
+              accion: 'editar',
+              datosModificados: formData
+            });
+          } else {
+            socketService.emit('vehiculo:confirmacion:respuesta', {
+              sessionId: procesamiento.sessionId,
+              accion: 'confirmar'
+            });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Error ejecutando acción:', error);
+      alert('Error al procesar la solicitud');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Función para resetear el formulario
   const resetForm = () => {
     setFormData({
@@ -107,7 +259,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     });
     setDocumentos({});
     setErroresDocumentos({});
+    setProcesamiento(initialProcesamientoState)
   };
+
 
   // ✅ Función para cargar documentos existentes desde vehiculoEditar
   const cargarDocumentosExistentes = (documentosExistentes: DocumentoExistente[]) => {
@@ -440,13 +594,18 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     upload_date: string;
   }
 
+  const handleClose = () => {
+    onClose()
+    resetForm()
+  }
+
   return (
     <Modal
       backdrop={"blur"}
       isOpen={isOpen}
       scrollBehavior="inside"
       size="5xl"
-      onClose={onClose}
+      onClose={handleClose}
     >
       <ModalContent>
         {() => (
@@ -463,26 +622,27 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
             <ModalBody>
               <div className="space-y-6">
 
-                {/* Switch para determinar si es de planta */}
-                <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
-                  <div>
-                    <span className="font-medium">Registrar con documentación</span>
-                    <p className="text-sm text-gray-500">
-                      Marque esta opción si adjuntara documentación del vehículo
-                    </p>
+                {!procesamiento.mensaje && !currentVehiculo && (
+                  <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
+                    <div>
+                      <span className="font-medium">Registrar con documentación</span>
+                      <p className="text-sm text-gray-500">
+                        Marque esta opción si adjuntara documentación del vehículo
+                      </p>
+                    </div>
+                    <Switch
+                      color="success"
+                      isSelected={subirDocumentos}
+                      onChange={(e) =>
+                        handleSwitchChange("subirDocumentos", e.target.checked)
+                      }
+                    />
                   </div>
-                  <Switch
-                    color="success"
-                    isSelected={subirDocumentos}
-                    onChange={(e) =>
-                      handleSwitchChange("subirDocumentos", e.target.checked)
-                    }
-                  />
-                </div>
+                )}
 
                 {/* Alert para mostrar el estado del procesamiento */}
                 {procesamiento.mensaje !== '' && procesamiento.mensaje.length > 0 && (
-                  <div className="flex justify-between gap-4 items-center mb-5">
+                  <div>
                     <Alert
                       color={
                         procesamiento.error !== '' || procesamiento.estado === "error"
@@ -499,8 +659,457 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   </div>
                 )}
 
+                {currentVehiculo && (
+                  <div className="max-w-4xl mx-auto space-y-6">
+                    {/* Header */}
+                    <Card>
+                      <CardHeader className="flex justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col">
+                            <p className="text-lg font-semibold">Datos Extraídos del Vehículo</p>
+                            <p className="text-sm text-default-500">
+                              Información obtenida mediante OCR de la tarjeta de propiedad
+                            </p>
+                          </div>
+                        </div>
+                        <Chip color="success" variant="flat" size="sm">
+                          OCR Completado
+                        </Chip>
+                      </CardHeader>
+                    </Card>
+
+                    {/* Información del Vehículo */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <Car className="h-5 w-5 text-emerald-600" />
+                          <h3 className="text-lg font-semibold">Información del Vehículo</h3>
+                        </div>
+                      </CardHeader>
+                      <Divider />
+                      <CardBody className="gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Placa */}
+                          <Input
+                            label="Placa"
+                            value={formData.placa}
+                            isReadOnly
+                            variant="flat"
+                            classNames={{
+                              input: "text-lg font-semibold",
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <div className="pointer-events-none flex items-center">
+                                <span className="text-default-400 text-small">🚗</span>
+                              </div>
+                            }
+                          />
+
+                          {/* Marca */}
+                          <Input
+                            label="Marca"
+                            value={formData.marca}
+                            isReadOnly
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                          />
+
+                          {/* Marca */}
+                          <Input
+                            label="Clase Vehículo"
+                            value={formData.clase_vehiculo}
+                            isReadOnly
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                          />
+
+                          {/* Modelo (Año) */}
+                          <Input
+                            label="Modelo (Año)"
+                            value={formData.modelo}
+                            isReadOnly={!isFieldEditable('modelo')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Calendar className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('modelo') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('modelo', e.target.value)}
+                          />
+
+                          {/* Línea */}
+                          <Input
+                            label="Línea"
+                            value={formData.linea}
+                            isReadOnly={!isFieldEditable('linea')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            endContent={
+                              isFieldEditable('modelo') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('linea', e.target.value)}
+                          />
+
+                          {/* Color */}
+                          <Input
+                            label="Color"
+                            value={formData.color}
+                            isReadOnly={!isFieldEditable('color')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('color') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('color', e.target.value)}
+                          />
+
+                          {/* Tipo Carroceria */}
+                          <Input
+                            label="Tipo Carroceria"
+                            value={formData.tipo_carroceria}
+                            isReadOnly={!isFieldEditable('tipo_carroceria')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Car className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('tipo_carroceria') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('tipo_carroceria', e.target.value)}
+                          />
+
+                          {/* Número motor */}
+                          <Input
+                            label="Número Motor"
+                            value={formData.numero_motor}
+                            isReadOnly={!isFieldEditable('numero_motor')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('numero_motor') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('numero_motor', e.target.value)}
+                          />
+
+                          {/* Número Serie */}
+                          <Input
+                            label="Número Serie"
+                            value={formData.numero_serie}
+                            isReadOnly={!isFieldEditable('numero_serie')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('numero_serie') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('numero_serie', e.target.value)}
+                          />
+
+                          {/* Número Chasis */}
+                          <Input
+                            label="Número Chasis"
+                            value={formData.numero_chasis}
+                            isReadOnly={!isFieldEditable('numero_chasis')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('numero_chasis') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('numero_chasis', e.target.value)}
+                          />
+
+                          {/* VIN */}
+                          <Input
+                            label="VIN"
+                            value={formData.vin}
+                            isReadOnly={!isFieldEditable('numero_chasis')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('numero_chasis') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('numero_chasis', e.target.value)}
+                          />
+
+                          <div className="space-x-2 space-y-2">
+                            {/* Fecha de Matrícula */}
+                            <Input
+                              label="Fecha de Matrícula"
+                              value={formData.fecha_matricula}
+                              isReadOnly={!isFieldEditable('fecha_matricula')}
+                              variant="flat"
+                              classNames={{
+                                label: "text-default-600 font-medium"
+                              }}
+                              type={isFieldEditable('fecha_matricula') ? 'date' : 'text'}
+                              startContent={
+                                <Calendar className="h-4 w-4 text-default-400" />
+                              }
+                              onChange={(e) => handleInputChange('fecha_matricula', e.target.value)}
+                            />
+                            <p className="italic text-gray-400">{formatearFecha(formData.fecha_matricula)}</p>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* Información del Propietario */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <User className="h-5 w-5 text-emerald-600" />
+                          <h3 className="text-lg font-semibold">Información del Propietario</h3>
+                        </div>
+                      </CardHeader>
+                      <Divider />
+                      <CardBody className="gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Nombre del Propietario */}
+                          <Input
+                            label="Nombre Completo"
+                            value={formData.propietario_nombre}
+                            isReadOnly={!isFieldEditable('propietario_nombre')}
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium",
+                              input: "font-medium"
+                            }}
+                            startContent={
+                              <User className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('propietario_nombre') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('propietario_nombre', e.target.value)}
+                            isRequired={isFieldEditable('propietario_nombre')}
+
+                          />
+
+                          {/* Identificación del Propietario */}
+                          <Input
+                            label="Identificación"
+                            value={formData.propietario_identificacion}
+                            isReadOnly={!isFieldEditable('propietario_identificacion')}
+
+                            variant="flat"
+                            classNames={{
+                              label: "text-default-600 font-medium"
+                            }}
+                            startContent={
+                              <FileText className="h-4 w-4 text-default-400" />
+                            }
+                            endContent={
+                              isFieldEditable('propietario_identificacion') && (
+                                <Edit className="h-4 w-4 text-warning" />
+                              )
+                            }
+                            onChange={(e) => handleInputChange('propietario_identificacion', e.target.value)}
+                            isRequired={isFieldEditable('propietario_identificacion')}
+                          />
+                        </div>
+                      </CardBody>
+                    </Card>
+                  </div>
+                )}
+
+                {procesamiento.vehiculo && (
+                  <div className="flex flex-col space-y-2">
+                    <Card>
+                      <CardBody className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          {/* Columna izquierda */}
+                          <div className="space-y-6">
+                            {/* Información básica */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
+                                <Car className="h-4 w-4 mr-2 text-gray-500" />
+                                Información Básica
+                              </h4>
+                              <ul className="space-y-2">
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Placa:</span>
+                                  <span>{procesamiento.vehiculo?.placa}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Marca:</span>
+                                  <span>{procesamiento.vehiculo?.marca}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Línea:</span>
+                                  <span>{procesamiento.vehiculo?.linea}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Modelo:</span>
+                                  <span>{procesamiento.vehiculo?.modelo}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Color:</span>
+                                  <span>{procesamiento.vehiculo?.color}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Clase:</span>
+                                  <span>{procesamiento.vehiculo?.clase_vehiculo}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Carrocería:</span>
+                                  <span>{procesamiento.vehiculo?.tipo_carroceria || "No especificada"}</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Información técnica */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
+                                <PenTool className="h-4 w-4 mr-2 text-gray-500" />
+                                Información Técnica
+                              </h4>
+                              <ul className="space-y-2">
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">VIN:</span>
+                                  <span>{procesamiento.vehiculo?.vin || "No registrado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">No. Motor:</span>
+                                  <span>{procesamiento.vehiculo?.numero_motor || "No registrado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">No. Chasis:</span>
+                                  <span>{procesamiento.vehiculo?.numero_chasis || "No registrado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">No. Serie:</span>
+                                  <span>{procesamiento.vehiculo?.numero_serie || "No registrado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">Combustible:</span>
+                                  <span>{procesamiento.vehiculo?.combustible || "No especificado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">Kilometraje:</span>
+                                  <span>{formatearKilometraje(procesamiento.vehiculo?.kilometraje)}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-32">Fecha Matricula:</span>
+                                  <span>{formatearFecha(procesamiento.vehiculo?.fecha_matricula)}</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+
+                          {/* Columna derecha */}
+                          <div className="space-y-6">
+                            {/* Información del propietario */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
+                                <User className="h-4 w-4 mr-2 text-gray-500" />
+                                Propietario
+                              </h4>
+                              <ul className="space-y-2">
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Nombre:</span>
+                                  <span>{procesamiento.vehiculo?.propietario_nombre || "No registrado"}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Identificación:</span>
+                                  <span>{procesamiento.vehiculo?.propietario_identificacion || "No registrado"}</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Información adicional */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
+                                <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                                Registro en el Sistema
+                              </h4>
+                              <ul className="space-y-2">
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Creado el:</span>
+                                  <span>
+                                    {procesamiento.vehiculo?.createdAt
+                                      ? new Date(procesamiento.vehiculo?.createdAt).toLocaleString("es-CO")
+                                      : "No disponible"}
+                                  </span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Actualizado:</span>
+                                  <span>
+                                    {procesamiento.vehiculo?.updatedAt
+                                      ? new Date(procesamiento.vehiculo?.updatedAt).toLocaleString("es-CO")
+                                      : "No disponible"}
+                                  </span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium w-28">Conductor:</span>
+                                  <span>{procesamiento.vehiculo?.conductor_id || "No asignado"}</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  </div>
+                )}
+
                 {/* Barra de progreso - Solo mostrar si NO hay error y NO está completado */}
-                {procesamiento.sessionId &&
+                {!currentVehiculo && procesamiento.sessionId &&
                   !procesamiento.error &&
                   procesamiento.estado !== "error" &&
                   procesamiento.estado !== "completado" && (
@@ -628,7 +1237,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   </div>
                 )}
 
-                {subirDocumentos && !procesamiento.mensaje && (
+                {subirDocumentos && !procesamiento.mensaje && !currentVehiculo && (
                   <div className="border p-4 rounded-md">
                     <h4 className="text-md font-semibold mb-4 border-b pb-2">
                       Documentación
@@ -699,31 +1308,163 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Modal de Confirmación */}
+              <Modal isOpen={isOpenConfirm} onOpenChange={onOpenChange}>
+                <ModalContent>
+                  {(handleClose) => (
+                    <>
+                      <ModalHeader className="flex flex-col gap-1">
+                        {modalAction === 'cancelar' && '🚫 Cancelar Registro'}
+                        {modalAction === 'guardar' && '💾 Guardar Cambios'}
+                        {modalAction === 'confirmar' && '✅ Confirmar Registro'}
+                      </ModalHeader>
+                      <ModalBody>
+                        {modalAction === 'cancelar' && (
+                          <p>¿Está seguro que desea cancelar el registro del vehículo? Esta acción no se puede deshacer.</p>
+                        )}
+                        {modalAction === 'guardar' && currentVehiculo && (
+                          <div>
+                            <p>¿Desea guardar los siguientes cambios?</p>
+                            <div className="mt-3 p-3 bg-default-100 rounded-lg">
+                              {editableFields.map((field: string) => {
+                                if (formData[field] !== currentVehiculo[field]) {
+                                  return (
+                                    <div key={field} className="text-sm">
+                                      <strong>{field}:</strong> {currentVehiculo[field]} → {formData[field]}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {modalAction === 'confirmar' && (
+                          <div>
+                            <p>¿Confirma que desea registrar el vehículo con la siguiente información?</p>
+                            <div className="mt-3 p-3 bg-default-100 rounded-lg">
+                              <div className="text-sm space-y-1">
+                                <div><strong>Placa:</strong> {formData.placa}</div>
+                                <div><strong>Marca:</strong> {formData.marca}</div>
+                                <div><strong>Modelo:</strong> {formData.modelo}</div>
+                                <div><strong>Línea:</strong> {formData.linea}</div>
+                                <div><strong>Color:</strong> {formData.color}</div>
+                                <div><strong>Fecha Matrícula:</strong> {formData.fecha_matricula}</div>
+                                <div><strong>Propietario Nombre:</strong> {formData.propietario_nombre}</div>
+                                <div><strong>Propietario Identificación:</strong> {formData.propietario_identificacion}</div>
+                                {hasChanges && (
+                                  <div className="text-warning text-xs mt-2">
+                                    * Se registrará con los cambios realizados
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button color="danger" variant="light" onPress={handleClose}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          color="primary"
+                          onPress={() => {
+                            executeAction();
+                            handleClose();
+                          }}
+                          isLoading={isLoading}
+                        >
+                          Confirmar
+                        </Button>
+                      </ModalFooter>
+                    </>
+                  )}
+                </ModalContent>
+              </Modal>
             </ModalBody>
 
             <ModalFooter>
-              <Button
-                color="danger"
-                radius="sm"
-                variant="light"
-                onPress={onClose}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-                startContent={loading ? '' : <SaveIcon className="h-4 w-4" />}
-                onPress={handleSave}
-                isLoading={loading}
-              >
-                {loading
-                  ? vehiculoEditar
-                    ? "Actualizando..."
-                    : "Guardando..."
-                  : vehiculoEditar
-                    ? "Actualizar"
-                    : "Guardar"}
-              </Button>
+              {!currentVehiculo ? (
+                <div className="flex items-center gap-3">
+                  {procesamiento.progreso > 0 || procesamiento.mensaje && (
+                    <Button onPress={resetForm} color="danger" variant="light" className="ml-auto">Reiniciar formulario</Button>
+                  )}
+
+                  <Button
+                    color="danger"
+                    radius="sm"
+                    variant="light"
+                    onPress={handleClose}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+                    startContent={loading ? '' : <SaveIcon className="h-4 w-4" />}
+                    onPress={handleSave}
+                    isLoading={loading}
+                  >
+                    {loading
+                      ? vehiculoEditar
+                        ? "Actualizando..."
+                        : "Guardando..."
+                      : vehiculoEditar
+                        ? "Actualizar"
+                        : "Guardar"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                  {/* Botones */}
+                  <div className="flex gap-2">
+                    {isEditing && hasChanges && (
+                      <Button
+                        radius="sm"
+                        color="default"
+                        variant="flat"
+                        onPress={handleCancelEdit}
+                        startContent={<X className="h-4 w-4" />}
+                      >
+                        Descartar cambios
+                      </Button>
+                    )}
+
+                    <Button
+                      radius="sm"
+                      color="danger"
+                      variant="flat"
+                      onPress={handleCancelar}
+                      isDisabled={isLoading}
+                    >
+                      Cancelar
+                    </Button>
+
+                    <Button
+                      radius="sm"
+                      color={isEditing ? "success" : "warning"}
+                      variant="flat"
+                      onPress={handleEditar}
+                      isLoading={isLoading && modalAction === 'guardar'}
+                      startContent={
+                        isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />
+                      }
+                    >
+                      {isEditing ? 'Guardar Cambios' : 'Editar Datos'}
+                    </Button>
+
+                    <Button
+                      radius="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={handleConfirmar}
+                      isLoading={isLoading && modalAction === 'confirmar'}
+                    >
+                      Confirmar y Registrar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </ModalFooter>
           </>
         )}

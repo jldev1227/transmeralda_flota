@@ -45,6 +45,7 @@ export interface Vehiculo {
   updatedAt: string;
   vin: string;
   documentos?: Documento[];
+  [key: string]: any;
 }
 
 export enum EstadoVehiculo {
@@ -175,7 +176,7 @@ export interface Documento {
   filename: string;
   mimetype: string;
   tamaño: number;
-  fecha_vigencia: string | null;
+  fecha_vigencia: string;
   estado: string;
   upload_date: string;
   metadata: {
@@ -202,7 +203,8 @@ export interface VehiculosState {
 interface ErrorProcesamiento {
   error: string;
   mensaje: string;
-  sessionId: string
+  sessionId: string;
+  vehiculo: Vehiculo
 }
 
 interface Procesamiento {
@@ -213,6 +215,7 @@ interface Procesamiento {
   mensaje: string;
   error: string | null;
   progreso: number;
+  vehiculo?: Vehiculo
 }
 
 export const initialProcesamientoState: Procesamiento = {
@@ -297,6 +300,15 @@ interface FlotaContextType {
   validationErrors: ValidationError[] | null;
   sortDescriptor: SortDescriptor;
   procesamiento: Procesamiento;
+  modalDetalleOpen: boolean;
+  selectedVehiculoId: string | null;
+  modalFormOpen: boolean;
+  vehiculoParaEditar: Vehiculo | null;
+  setLoading: Dispatch<SetStateAction<boolean>>;
+  setModalDetalleOpen: Dispatch<SetStateAction<boolean>>;
+  setSelectedVehiculoId: Dispatch<SetStateAction<string | null>>;
+  setModalFormOpen: Dispatch<SetStateAction<boolean>>;
+  setVehiculoParaEditar: Dispatch<SetStateAction<Vehiculo | null>>;
   setProcesamiento: Dispatch<SetStateAction<Procesamiento>>;
 
   // Operaciones CRUD
@@ -347,6 +359,16 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [socketEventLogs, setSocketEventLogs] = useState<SocketEventLog[]>([]);
   const { user } = useAuth();
+
+  // Estados para los modales
+  const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
+  const [selectedVehiculoId, setSelectedVehiculoId] = useState<string | null>(
+    null,
+  );
+  const [modalFormOpen, setModalFormOpen] = useState(false);
+  const [vehiculoParaEditar, setVehiculoParaEditar] = useState<Vehiculo | null>(
+    null,
+  );
 
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "placa",
@@ -473,15 +495,15 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
     try {
       const response = await apiClient.get<ApiResponse<Vehiculo>>(
-        `/api/conductores/${id}`,
+        `/api/flota/${id}`,
       );
 
       if (response.data && response.data.success) {
-        const conductor = response.data.data;
+        const vehiculo = response.data.data;
 
-        setCurrentVehiculo(conductor);
+        setCurrentVehiculo(vehiculo);
 
-        return conductor;
+        return vehiculo;
       } else {
         throw new Error("Respuesta no exitosa del servidor");
       }
@@ -1106,11 +1128,15 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Agregar el nuevo vehículo al estado
         setVehiculosState((prev) => ({
           ...prev,
-          data: [{...data.vehiculo, documentos: data.documentos}, ...prev.data], // Agregar al inicio del array
+          data: [{ ...data.vehiculo, documentos: data.documentos }, ...prev.data], // Agregar al inicio del array
           count: prev.count + 1,
           // Recalcular totalPages si es necesario (asumiendo un tamaño de página)
           // totalPages: Math.ceil((prev.count + 1) / pageSize),
         }));
+
+        setCurrentVehiculo(null)
+        setModalFormOpen(false)
+        setProcesamiento(initialProcesamientoState)
 
         addToast({
           title: "Nuevo Vehículo",
@@ -1161,7 +1187,40 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         });
       };
 
-      const handleErrorProcesamiento = (data: ErrorProcesamiento) => {
+      const handleConfirmarCreacion = (data: {
+        camposEditables: string[];
+        datosVehiculo: Vehiculo;
+        progreso: number;
+        mensaje: string;
+        sessionId: string;
+        socketId: string | unknown;
+        opciones: {
+          confirmar: boolean;
+          editar: boolean;
+          cancelar: boolean;
+        }
+      }) => {
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:confirmacion:requerida",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        console.log(data)
+        setCurrentVehiculo(data.datosVehiculo)
+        setProcesamiento(prev => ({
+          ...prev,
+          sessionId: data.sessionId,
+          estado: "procesando",
+          mensaje: data.mensaje,
+          progreso: data.progreso
+        }));
+      };
+
+      const handleErrorProcesamiento = async (data: ErrorProcesamiento) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1171,19 +1230,16 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           },
         ]);
 
-        // Resetear procesamiento a su valor inicial
+        // Preservar vehiculo si ya existe y el nuevo evento no lo trae
         setProcesamiento(prev => ({
           ...prev,
           sessionId: data.sessionId,
           error: data.error,
           estado: "error",
           mensaje: data.mensaje,
-          progreso: 0
+          progreso: 0,
+          vehiculo: data.vehiculo || prev.vehiculo
         }));
-
-        setTimeout(() => {
-          setProcesamiento(initialProcesamientoState)
-        }, 3000);
       };
 
       const handleInicio = (data: any) => {
@@ -1227,6 +1283,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Registrar manejadores de eventos de vehículos
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
+      socketService.on("vehiculo:confirmacion:requerida", handleConfirmarCreacion);
       socketService.on("vehiculo:procesamiento:error", handleErrorProcesamiento);
       socketService.on("vehiculo:procesamiento:inicio", handleInicio);
       socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
@@ -1241,6 +1298,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Limpiar manejadores de eventos de conductores
         socketService.off("vehiculo:creado");
         socketService.off("vehiculo:actualizado");
+        socketService.off("vehiculo:confirmacion:requerida");
         socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
         socketService.off("vehiculo:procesamiento:completado", handleCompletado);
         socketService.off("vehiculo:procesamiento:error");
@@ -1263,7 +1321,17 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     validationErrors,
     sortDescriptor,
     procesamiento,
+    modalDetalleOpen,
+    selectedVehiculoId,
+    modalFormOpen,
+    vehiculoParaEditar,
+    
+    setLoading,
     setProcesamiento,
+    setModalDetalleOpen,
+    setSelectedVehiculoId,
+    setModalFormOpen,
+    setVehiculoParaEditar,
 
     fetchVehiculos,
     getVehiculo,
