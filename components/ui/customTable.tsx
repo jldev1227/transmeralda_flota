@@ -202,7 +202,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
               const vehiculoId = item.id || "";
               const animation = rowAnimations[vehiculoId];
 
-              console.log(animation);
               const isNew = animation?.isNew || false;
               const isUpdated = animation?.isUpdated || false;
 
@@ -212,24 +211,14 @@ const CustomTable: React.FC<CustomTableProps> = ({
                   aria-label={`Fila de ${item.id ?? rowIndex}`}
                   className={`
                     hover:bg-gray-50 transition-colors cursor-pointer
-                    ${isNew ? "animate-pulse bg-success-50 border-l-[2px] border-solid !border-success-400" : ""}
-                    ${isUpdated && !isNew ? "animate-pulse bg-primary-50 border-l-[2px] border-solid !border-primary-400" : ""}
+                    ${isNew ? "animate-pulse bg-success-50" : ""}
+                    ${isUpdated && !isNew ? "animate-pulse bg-primary-50" : ""}
                   `}
                   id={`vehiculo-row-${item.id ?? rowIndex}`}
-                  style={{
-                    borderLeftWidth: isNew || isUpdated ? 4 : undefined,
-                    borderLeftStyle: isNew || isUpdated ? "solid" : undefined,
-                    borderLeftColor: isNew
-                      ? "#22c55e !important" // success-400
-                      : isUpdated && !isNew
-                        ? "#3b82f6 !important" // primary-400
-                        : undefined,
-                    // No tocamos borderTop, se mantiene por default
-                  }}
                   tabIndex={0}
                   onClick={() => onRowClick?.(item)}
                 >
-                  {columns.map((column, columnIndex) => (
+                  {columns.map((column) => (
                     <td
                       key={column.key}
                       className="px-6 py-4 whitespace-nowrap"

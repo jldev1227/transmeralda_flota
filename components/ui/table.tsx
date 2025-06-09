@@ -1,9 +1,9 @@
 import React from "react";
 import { useMediaQuery } from "react-responsive";
-import { Edit, Eye, Trash2, Check, AlertCircle, XCircle } from "lucide-react";
+import { Edit, Eye, Ban, Check, AlertCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 
-import { Vehiculo, EstadoVehiculo } from "@/context/FlotaContext";
+import { Vehiculo, EstadoVehiculo, Documento } from "@/context/FlotaContext";
 import CustomTable, {
   Column,
   SortDescriptor,
@@ -80,7 +80,7 @@ export default function ConductoresTable({
             {estado}
           </span>
         );
-      case EstadoVehiculo.ACTIVO:
+      case EstadoVehiculo["NO DISPONIBLE"]:
         return (
           <span className="inline-flex items-center px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
             <XCircle className="mr-1 h-3 w-3" />
@@ -106,25 +106,26 @@ export default function ConductoresTable({
         <div className="flex items-center">
           {vehiculo.placa ? (
             <Image
-              alt={`${vehiculo.placa} ${vehiculo.modelo}`}
+              alt={`${vehiculo.placa.trim()} ${vehiculo.modelo?.trim()}`}
               className="h-16 w-16 rounded-full mr-3"
               height={200}
-              src={`/assets/${vehiculo.clase_vehiculo === "CAMIONETA" ? "car.jpg" : "bus.jpg"}`}
+              src={`/assets/${vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
               width={200}
             />
           ) : (
             <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center mr-3">
               <span className="text-emerald-700 font-semibold">
-                {vehiculo.placa?.substring(0, 2)}
+                {vehiculo.placa?.trim().substring(0, 2)}
               </span>
             </div>
           )}
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {vehiculo.placa} {vehiculo.marca}
+              {vehiculo.placa?.trim()} {vehiculo.marca?.trim()}
             </div>
             <div className="text-sm text-gray-500">
-              {vehiculo.modelo || "Modelo no especificado"} - {vehiculo.linea}
+              {vehiculo.modelo?.trim() || "Modelo no especificado"} -{" "}
+              {vehiculo.linea?.trim()}
             </div>
           </div>
         </div>
@@ -138,15 +139,21 @@ export default function ConductoresTable({
         <div className="text-sm">
           <span
             className={`px-2 py-1 rounded-full ${
-              vehiculo.clase_vehiculo === "CAMIONETA"
+              vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta"
                 ? "bg-blue-100 text-blue-800"
                 : "bg-purple-100 text-purple-800"
             }`}
           >
-            {vehiculo.clase_vehiculo}
+            {vehiculo.clase_vehiculo?.trim()}
           </span>
           <div className="text-xs text-gray-500 mt-1">
-            {vehiculo.tipo_carroceria}
+            {vehiculo.tipo_carroceria?.trim() ? (
+              vehiculo.tipo_carroceria.trim()
+            ) : (
+              <span className="text-gray-400 italic">
+                Sin tipo de carrocería
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -157,20 +164,30 @@ export default function ConductoresTable({
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
-          {vehiculo.kilometraje.toLocaleString()} km
+          {vehiculo.kilometraje?.toLocaleString()} km
         </div>
       ),
     },
     propietario: {
-      key: "propietario",
+      key: "propietario_nombre",
       label: "PROPIETARIO",
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
-          <div className="font-medium">{vehiculo.propietario_nombre}</div>
-          <div className="text-gray-500">
-            {vehiculo.propietario_identificacion}
-          </div>
+          {vehiculo.propietario_nombre?.trim() ? (
+            <>
+              <div className="font-medium">
+                {vehiculo.propietario_nombre.trim()}
+              </div>
+              <div className="text-gray-500">
+                {vehiculo.propietario_identificacion?.trim()}
+              </div>
+            </>
+          ) : (
+            <div className="text-gray-400 italic">
+              Sin propietario registrado
+            </div>
+          )}
         </div>
       ),
     },
@@ -179,7 +196,15 @@ export default function ConductoresTable({
       label: "ESTADO",
       allowsSorting: true,
       renderCell: (vehiculo: Vehiculo) => (
-        <div>{renderEstado(vehiculo.estado as EstadoVehiculo)}</div>
+        <div>
+          {renderEstado(
+            (Object.values(EstadoVehiculo) as string[]).includes(
+              vehiculo.estado?.trim?.(),
+            )
+              ? (EstadoVehiculo as any)[vehiculo.estado?.trim?.()]
+              : vehiculo.estado,
+          )}
+        </div>
       ),
     },
     documentos: {
@@ -189,51 +214,114 @@ export default function ConductoresTable({
       renderCell: (vehiculo: Vehiculo) => {
         const today = new Date();
 
+        // Agrupar y ordenar documentos por categoría según prioridad
+        const documentosAgrupados = vehiculo.documentos
+          ? Object.values(vehiculo.documentos).reduce(
+              (acc, doc) => {
+                const categoria = doc.categoria?.trim();
+
+                if (!acc[categoria]) {
+                  acc[categoria] = [];
+                }
+                acc[categoria].push(doc);
+
+                return acc;
+              },
+              {} as { [key: string]: Documento[] },
+            )
+          : {};
+
         // Función para calcular días de diferencia y determinar si está próximo a vencer
         const getDaysRemaining = (dateStr: string) => {
           if (!dateStr) return null;
-          const vencimiento = new Date(dateStr);
+          const vencimiento = new Date(dateStr.trim());
           const diffTime = vencimiento.getTime() - today.getTime();
 
           return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         };
 
-        // Función para obtener el estilo según los días restantes
-        const getStatusStyle = (days: number | null) => {
-          if (days === null) return "bg-gray-100 text-gray-600";
-          if (days < 0) return "bg-red-100 text-red-800";
-          if (days < 30) return "bg-yellow-100 text-yellow-800";
-
-          return "bg-green-100 text-green-800";
-        };
-
-        const soatDays = getDaysRemaining(vehiculo.soat_vencimiento);
-        const tecnoMecanicaDays = getDaysRemaining(
-          vehiculo.tecnomecanica_vencimiento,
-        );
-
         return (
           <div className="flex flex-col space-y-1">
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(soatDays)}`}
-            >
-              SOAT:{" "}
-              {soatDays !== null
-                ? soatDays < 0
-                  ? "Vencido"
-                  : `${soatDays} días`
-                : "N/A"}
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${getStatusStyle(tecnoMecanicaDays)}`}
-            >
-              Tecno:{" "}
-              {tecnoMecanicaDays !== null
-                ? tecnoMecanicaDays < 0
-                  ? "Vencido"
-                  : `${tecnoMecanicaDays} días`
-                : "N/A"}
-            </span>
+            {(() => {
+              // Categorías a considerar
+              const categorias = [
+                "TARJETA_DE_PROPIEDAD",
+                "SOAT",
+                "TECNOMECANICA",
+                "TARJETA_DE_OPERACION",
+                "POLIZA_CONTRACTUAL",
+                "POLIZA_EXTRACONTRACTUAL",
+                "POLIZA_TODO_RIESGO",
+                "CERTIFICADO_GPS",
+              ];
+
+              let vigentes = 0;
+              let proximos = 0;
+              let vencidos = 0;
+              let noRegistrados = 0;
+
+              categorias.forEach((cat) => {
+                const docs = documentosAgrupados[cat.trim()];
+
+                if (!docs || docs.length === 0) {
+                  noRegistrados++;
+
+                  return;
+                }
+                // Tomar el documento más reciente por fecha_vigencia
+                const doc = docs.reduce(
+                  (latest, curr) => {
+                    if (!latest) return curr;
+                    const latestDate = new Date(
+                      latest.fecha_vigencia?.trim() || "",
+                    );
+                    const currDate = new Date(
+                      curr.fecha_vigencia?.trim() || "",
+                    );
+
+                    return currDate > latestDate ? curr : latest;
+                  },
+                  null as (typeof docs)[number] | null,
+                );
+
+                // La tarjeta de propiedad no tiene vigencia, solo cuenta como registrado
+                if (cat.trim() === "TARJETA_DE_PROPIEDAD") {
+                  // No la sumes a vigentes ni a ningún estado de vigencia
+                  return;
+                }
+
+                const days = getDaysRemaining(
+                  doc?.fecha_vigencia?.trim() || "",
+                );
+
+                if (days === null) {
+                  noRegistrados++;
+                } else if (days < 0) {
+                  vencidos++;
+                } else if (days < 30) {
+                  proximos++;
+                } else {
+                  vigentes++;
+                }
+              });
+
+              return (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                    Vigentes: {vigentes}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+                    Próximos a vencer: {proximos}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">
+                    Vencidos: {vencidos}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                    No registrados: {noRegistrados}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         );
       },
@@ -249,7 +337,7 @@ export default function ConductoresTable({
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation();
-              abrirModalDetalle(vehiculo.id);
+              abrirModalDetalle(vehiculo.id?.trim());
             }}
           >
             <Eye className="h-5 w-5" />
@@ -259,7 +347,19 @@ export default function ConductoresTable({
             title="Editar"
             onClick={(e) => {
               e.stopPropagation();
-              abrirModalEditar(vehiculo);
+              abrirModalEditar({
+                ...vehiculo,
+                id: vehiculo.id?.trim(),
+                placa: vehiculo.placa?.trim(),
+                marca: vehiculo.marca?.trim(),
+                modelo: vehiculo.modelo?.trim(),
+                linea: vehiculo.linea?.trim(),
+                propietario_nombre: vehiculo.propietario_nombre?.trim(),
+                propietario_identificacion:
+                  vehiculo.propietario_identificacion?.trim(),
+                clase_vehiculo: vehiculo.clase_vehiculo?.trim(),
+                tipo_carroceria: vehiculo.tipo_carroceria?.trim(),
+              });
             }}
           >
             <Edit className="h-5 w-5" />
@@ -271,7 +371,7 @@ export default function ConductoresTable({
               e.stopPropagation();
             }}
           >
-            <Trash2 className="h-5 w-5" />
+            <Ban className="h-5 w-5" />
           </button>
         </div>
       ),

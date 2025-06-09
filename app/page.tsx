@@ -5,43 +5,52 @@ import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
 import { Alert } from "@heroui/alert";
 
-import { Vehiculo, useFlota, BusquedaParams } from "@/context/FlotaContext";
+import {
+  Vehiculo,
+  useFlota,
+  BusquedaParams,
+  CrearVehiculoRequest,
+  initialProcesamientoState,
+} from "@/context/FlotaContext";
 import VehiculosTable from "@/components/ui/table";
 import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
+import { useAuth } from "@/context/AuthContext";
+import { LogoutButton } from "@/components/logout";
+import { formatDate } from "@/helpers";
 
 export default function GestionVehiculos() {
+  const { user } = useAuth();
   const {
     vehiculosState,
     sortDescriptor,
+    loading,
+    modalDetalleOpen,
+    modalFormOpen,
+    vehiculoParaEditar,
+    selectedVehiculoId,
+    setModalDetalleOpen,
+    setModalFormOpen,
+    setVehiculoParaEditar,
+    setSelectedVehiculoId,
+
     fetchVehiculos,
-    crearVehiculoBasico,
-    actualizarVehiculoBasico,
+    crearVehiculo,
+    actualizarVehiculo,
     handleSortChange,
+    setProcesamiento,
+    setLoading,
   } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Estados para búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filtros, setFiltros] = useState<FilterOptions>({
-    sedes: [],
-    tiposIdentificacion: [],
-    tiposContrato: [],
     estados: [],
+    clases: [],
   });
-  const [loading, setLoading] = useState<boolean>(false);
-
-  // Estados para los modales
-  const [modalDetalleOpen, setModalDetalleOpen] = useState(false);
-  const [selectedVehiculoId, setSelectedVehiculoId] = useState<string | null>(
-    null,
-  );
-  const [modalFormOpen, setModalFormOpen] = useState(false);
-  const [vehiculoParaEditar, setVehiculoParaEditar] = useState<Vehiculo | null>(
-    null,
-  );
 
   // Inicialización: cargar conductores
   useEffect(() => {
@@ -79,6 +88,10 @@ export default function GestionVehiculos() {
         params.estado = currentFiltros.estados as any;
       }
 
+      if (currentFiltros.clases.length > 0) {
+        params.clase = currentFiltros.clases as any;
+      }
+
       // Realizar la búsqueda
       await fetchVehiculos(params);
 
@@ -105,10 +118,8 @@ export default function GestionVehiculos() {
   // Manejar reset de búsqueda y filtros
   const handleReset = async () => {
     const filtrosVacios = {
-      sedes: [],
-      tiposIdentificacion: [],
-      tiposContrato: [],
       estados: [],
+      clases: [],
     };
 
     await cargarVehiculos(1, "", filtrosVacios);
@@ -148,6 +159,7 @@ export default function GestionVehiculos() {
   const cerrarModalForm = () => {
     setModalFormOpen(false);
     setVehiculoParaEditar(null);
+    setProcesamiento(initialProcesamientoState);
   };
 
   const cerrarModalDetalle = () => {
@@ -156,20 +168,24 @@ export default function GestionVehiculos() {
   };
 
   // Función para guardar vehiculo (nueva o editada)
-  const guardarVehiculo = async (vehiculoData: Vehiculo) => {
+  const guardarVehiculo = async (
+    vehiculoData:
+      | CrearVehiculoRequest
+      | (CrearVehiculoRequest & { id: string }),
+  ) => {
     try {
       setLoading(true);
-      if (vehiculoData.id) {
+      if ("id" in vehiculoData && vehiculoData.id) {
         // Editar vehiculo existente
-        await actualizarVehiculoBasico(vehiculoData.id, vehiculoData);
+        await actualizarVehiculo(vehiculoData);
       } else {
         // Crear nuevo vehiculo
-        await crearVehiculoBasico(vehiculoData);
+        await crearVehiculo(vehiculoData);
       }
 
       // Si llegamos aquí, significa que la operación fue exitosa
-      // Cerrar modal después de guardar correctamente
-      cerrarModalForm();
+      // // Cerrar modal después de guardar correctamente
+      // cerrarModalForm();
 
       // Recargar la lista de conductores con los filtros actuales
       await cargarVehiculos(vehiculosState.currentPage);
@@ -184,8 +200,42 @@ export default function GestionVehiculos() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-emerald-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto" />
+          <p className="mt-4 text-emerald-700">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-5 sm:p-10 space-y-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-2xl font-bold shadow">
+            {user.nombre
+              .split(" ")
+              .map((name) => name[0])
+              .join("")}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-emerald-700">
+              {user.nombre}
+            </h2>
+            <p className="text-sm text-gray-500">{user.correo}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Último acceso:{" "}
+              <span className="text-emerald-600">
+                {formatDate(user.ultimo_acceso)}
+              </span>
+            </p>
+          </div>
+        </div>
+        <LogoutButton>Cerrar sesión</LogoutButton>
+      </div>
       <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
         <Button
