@@ -28,9 +28,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { Chip } from "@heroui/chip";
+
 import { apiClient } from "@/config/apiClient";
 import { Documento, Vehiculo } from "@/context/FlotaContext";
-import { Chip } from "@heroui/chip";
 import { formatearFecha, formatearKilometraje } from "@/helpers";
 
 interface ModalDetalleVehiculoProps {
@@ -87,6 +88,7 @@ const formatearCategoria = (categoria: string) => {
     POLIZA_EXTRACONTRACTUAL: "Póliza Extra Contractual",
     POLIZA_TODO_RIESGO: "Póliza Todo Riesgo",
   };
+
   return categorias[categoria] || categoria;
 };
 
@@ -96,6 +98,7 @@ const formatearTamaño = (bytes: number) => {
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
@@ -116,8 +119,18 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
   // Función para verificar el estado de vigencia de una póliza
   const obtenerEstadoVigencia = (
-    fecha?: string | Date
-  ): { msg: string; color: "default" | "danger" | "warning" | "success" | "primary" | "secondary" | undefined } => {
+    fecha?: string | Date,
+  ): {
+    msg: string;
+    color:
+      | "default"
+      | "danger"
+      | "warning"
+      | "success"
+      | "primary"
+      | "secondary"
+      | undefined;
+  } => {
     if (!fecha) {
       return { msg: "Sin vigencia", color: "default" };
     }
@@ -145,26 +158,30 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
     "POLIZA_CONTRACTUAL",
     "POLIZA_EXTRACONTRACTUAL",
     "POLIZA_TODO_RIESGO",
-    "CERTIFICADO_GPS"
+    "CERTIFICADO_GPS",
   ];
 
   // Agrupar y ordenar documentos por categoría según prioridad
-  const documentosAgrupados = vehiculo.documentos
-    ?.reduce((acc, doc) => {
-      if (!acc[doc.categoria]) {
-        acc[doc.categoria] = [];
-      }
-      acc[doc.categoria].push(doc);
-      return acc;
-    }, {} as { [key: string]: Documento[] }) || {};
+  const documentosAgrupados =
+    vehiculo.documentos?.reduce(
+      (acc, doc) => {
+        if (!acc[doc.categoria]) {
+          acc[doc.categoria] = [];
+        }
+        acc[doc.categoria].push(doc);
+
+        return acc;
+      },
+      {} as { [key: string]: Documento[] },
+    ) || {};
 
   // Ordenar las entradas del objeto agrupado según la prioridad
   const documentosAgrupadosOrdenados = Object.fromEntries(
     Object.entries(documentosAgrupados).sort(
       ([a], [b]) =>
         (ordenPrioridad.indexOf(a) === -1 ? 999 : ordenPrioridad.indexOf(a)) -
-        (ordenPrioridad.indexOf(b) === -1 ? 999 : ordenPrioridad.indexOf(b))
-    )
+        (ordenPrioridad.indexOf(b) === -1 ? 999 : ordenPrioridad.indexOf(b)),
+    ),
   );
 
   // Función para obtener URL presignada (mantén la que ya tienes)
@@ -173,9 +190,11 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
       const response = await apiClient.get(`/api/documentos/url-firma`, {
         params: { key: s3Key },
       });
+
       return response.data.url;
     } catch (error) {
       console.error("Error al obtener URL firmada:", error);
+
       return null;
     }
   };
@@ -184,6 +203,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
   const handleView = async (documento: Documento) => {
     try {
       const url = await getPresignedUrl(documento.s3_key);
+
       if (url) {
         window.open(url, "_blank");
       } else {
@@ -198,10 +218,13 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
   // OPCIÓN 3: Descarga con fetch a través del backend
   const handleDownload = async (documento: Documento) => {
     try {
-      const response = await apiClient.get(`/api/documentos/descargar/${documento.id}`, {
-        responseType: 'blob',
-        timeout: 30000, // 30 segundos
-      });
+      const response = await apiClient.get(
+        `/api/documentos/descargar/${documento.id}`,
+        {
+          responseType: "blob",
+          timeout: 30000, // 30 segundos
+        },
+      );
 
       if (!response.data) {
         throw new Error("No se recibieron datos del servidor");
@@ -209,15 +232,16 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
       // Crear blob y descargar
       const blob = new Blob([response.data], {
-        type: response.headers['content-type'] || 'application/octet-stream'
+        type: response.headers["content-type"] || "application/octet-stream",
       });
 
       const blobUrl = window.URL.createObjectURL(blob);
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
+
       link.href = blobUrl;
       link.download = documento.nombre_original;
-      link.style.display = 'none';
+      link.style.display = "none";
 
       document.body.appendChild(link);
       link.click();
@@ -226,14 +250,16 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
       }, 100);
-
     } catch (error) {
       console.error("❌ Error al descargar documento:", error);
       const errorMessage =
         error && typeof error === "object" && "message" in error
           ? (error as { message: string }).message
           : "Error desconocido";
-      alert(`Error al descargar "${documento.nombre_original}": ${errorMessage}`);
+
+      alert(
+        `Error al descargar "${documento.nombre_original}": ${errorMessage}`,
+      );
     }
   };
 
@@ -269,7 +295,8 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                     {vehiculo.marca} {vehiculo.linea}
                   </h2>
                   <p className="text-sm text-gray-600 mb-2">
-                    Placa: <strong>{vehiculo.placa}</strong> | Modelo: {vehiculo.modelo}
+                    Placa: <strong>{vehiculo.placa}</strong> | Modelo:{" "}
+                    {vehiculo.modelo}
                   </p>
                   <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4">
                     <span className="flex items-center capitalize">
@@ -288,7 +315,11 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                 </div>
               </div>
 
-              <Tabs color="primary" aria-label="Información del Vehículo" className="mx-auto">
+              <Tabs
+                aria-label="Información del Vehículo"
+                className="mx-auto"
+                color="primary"
+              >
                 <Tab key="general" title="Información General">
                   <Card shadow="sm">
                     <CardBody className="space-y-6">
@@ -315,7 +346,9 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                 <span>{vehiculo.linea}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Modelo:</span>
+                                <span className="font-medium w-28">
+                                  Modelo:
+                                </span>
                                 <span>{vehiculo.modelo}</span>
                               </li>
                               <li className="flex items-start">
@@ -327,8 +360,13 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                 <span>{vehiculo.clase_vehiculo}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Carrocería:</span>
-                                <span>{vehiculo.tipo_carroceria || "No especificada"}</span>
+                                <span className="font-medium w-28">
+                                  Carrocería:
+                                </span>
+                                <span>
+                                  {vehiculo.tipo_carroceria ||
+                                    "No especificada"}
+                                </span>
                               </li>
                             </ul>
                           </div>
@@ -345,28 +383,52 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                 <span>{vehiculo.vin || "No registrado"}</span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">No. Motor:</span>
-                                <span>{vehiculo.numero_motor || "No registrado"}</span>
+                                <span className="font-medium w-32">
+                                  No. Motor:
+                                </span>
+                                <span>
+                                  {vehiculo.numero_motor || "No registrado"}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">No. Chasis:</span>
-                                <span>{vehiculo.numero_chasis || "No registrado"}</span>
+                                <span className="font-medium w-32">
+                                  No. Chasis:
+                                </span>
+                                <span>
+                                  {vehiculo.numero_chasis || "No registrado"}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">No. Serie:</span>
-                                <span>{vehiculo.numero_serie || "No registrado"}</span>
+                                <span className="font-medium w-32">
+                                  No. Serie:
+                                </span>
+                                <span>
+                                  {vehiculo.numero_serie || "No registrado"}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">Combustible:</span>
-                                <span>{vehiculo.combustible || "No especificado"}</span>
+                                <span className="font-medium w-32">
+                                  Combustible:
+                                </span>
+                                <span>
+                                  {vehiculo.combustible || "No especificado"}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">Kilometraje:</span>
-                                <span>{formatearKilometraje(vehiculo.kilometraje)}</span>
+                                <span className="font-medium w-32">
+                                  Kilometraje:
+                                </span>
+                                <span>
+                                  {formatearKilometraje(vehiculo.kilometraje)}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-32">Fecha Matricula:</span>
-                                <span>{formatearFecha(vehiculo.fecha_matricula)}</span>
+                                <span className="font-medium w-32">
+                                  Fecha Matricula:
+                                </span>
+                                <span>
+                                  {formatearFecha(vehiculo.fecha_matricula)}
+                                </span>
                               </li>
                             </ul>
                           </div>
@@ -382,12 +444,22 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                             </h4>
                             <ul className="space-y-2">
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Nombre:</span>
-                                <span>{vehiculo.propietario_nombre || "No registrado"}</span>
+                                <span className="font-medium w-28">
+                                  Nombre:
+                                </span>
+                                <span>
+                                  {vehiculo.propietario_nombre ||
+                                    "No registrado"}
+                                </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Identificación:</span>
-                                <span>{vehiculo.propietario_identificacion || "No registrado"}</span>
+                                <span className="font-medium w-28">
+                                  Identificación:
+                                </span>
+                                <span>
+                                  {vehiculo.propietario_identificacion ||
+                                    "No registrado"}
+                                </span>
                               </li>
                             </ul>
                           </div>
@@ -401,12 +473,20 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                               </h4>
                               <ul className="space-y-2">
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Latitud:</span>
-                                  <span>{vehiculo.latitud || "No disponible"}</span>
+                                  <span className="font-medium w-28">
+                                    Latitud:
+                                  </span>
+                                  <span>
+                                    {vehiculo.latitud || "No disponible"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Longitud:</span>
-                                  <span>{vehiculo.longitud || "No disponible"}</span>
+                                  <span className="font-medium w-28">
+                                    Longitud:
+                                  </span>
+                                  <span>
+                                    {vehiculo.longitud || "No disponible"}
+                                  </span>
                                 </li>
                               </ul>
                             </div>
@@ -420,24 +500,36 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                             </h4>
                             <ul className="space-y-2">
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Creado el:</span>
+                                <span className="font-medium w-28">
+                                  Creado el:
+                                </span>
                                 <span>
                                   {vehiculo.createdAt
-                                    ? new Date(vehiculo.createdAt).toLocaleString("es-CO")
+                                    ? new Date(
+                                        vehiculo.createdAt,
+                                      ).toLocaleString("es-CO")
                                     : "No disponible"}
                                 </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Actualizado:</span>
+                                <span className="font-medium w-28">
+                                  Actualizado:
+                                </span>
                                 <span>
                                   {vehiculo.updatedAt
-                                    ? new Date(vehiculo.updatedAt).toLocaleString("es-CO")
+                                    ? new Date(
+                                        vehiculo.updatedAt,
+                                      ).toLocaleString("es-CO")
                                     : "No disponible"}
                                 </span>
                               </li>
                               <li className="flex items-start">
-                                <span className="font-medium w-28">Conductor:</span>
-                                <span>{vehiculo.conductor_id || "No asignado"}</span>
+                                <span className="font-medium w-28">
+                                  Conductor:
+                                </span>
+                                <span>
+                                  {vehiculo.conductor_id || "No asignado"}
+                                </span>
                               </li>
                             </ul>
                           </div>
@@ -455,116 +547,151 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                     <CardBody className="space-y-6">
                       {vehiculo.documentos && vehiculo.documentos.length > 0 ? (
                         <div className="space-y-6">
-                          {Object.entries(documentosAgrupadosOrdenados).map(([categoria, docs]) => (
-                            <div key={categoria} className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="text-sm font-semibold mb-4 flex items-center border-b pb-2">
-                                {getDocumentIcon(categoria)}
-                                <span className="ml-2">{formatearCategoria(categoria)}</span>
-                              </h4>
-                              <div className="space-y-3">
-                                {docs.map((documento) => (
-                                  <div
-                                    key={documento.id}
-                                    className="bg-white p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                                  >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <h5 className="font-medium text-gray-900 mb-2">
-                                          {documento.nombre_original}
-                                        </h5>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
-                                          <div className="flex items-center">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            <span>Tamaño: {formatearTamaño(documento.tamaño)}</span>
-                                          </div>
-                                          <div className="flex items-center">
-                                            <Clock className="h-3 w-3 mr-1" />
-                                            <span>
-                                              Subido: {formatearFecha(documento.upload_date)}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center">
-                                            {(() => {
-                                              const vigencia = obtenerEstadoVigencia(documento.fecha_vigencia);
-                                              let Icon;
-                                              let iconColor = "";
-
-                                              switch (vigencia.color) {
-                                                case "success":
-                                                  Icon = CheckCircle;
-                                                  iconColor = "text-green-600";
-                                                  break;
-                                                case "warning":
-                                                  Icon = AlertCircle;
-                                                  iconColor = "text-yellow-600";
-                                                  break;
-                                                case "danger":
-                                                  Icon = AlertCircle;
-                                                  iconColor = "text-red-600";
-                                                  break;
-                                                default:
-                                                  Icon = AlertCircle;
-                                                  iconColor = "text-gray-400";
-                                                  break;
-                                              }
-
-                                              return (
-                                                <>
-                                                  <Icon className={`h-3 w-3 mr-1 ${iconColor}`} />
-                                                  <span>Estado: </span>
-                                                  <Chip
-                                                    className="ml-2"
-                                                    color={vigencia.color ? vigencia.color : 'default'}
-                                                    variant="flat"
-                                                    size="sm"
-                                                  >
-                                                    {vigencia.msg}
-                                                  </Chip>
-                                                </>
-                                              );
-                                            })()}
-                                          </div>
-                                          {documento.fecha_vigencia && (
+                          {Object.entries(documentosAgrupadosOrdenados).map(
+                            ([categoria, docs]) => (
+                              <div
+                                key={categoria}
+                                className="bg-gray-50 p-4 rounded-lg"
+                              >
+                                <h4 className="text-sm font-semibold mb-4 flex items-center border-b pb-2">
+                                  {getDocumentIcon(categoria)}
+                                  <span className="ml-2">
+                                    {formatearCategoria(categoria)}
+                                  </span>
+                                </h4>
+                                <div className="space-y-3">
+                                  {docs.map((documento) => (
+                                    <div
+                                      key={documento.id}
+                                      className="bg-white p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                    >
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <h5 className="font-medium text-gray-900 mb-2">
+                                            {documento.nombre_original}
+                                          </h5>
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
                                             <div className="flex items-center">
-                                              <Calendar className="h-3 w-3 mr-1" />
+                                              <FileText className="h-3 w-3 mr-1" />
                                               <span>
-                                                Vigencia: {formatearFecha(documento.fecha_vigencia)}
+                                                Tamaño:{" "}
+                                                {formatearTamaño(
+                                                  documento.tamaño,
+                                                )}
                                               </span>
                                             </div>
-                                          )}
+                                            <div className="flex items-center">
+                                              <Clock className="h-3 w-3 mr-1" />
+                                              <span>
+                                                Subido:{" "}
+                                                {formatearFecha(
+                                                  documento.upload_date,
+                                                )}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center">
+                                              {(() => {
+                                                const vigencia =
+                                                  obtenerEstadoVigencia(
+                                                    documento.fecha_vigencia,
+                                                  );
+                                                let Icon;
+                                                let iconColor = "";
+
+                                                switch (vigencia.color) {
+                                                  case "success":
+                                                    Icon = CheckCircle;
+                                                    iconColor =
+                                                      "text-green-600";
+                                                    break;
+                                                  case "warning":
+                                                    Icon = AlertCircle;
+                                                    iconColor =
+                                                      "text-yellow-600";
+                                                    break;
+                                                  case "danger":
+                                                    Icon = AlertCircle;
+                                                    iconColor = "text-red-600";
+                                                    break;
+                                                  default:
+                                                    Icon = AlertCircle;
+                                                    iconColor = "text-gray-400";
+                                                    break;
+                                                }
+
+                                                return (
+                                                  <>
+                                                    <Icon
+                                                      className={`h-3 w-3 mr-1 ${iconColor}`}
+                                                    />
+                                                    <span>Estado: </span>
+                                                    <Chip
+                                                      className="ml-2"
+                                                      color={
+                                                        vigencia.color
+                                                          ? vigencia.color
+                                                          : "default"
+                                                      }
+                                                      size="sm"
+                                                      variant="flat"
+                                                    >
+                                                      {vigencia.msg}
+                                                    </Chip>
+                                                  </>
+                                                );
+                                              })()}
+                                            </div>
+                                            {documento.fecha_vigencia && (
+                                              <div className="flex items-center">
+                                                <Calendar className="h-3 w-3 mr-1" />
+                                                <span>
+                                                  Vigencia:{" "}
+                                                  {formatearFecha(
+                                                    documento.fecha_vigencia,
+                                                  )}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex space-x-2 ml-4">
+                                          <Button
+                                            isIconOnly
+                                            color="primary"
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={() =>
+                                              handleView(documento)
+                                            }
+                                          >
+                                            <Eye className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            isIconOnly
+                                            color="secondary"
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={() =>
+                                              handleDownload(documento)
+                                            }
+                                          >
+                                            <Download className="h-4 w-4" />
+                                          </Button>
                                         </div>
                                       </div>
-                                      <div className="flex space-x-2 ml-4">
-                                        <Button
-                                          size="sm"
-                                          variant="flat"
-                                          color="primary"
-                                          isIconOnly
-                                          onPress={() => handleView(documento)}
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="flat"
-                                          color="secondary"
-                                          isIconOnly
-                                          onPress={() => handleDownload(documento)}
-                                        >
-                                          <Download className="h-4 w-4" />
-                                        </Button>
-                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ),
+                          )}
                         </div>
                       ) : (
                         <div className="text-center py-8">
                           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-500">No hay documentos registrados para este vehículo</p>
+                          <p className="text-gray-500">
+                            No hay documentos registrados para este vehículo
+                          </p>
                         </div>
                       )}
                     </CardBody>
@@ -575,7 +702,12 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
 
             <ModalFooter>
               <div className="flex space-x-2">
-                <Button color="danger" radius="sm" variant="light" onPress={onClose}>
+                <Button
+                  color="danger"
+                  radius="sm"
+                  variant="light"
+                  onPress={onClose}
+                >
                   Cerrar
                 </Button>
                 {onEdit && (

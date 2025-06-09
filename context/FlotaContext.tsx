@@ -140,15 +140,17 @@ export interface CrearVehiculoRequest {
 }
 
 // Tipos específicos para diferentes tipos de creación
-export interface crearVehiculoRequest extends Omit<CrearVehiculoRequest, 'documentos' | 'fechasVigencia'> { }
+export interface crearVehiculoRequest
+  extends Omit<CrearVehiculoRequest, "documentos" | "fechasVigencia"> {}
 
-export interface CrearVehiculoConDocumentosRequest extends CrearVehiculoRequest {
+export interface CrearVehiculoConDocumentosRequest
+  extends CrearVehiculoRequest {
   documentos: DocumentosVehiculo;
   fechasVigencia?: FechasVigenciaVehiculo;
 }
 
 export interface ActualizarVehiculoRequest
-  extends Partial<CrearVehiculoRequest & { id: string }> { }
+  extends Partial<CrearVehiculoRequest & { id: string }> {}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -162,7 +164,7 @@ export interface ApiResponse<T> {
 
 interface CrearVehiculoConDocumentosResponse {
   vehiculo: Vehiculo;
-  documentos: Documento[]
+  documentos: Documento[];
 }
 
 export interface Documento {
@@ -204,7 +206,7 @@ interface ErrorProcesamiento {
   error: string;
   mensaje: string;
   sessionId: string;
-  vehiculo: Vehiculo
+  vehiculo: Vehiculo;
 }
 
 interface Procesamiento {
@@ -215,7 +217,7 @@ interface Procesamiento {
   mensaje: string;
   error: string | null;
   progreso: number;
-  vehiculo?: Vehiculo
+  vehiculo?: Vehiculo;
 }
 
 export const initialProcesamientoState: Procesamiento = {
@@ -225,13 +227,13 @@ export const initialProcesamientoState: Procesamiento = {
   progreso: 0,
   estado: null,
   mensaje: "",
-  error: '',
+  error: "",
 };
 
 // Funciones utilitarias
 export const getEstadoColor = (estado: EstadoVehiculo) => {
   switch (estado) {
-    case EstadoVehiculo['NO DISPONIBLE']:
+    case EstadoVehiculo["NO DISPONIBLE"]:
       return {
         bg: "bg-green-100",
         text: "text-green-800",
@@ -316,7 +318,7 @@ interface FlotaContextType {
   getVehiculo: (id: string) => Promise<Vehiculo | null>;
   crearVehiculo: (data: CrearVehiculoRequest) => Promise<Vehiculo | null>;
   actualizarVehiculo: (
-    data: ActualizarVehiculoRequest
+    data: ActualizarVehiculoRequest,
   ) => Promise<Vehiculo | null>;
 
   // Funciones de utilidad
@@ -519,12 +521,17 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
   };
 
   // ✅ ALTERNATIVA: Función helper para validar documentos de forma más segura
-  const validarDocumentos = (documentos: DocumentosVehiculo | undefined): boolean => {
+  const validarDocumentos = (
+    documentos: DocumentosVehiculo | undefined,
+  ): boolean => {
     if (!documentos) return false;
+
     return Object.keys(documentos).length > 0;
   };
 
-  const extraerFechasVigencia = (documentos: DocumentosVehiculo | undefined): Record<string, string> => {
+  const extraerFechasVigencia = (
+    documentos: DocumentosVehiculo | undefined,
+  ): Record<string, string> => {
     const fechas: Record<string, string> = {};
 
     if (!documentos) return fechas;
@@ -538,7 +545,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     return fechas;
   };
 
-  const extraerCategorias = (documentos: DocumentosVehiculo | undefined): string[] => {
+  const extraerCategorias = (
+    documentos: DocumentosVehiculo | undefined,
+  ): string[] => {
     const categorias: string[] = [];
 
     if (!documentos) return categorias;
@@ -570,8 +579,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
         // Agregar datos básicos del vehículo
         Object.keys(data).forEach((key) => {
-          if (key !== 'documentos' && key !== 'fechasVigencia') {
+          if (key !== "documentos" && key !== "fechasVigencia") {
             const value = data[key as keyof CrearVehiculoRequest];
+
             if (value !== undefined && value !== null) {
               formData.append(key, value.toString());
             }
@@ -582,11 +592,14 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         const fechasVigencia = extraerFechasVigencia(data.documentos);
 
         if (Object.keys(fechasVigencia).length > 0) {
-          formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
+          formData.append("fechasVigencia", JSON.stringify(fechasVigencia));
         }
 
         if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
-          formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
+          formData.append(
+            "fechasVigencia",
+            JSON.stringify(data.fechasVigencia),
+          );
         }
 
         // Agregar archivos usando función helper
@@ -595,27 +608,28 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         if (data.documentos) {
           Object.entries(data.documentos).forEach(([categoria, documento]) => {
             if (documento?.file) {
-              formData.append('documentos', documento.file);
+              formData.append("documentos", documento.file);
             }
           });
         }
 
-        formData.append('categorias', JSON.stringify(categorias));
+        formData.append("categorias", JSON.stringify(categorias));
         requestData = formData;
-        headers['Content-Type'] = 'multipart/form-data';
+        headers["Content-Type"] = "multipart/form-data";
       } else {
         endpoint = "/api/flota/basico";
         const { documentos, fechasVigencia, ...vehiculoBasico } = data;
+
         requestData = vehiculoBasico;
-        headers['Content-Type'] = 'application/json';
+        headers["Content-Type"] = "application/json";
       }
 
-      setProcesamiento(initialProcesamientoState)
+      setProcesamiento(initialProcesamientoState);
 
       const response = await apiClient.post<ApiResponse<Vehiculo>>(
         endpoint,
         requestData,
-        { headers }
+        { headers },
       );
 
       if (response.data && response.data.success) {
@@ -624,8 +638,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         throw new Error(response.data.message || "Error al crear vehículo");
       }
     } catch (err: any) {
-
-      console.log(err)
+      console.log(err);
       // Definir un mensaje de error predeterminado
       let errorTitle = "Error al crear vehículo";
       let errorDescription = "Ha ocurrido un error inesperado.";
@@ -655,11 +668,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
                 clase_vehiculo: "Clase del vehículo",
                 modelo: "Modelo",
                 documentos: "Documentos",
-                fechasVigencia: "Fechas de vigencia"
+                fechasVigencia: "Fechas de vigencia",
               };
 
               // Mostrar cada error de validación como un toast separado
               let errorShown = false;
+
               err.response.data.errores.forEach(
                 (error: { campo: string; mensaje: string }) => {
                   errorShown = true;
@@ -667,6 +681,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
                   // Personalizar mensajes para errores comunes
                   let customMessage = error.mensaje;
+
                   if (error.mensaje.includes("must be unique")) {
                     customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
                   } else if (error.mensaje.includes("vigencia")) {
@@ -709,7 +724,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             if (errorDescription.includes("documento")) {
               errorTitle = "Error en documentos";
               if (errorDescription.includes("vigencia")) {
-                errorDescription = "Una o más fechas de vigencia de los documentos son inválidas.";
+                errorDescription =
+                  "Una o más fechas de vigencia de los documentos son inválidas.";
               } else if (errorDescription.includes("obligatorio")) {
                 errorDescription = "Falta documentación obligatoria.";
               }
@@ -723,35 +739,42 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
           case 403: // Forbidden
             errorTitle = "Acceso denegado";
-            errorDescription = "No tienes los permisos necesarios para crear vehículos.";
+            errorDescription =
+              "No tienes los permisos necesarios para crear vehículos.";
             break;
 
           case 413: // Payload Too Large
             errorTitle = "Archivos demasiado grandes";
-            errorDescription = "Uno o más archivos exceden el tamaño máximo permitido.";
+            errorDescription =
+              "Uno o más archivos exceden el tamaño máximo permitido.";
             break;
 
           case 422: // Unprocessable Entity
             errorTitle = "Datos no procesables";
-            errorDescription = "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
+            errorDescription =
+              "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
             break;
 
           case 500: // Internal Server Error
             errorTitle = "Error del servidor";
             // Usar el mensaje del servidor si está disponible, sino mensaje genérico
-            errorDescription = err.response.data?.message || "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
+            errorDescription =
+              err.response.data?.message ||
+              "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
             break;
 
           case 502: // Bad Gateway
           case 503: // Service Unavailable
           case 504: // Gateway Timeout
             errorTitle = "Servicio no disponible";
-            errorDescription = "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
+            errorDescription =
+              "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
             break;
 
           default:
             errorTitle = `Error ${err.response.status}`;
-            errorDescription = err.response.data?.message || "Ha ocurrido un error inesperado.";
+            errorDescription =
+              err.response.data?.message || "Ha ocurrido un error inesperado.";
         }
       } else if (err.request) {
         // La solicitud fue hecha pero no se recibió respuesta
@@ -784,7 +807,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
   // ✅ VERSION MEJORADA para actualización de vehículo usando las funciones helper:
   const actualizarVehiculo = async (
-    data: ActualizarVehiculoRequest
+    data: ActualizarVehiculoRequest,
   ): Promise<Vehiculo> => {
     clearError();
 
@@ -801,8 +824,13 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
         // Agregar datos básicos del vehículo
         Object.keys(data).forEach((key) => {
-          if (key !== 'documentos' && key !== 'fechasVigencia' && key !== 'id') {
+          if (
+            key !== "documentos" &&
+            key !== "fechasVigencia" &&
+            key !== "id"
+          ) {
             const value = data[key as keyof CrearVehiculoRequest];
+
             if (value !== undefined && value !== null) {
               formData.append(key, value.toString());
             }
@@ -813,11 +841,14 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         const fechasVigencia = extraerFechasVigencia(data.documentos);
 
         if (Object.keys(fechasVigencia).length > 0) {
-          formData.append('fechasVigencia', JSON.stringify(fechasVigencia));
+          formData.append("fechasVigencia", JSON.stringify(fechasVigencia));
         }
 
         if (data.fechasVigencia && Object.keys(fechasVigencia).length === 0) {
-          formData.append('fechasVigencia', JSON.stringify(data.fechasVigencia));
+          formData.append(
+            "fechasVigencia",
+            JSON.stringify(data.fechasVigencia),
+          );
         }
 
         // Agregar archivos usando función helper
@@ -831,49 +862,59 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           Object.entries(data.documentos).forEach(([categoria, documento]) => {
             if (documento?.file) {
               // Es un documento nuevo
-              formData.append('documentos', documento.file);
+              formData.append("documentos", documento.file);
               documentosNuevos.push(categoria);
-            } else if (documento?.tipo === 'existente' && documento?.id) {
+            } else if (documento?.tipo === "existente" && documento?.id) {
               // Es una actualización de documento existente (solo fecha de vigencia)
               documentosActualizados.push({
                 id: documento.id,
                 categoria,
-                fecha_vigencia: documento.fecha_vigencia?.toISOString() || null
+                fecha_vigencia: documento.fecha_vigencia?.toISOString() || null,
               });
             }
           });
         }
 
         // ✅ Agregar metadatos sobre documentos
-        formData.append('categorias', JSON.stringify(categorias));
+        formData.append("categorias", JSON.stringify(categorias));
         if (documentosActualizados.length > 0) {
-          formData.append('documentosActualizados', JSON.stringify(documentosActualizados));
+          formData.append(
+            "documentosActualizados",
+            JSON.stringify(documentosActualizados),
+          );
         }
 
         requestData = formData;
-        headers['Content-Type'] = 'multipart/form-data';
+        headers["Content-Type"] = "multipart/form-data";
       } else {
         // ✅ Sin documentos - endpoint básico con PUT
         endpoint = `/api/flota/basico/${data.id}`;
-        const { documentos, fechasVigencia, id: vehiculoId, ...vehiculoBasico } = data;
+        const {
+          documentos,
+          fechasVigencia,
+          id: vehiculoId,
+          ...vehiculoBasico
+        } = data;
+
         requestData = vehiculoBasico;
-        headers['Content-Type'] = 'application/json';
+        headers["Content-Type"] = "application/json";
       }
 
       // ✅ Usar PUT en lugar de POST para actualización
       const response = await apiClient.put<ApiResponse<Vehiculo>>(
         endpoint,
         requestData,
-        { headers }
+        { headers },
       );
 
       if (response.data && response.data.success) {
         return response.data.data;
       } else {
-        throw new Error(response.data.message || "Error al actualizar vehículo");
+        throw new Error(
+          response.data.message || "Error al actualizar vehículo",
+        );
       }
     } catch (err: any) {
-
       // Definir un mensaje de error predeterminado
       let errorTitle = "Error al actualizar vehículo";
       let errorDescription = "Ha ocurrido un error inesperado.";
@@ -903,11 +944,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
                 clase_vehiculo: "Clase del vehículo",
                 modelo: "Modelo",
                 documentos: "Documentos",
-                fechasVigencia: "Fechas de vigencia"
+                fechasVigencia: "Fechas de vigencia",
               };
 
               // Mostrar cada error de validación como un toast separado
               let errorShown = false;
+
               err.response.data.errores.forEach(
                 (error: { campo: string; mensaje: string }) => {
                   errorShown = true;
@@ -915,6 +957,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
                   // Personalizar mensajes para errores comunes
                   let customMessage = error.mensaje;
+
                   if (error.mensaje.includes("must be unique")) {
                     customMessage = `Este ${fieldLabel.toLowerCase()} ya está registrado en el sistema`;
                   } else if (error.mensaje.includes("vigencia")) {
@@ -957,7 +1000,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             if (errorDescription.includes("documento")) {
               errorTitle = "Error en documentos";
               if (errorDescription.includes("vigencia")) {
-                errorDescription = "Una o más fechas de vigencia de los documentos son inválidas.";
+                errorDescription =
+                  "Una o más fechas de vigencia de los documentos son inválidas.";
               } else if (errorDescription.includes("obligatorio")) {
                 errorDescription = "Falta documentación obligatoria.";
               }
@@ -971,45 +1015,54 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
           case 403: // Forbidden
             errorTitle = "Acceso denegado";
-            errorDescription = "No tienes los permisos necesarios para actualizar vehículos.";
+            errorDescription =
+              "No tienes los permisos necesarios para actualizar vehículos.";
             break;
 
           case 404: // Not Found
             errorTitle = "Vehículo no encontrado";
-            errorDescription = "El vehículo que intentas actualizar no existe o ha sido eliminado.";
+            errorDescription =
+              "El vehículo que intentas actualizar no existe o ha sido eliminado.";
             break;
 
           case 409: // Conflict
             errorTitle = "Conflicto de datos";
-            errorDescription = "Los datos que intentas actualizar entran en conflicto con información existente.";
+            errorDescription =
+              "Los datos que intentas actualizar entran en conflicto con información existente.";
             break;
 
           case 413: // Payload Too Large
             errorTitle = "Archivos demasiado grandes";
-            errorDescription = "Uno o más archivos exceden el tamaño máximo permitido.";
+            errorDescription =
+              "Uno o más archivos exceden el tamaño máximo permitido.";
             break;
 
           case 422: // Unprocessable Entity
             errorTitle = "Datos no procesables";
-            errorDescription = "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
+            errorDescription =
+              "Los datos enviados no pudieron ser procesados. Verifica el formato de los archivos.";
             break;
 
           case 500: // Internal Server Error
             errorTitle = "Error del servidor";
             // Usar el mensaje del servidor si está disponible, sino mensaje genérico
-            errorDescription = err.response.data?.message || "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
+            errorDescription =
+              err.response.data?.message ||
+              "Ha ocurrido un error interno en el servidor. Intenta nuevamente.";
             break;
 
           case 502: // Bad Gateway
           case 503: // Service Unavailable
           case 504: // Gateway Timeout
             errorTitle = "Servicio no disponible";
-            errorDescription = "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
+            errorDescription =
+              "El servicio no está disponible temporalmente. Intenta nuevamente en unos minutos.";
             break;
 
           default:
             errorTitle = `Error ${err.response.status}`;
-            errorDescription = err.response.data?.message || "Ha ocurrido un error inesperado.";
+            errorDescription =
+              err.response.data?.message || "Ha ocurrido un error inesperado.";
         }
       } else if (err.request) {
         // La solicitud fue hecha pero no se recibió respuesta
@@ -1115,7 +1168,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         setSocketConnected(false);
       };
 
-      const handleVehiculoCreado = (data: CrearVehiculoConDocumentosResponse) => {
+      const handleVehiculoCreado = (
+        data: CrearVehiculoConDocumentosResponse,
+      ) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1128,15 +1183,18 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Agregar el nuevo vehículo al estado
         setVehiculosState((prev) => ({
           ...prev,
-          data: [{ ...data.vehiculo, documentos: data.documentos }, ...prev.data], // Agregar al inicio del array
+          data: [
+            { ...data.vehiculo, documentos: data.documentos },
+            ...prev.data,
+          ], // Agregar al inicio del array
           count: prev.count + 1,
           // Recalcular totalPages si es necesario (asumiendo un tamaño de página)
           // totalPages: Math.ceil((prev.count + 1) / pageSize),
         }));
 
-        setCurrentVehiculo(null)
-        setModalFormOpen(false)
-        setProcesamiento(initialProcesamientoState)
+        setCurrentVehiculo(null);
+        setModalFormOpen(false);
+        setProcesamiento(initialProcesamientoState);
 
         addToast({
           title: "Nuevo Vehículo",
@@ -1165,18 +1223,20 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           data: prev.data.map((vehiculo) =>
             vehiculo.id === data.vehiculo.id
               ? {
-                ...data.vehiculo,
-                documentos: vehiculo.documentos?.map((docExistente) => {
-                  // Buscar si hay un documento actualizado para esta categoría
-                  const docActualizado = data.documentosActualizados.find(
-                    (docNuevo) => docNuevo.categoria === docExistente.categoria
-                  );
+                  ...data.vehiculo,
+                  documentos:
+                    vehiculo.documentos?.map((docExistente) => {
+                      // Buscar si hay un documento actualizado para esta categoría
+                      const docActualizado = data.documentosActualizados.find(
+                        (docNuevo) =>
+                          docNuevo.categoria === docExistente.categoria,
+                      );
 
-                  // Si existe un documento actualizado para esta categoría, reemplazarlo
-                  return docActualizado || docExistente;
-                }) ?? [],
-              }
-              : vehiculo
+                      // Si existe un documento actualizado para esta categoría, reemplazarlo
+                      return docActualizado || docExistente;
+                    }) ?? [],
+                }
+              : vehiculo,
           ),
         }));
 
@@ -1198,7 +1258,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           confirmar: boolean;
           editar: boolean;
           cancelar: boolean;
-        }
+        };
       }) => {
         setSocketEventLogs((prev) => [
           ...prev,
@@ -1209,14 +1269,14 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           },
         ]);
 
-        console.log(data)
-        setCurrentVehiculo(data.datosVehiculo)
-        setProcesamiento(prev => ({
+        console.log(data);
+        setCurrentVehiculo(data.datosVehiculo);
+        setProcesamiento((prev) => ({
           ...prev,
           sessionId: data.sessionId,
           estado: "procesando",
           mensaje: data.mensaje,
-          progreso: data.progreso
+          progreso: data.progreso,
         }));
       };
 
@@ -1231,50 +1291,49 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         ]);
 
         // Preservar vehiculo si ya existe y el nuevo evento no lo trae
-        setProcesamiento(prev => ({
+        setProcesamiento((prev) => ({
           ...prev,
           sessionId: data.sessionId,
           error: data.error,
           estado: "error",
           mensaje: data.mensaje,
           progreso: 0,
-          vehiculo: data.vehiculo || prev.vehiculo
+          vehiculo: data.vehiculo || prev.vehiculo,
         }));
       };
 
       const handleInicio = (data: any) => {
-        setProcesamiento(prev => ({
+        setProcesamiento((prev) => ({
           ...prev,
           sessionId: data.sessionId,
           estado: "iniciando",
           procesados: data.procesados,
           mensaje: data.mensaje,
-          progreso: data.progreso
+          progreso: data.progreso,
         }));
       };
 
       const handleProgreso = (data: any) => {
-        setProcesamiento(prev => ({
+        setProcesamiento((prev) => ({
           ...prev,
           sessionId: data.sessionId,
           estado: "procesando",
           procesados: data.procesados,
           mensaje: data.mensaje,
-          progreso: data.progreso
+          progreso: data.progreso,
         }));
       };
 
       const handleCompletado = (data: any) => {
-        console.log(data)
-        setProcesamiento(prev => ({
+        console.log(data);
+        setProcesamiento((prev) => ({
           ...prev,
-          estado: 'completado',
+          estado: "completado",
           progreso: 100,
-          mensaje: 'Vehículo creado exitosamente',
-          error: ''
+          mensaje: "Vehículo creado exitosamente",
+          error: "",
         }));
       };
-
 
       // Registrar manejadores de eventos
       socketService.on("connect", handleConnect);
@@ -1283,12 +1342,17 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Registrar manejadores de eventos de vehículos
       socketService.on("vehiculo:creado", handleVehiculoCreado);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
-      socketService.on("vehiculo:confirmacion:requerida", handleConfirmarCreacion);
-      socketService.on("vehiculo:procesamiento:error", handleErrorProcesamiento);
+      socketService.on(
+        "vehiculo:confirmacion:requerida",
+        handleConfirmarCreacion,
+      );
+      socketService.on(
+        "vehiculo:procesamiento:error",
+        handleErrorProcesamiento,
+      );
       socketService.on("vehiculo:procesamiento:inicio", handleInicio);
       socketService.on("vehiculo:procesamiento:progreso", handleProgreso);
       socketService.on("vehiculo:procesamiento:completado", handleCompletado);
-
 
       return () => {
         // Limpiar al desmontar
@@ -1300,7 +1364,10 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         socketService.off("vehiculo:actualizado");
         socketService.off("vehiculo:confirmacion:requerida");
         socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
-        socketService.off("vehiculo:procesamiento:completado", handleCompletado);
+        socketService.off(
+          "vehiculo:procesamiento:completado",
+          handleCompletado,
+        );
         socketService.off("vehiculo:procesamiento:error");
       };
     }
@@ -1325,7 +1392,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     selectedVehiculoId,
     modalFormOpen,
     vehiculoParaEditar,
-    
+
     setLoading,
     setProcesamiento,
     setModalDetalleOpen,

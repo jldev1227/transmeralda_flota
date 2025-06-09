@@ -23,7 +23,7 @@ const clases = [
   { key: "BUS", label: "Bus" },
   { key: "BUSETA", label: "Buseta" },
   { key: "MICROBUS", label: "Microbus" },
-  { key: "CAMION", label: "Camion" }
+  { key: "CAMION", label: "Camion" },
 ];
 
 interface BuscadorFiltrosConductoresProps {
@@ -62,7 +62,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     // Convertir los Sets a arrays para pasarlos a onFilter
     const filtrosArray: FilterOptions = {
       estados: Array.from(filtros.estados),
-      clases: Array.from(filtros.clases)
+      clases: Array.from(filtros.clases),
     };
 
     onFilter(filtrosArray);
@@ -75,7 +75,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
 
   // Aplicar búsqueda al presionar Enter o el botón
   const aplicarBusqueda = () => {
-    if (searchTerm === "") return
+    if (searchTerm === "") return;
     onSearch(searchTerm);
   };
 
@@ -91,7 +91,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
     setSearchTerm("");
     setFiltros({
       estados: new Set([]),
-      clases: new Set([])
+      clases: new Set([]),
     });
     onSearch("");
     onReset();
@@ -99,9 +99,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
 
   // Contar filtros activos
   const contarFiltrosActivos = () => {
-    return (
-      filtros.estados.size
-    );
+    return filtros.estados.size;
   };
 
   const handleEstadosChange = (keys: SharedSelection) => {
@@ -200,8 +198,7 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
             <DropdownTrigger>
               <Button color="primary" radius="sm" variant="flat">
                 Estados{" "}
-                {filtros.estados.size > 0 &&
-                  `(${filtros.estados.size})`}
+                {filtros.estados.size > 0 && `(${filtros.estados.size})`}
               </Button>
             </DropdownTrigger>
             <DropdownMenu
@@ -218,13 +215,11 @@ const BuscadorFiltrosConductores: React.FC<BuscadorFiltrosConductoresProps> = ({
             </DropdownMenu>
           </Dropdown>
 
-           {/* Dropdown para clase vehiculo */}
+          {/* Dropdown para clase vehiculo */}
           <Dropdown>
             <DropdownTrigger>
               <Button color="primary" radius="sm" variant="flat">
-                Clase{" "}
-                {filtros.clases.size > 0 &&
-                  `(${filtros.clases.size})`}
+                Clase {filtros.clases.size > 0 && `(${filtros.clases.size})`}
               </Button>
             </DropdownTrigger>
             <DropdownMenu

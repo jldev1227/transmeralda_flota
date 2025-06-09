@@ -42,7 +42,7 @@ export default function ConductoresTable({
   sortDescriptor,
   onSortChange,
   selectedIds = [],
-  onSelectItem = () => { },
+  onSelectItem = () => {},
   isLoading = false,
   columnKeys,
   currentPage,
@@ -124,7 +124,8 @@ export default function ConductoresTable({
               {vehiculo.placa?.trim()} {vehiculo.marca?.trim()}
             </div>
             <div className="text-sm text-gray-500">
-              {(vehiculo.modelo?.trim() || "Modelo no especificado")} - {vehiculo.linea?.trim()}
+              {vehiculo.modelo?.trim() || "Modelo no especificado"} -{" "}
+              {vehiculo.linea?.trim()}
             </div>
           </div>
         </div>
@@ -137,18 +138,22 @@ export default function ConductoresTable({
       renderCell: (vehiculo: Vehiculo) => (
         <div className="text-sm">
           <span
-            className={`px-2 py-1 rounded-full ${vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta"
-              ? "bg-blue-100 text-blue-800"
-              : "bg-purple-100 text-purple-800"
-              }`}
+            className={`px-2 py-1 rounded-full ${
+              vehiculo.clase_vehiculo?.toLowerCase().trim() === "camioneta"
+                ? "bg-blue-100 text-blue-800"
+                : "bg-purple-100 text-purple-800"
+            }`}
           >
             {vehiculo.clase_vehiculo?.trim()}
           </span>
           <div className="text-xs text-gray-500 mt-1">
-            {vehiculo.tipo_carroceria?.trim()
-              ? vehiculo.tipo_carroceria.trim()
-              : <span className="text-gray-400 italic">Sin tipo de carrocería</span>
-            }
+            {vehiculo.tipo_carroceria?.trim() ? (
+              vehiculo.tipo_carroceria.trim()
+            ) : (
+              <span className="text-gray-400 italic">
+                Sin tipo de carrocería
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -171,13 +176,17 @@ export default function ConductoresTable({
         <div className="text-sm">
           {vehiculo.propietario_nombre?.trim() ? (
             <>
-              <div className="font-medium">{vehiculo.propietario_nombre.trim()}</div>
+              <div className="font-medium">
+                {vehiculo.propietario_nombre.trim()}
+              </div>
               <div className="text-gray-500">
                 {vehiculo.propietario_identificacion?.trim()}
               </div>
             </>
           ) : (
-            <div className="text-gray-400 italic">Sin propietario registrado</div>
+            <div className="text-gray-400 italic">
+              Sin propietario registrado
+            </div>
           )}
         </div>
       ),
@@ -189,9 +198,11 @@ export default function ConductoresTable({
       renderCell: (vehiculo: Vehiculo) => (
         <div>
           {renderEstado(
-            (Object.values(EstadoVehiculo) as string[]).includes(vehiculo.estado?.trim?.())
+            (Object.values(EstadoVehiculo) as string[]).includes(
+              vehiculo.estado?.trim?.(),
+            )
               ? (EstadoVehiculo as any)[vehiculo.estado?.trim?.()]
-              : vehiculo.estado
+              : vehiculo.estado,
           )}
         </div>
       ),
@@ -205,14 +216,19 @@ export default function ConductoresTable({
 
         // Agrupar y ordenar documentos por categoría según prioridad
         const documentosAgrupados = vehiculo.documentos
-          ? Object.values(vehiculo.documentos).reduce((acc, doc) => {
-            const categoria = doc.categoria?.trim();
-            if (!acc[categoria]) {
-              acc[categoria] = [];
-            }
-            acc[categoria].push(doc);
-            return acc;
-          }, {} as { [key: string]: Documento[] })
+          ? Object.values(vehiculo.documentos).reduce(
+              (acc, doc) => {
+                const categoria = doc.categoria?.trim();
+
+                if (!acc[categoria]) {
+                  acc[categoria] = [];
+                }
+                acc[categoria].push(doc);
+
+                return acc;
+              },
+              {} as { [key: string]: Documento[] },
+            )
           : {};
 
         // Función para calcular días de diferencia y determinar si está próximo a vencer
@@ -220,6 +236,7 @@ export default function ConductoresTable({
           if (!dateStr) return null;
           const vencimiento = new Date(dateStr.trim());
           const diffTime = vencimiento.getTime() - today.getTime();
+
           return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         };
 
@@ -235,7 +252,7 @@ export default function ConductoresTable({
                 "POLIZA_CONTRACTUAL",
                 "POLIZA_EXTRACONTRACTUAL",
                 "POLIZA_TODO_RIESGO",
-                "CERTIFICADO_GPS"
+                "CERTIFICADO_GPS",
               ];
 
               let vigentes = 0;
@@ -245,17 +262,27 @@ export default function ConductoresTable({
 
               categorias.forEach((cat) => {
                 const docs = documentosAgrupados[cat.trim()];
+
                 if (!docs || docs.length === 0) {
                   noRegistrados++;
+
                   return;
                 }
                 // Tomar el documento más reciente por fecha_vigencia
-                const doc = docs.reduce((latest, curr) => {
-                  if (!latest) return curr;
-                  const latestDate = new Date(latest.fecha_vigencia?.trim() || "");
-                  const currDate = new Date(curr.fecha_vigencia?.trim() || "");
-                  return currDate > latestDate ? curr : latest;
-                }, null as typeof docs[number] | null);
+                const doc = docs.reduce(
+                  (latest, curr) => {
+                    if (!latest) return curr;
+                    const latestDate = new Date(
+                      latest.fecha_vigencia?.trim() || "",
+                    );
+                    const currDate = new Date(
+                      curr.fecha_vigencia?.trim() || "",
+                    );
+
+                    return currDate > latestDate ? curr : latest;
+                  },
+                  null as (typeof docs)[number] | null,
+                );
 
                 // La tarjeta de propiedad no tiene vigencia, solo cuenta como registrado
                 if (cat.trim() === "TARJETA_DE_PROPIEDAD") {
@@ -263,7 +290,10 @@ export default function ConductoresTable({
                   return;
                 }
 
-                const days = getDaysRemaining(doc?.fecha_vigencia?.trim() || "");
+                const days = getDaysRemaining(
+                  doc?.fecha_vigencia?.trim() || "",
+                );
+
                 if (days === null) {
                   noRegistrados++;
                 } else if (days < 0) {
@@ -325,7 +355,8 @@ export default function ConductoresTable({
                 modelo: vehiculo.modelo?.trim(),
                 linea: vehiculo.linea?.trim(),
                 propietario_nombre: vehiculo.propietario_nombre?.trim(),
-                propietario_identificacion: vehiculo.propietario_identificacion?.trim(),
+                propietario_identificacion:
+                  vehiculo.propietario_identificacion?.trim(),
                 clase_vehiculo: vehiculo.clase_vehiculo?.trim(),
                 tipo_carroceria: vehiculo.tipo_carroceria?.trim(),
               });
@@ -430,20 +461,22 @@ export default function ConductoresTable({
       <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
         <div className="flex flex-1 justify-between sm:hidden">
           <button
-            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === 1
-              ? "text-gray-300 cursor-not-allowed"
-              : "text-gray-700 hover:bg-gray-50"
-              }`}
+            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
+              currentPage === 1
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
             disabled={currentPage === 1}
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           >
             Anterior
           </button>
           <button
-            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${currentPage === totalPages
-              ? "text-gray-300 cursor-not-allowed"
-              : "text-gray-700 hover:bg-gray-50"
-              }`}
+            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
+              currentPage === totalPages
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           >
@@ -470,10 +503,11 @@ export default function ConductoresTable({
               className="isolate inline-flex -space-x-px rounded-md shadow-sm"
             >
               <button
-                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${currentPage === 1
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-500 hover:bg-gray-50"
-                  }`}
+                className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${
+                  currentPage === 1
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
                 disabled={currentPage === 1}
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               >
@@ -504,10 +538,11 @@ export default function ConductoresTable({
                 ) : (
                   <button
                     key={`page-${page}`}
-                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === page
-                      ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                      : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
-                      }`}
+                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                      currentPage === page
+                        ? "z-10 bg-emerald-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                        : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                    }`}
                     onClick={() =>
                       typeof page === "number" && onPageChange(page)
                     }
@@ -518,10 +553,11 @@ export default function ConductoresTable({
               )}
 
               <button
-                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${currentPage === totalPages
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-500 hover:bg-gray-50"
-                  }`}
+                className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${
+                  currentPage === totalPages
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
                 disabled={currentPage === totalPages}
                 onClick={() =>
                   onPageChange(Math.min(totalPages, currentPage + 1))

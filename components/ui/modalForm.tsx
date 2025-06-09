@@ -8,25 +8,47 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { Calendar, Car, Edit, FileText, Hash, PenTool, Save, SaveIcon, TruckIcon, User, X } from "lucide-react";
+import {
+  Calendar,
+  Car,
+  Edit,
+  FileText,
+  Hash,
+  PenTool,
+  Save,
+  SaveIcon,
+  TruckIcon,
+  User,
+  X,
+} from "lucide-react";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-
-import { CrearVehiculoRequest, initialProcesamientoState, useFlota, Vehiculo } from "@/context/FlotaContext";
-import SimpleDocumentUploader from "../documentSimpleUpload";
 import { addToast } from "@heroui/toast";
 import { Alert } from "@heroui/alert";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Divider } from "@heroui/divider";
-import { formatearFecha, formatearKilometraje } from "@/helpers";
 import { Chip } from "@heroui/chip";
+
+import SimpleDocumentUploader from "../documentSimpleUpload";
+
+import { formatearFecha, formatearKilometraje } from "@/helpers";
+import {
+  CrearVehiculoRequest,
+  initialProcesamientoState,
+  useFlota,
+  Vehiculo,
+} from "@/context/FlotaContext";
 import socketService from "@/services/socketServices";
 
 interface ModalFormVehiculoProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (vehiculoData: CrearVehiculoRequest | (CrearVehiculoRequest & { id: string })) => Promise<void>;
+  onSave: (
+    vehiculoData:
+      | CrearVehiculoRequest
+      | (CrearVehiculoRequest & { id: string }),
+  ) => Promise<void>;
   vehiculoEditar?: Vehiculo | null;
   titulo?: string;
 }
@@ -63,8 +85,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
-
-  const { procesamiento, setProcesamiento, currentVehiculo } = useFlota()
+  const { procesamiento, setProcesamiento, currentVehiculo } = useFlota();
 
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
@@ -76,11 +97,13 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     linea: "",
   });
 
-  const [loading, setLoading] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false);
   const [subirDocumentos, setSubirDocumentos] = useState(true);
 
   // ✅ Estado actualizado para manejar documentos existentes y nuevos
-  const [documentos, setDocumentos] = useState<Record<string, DocumentoState>>({});
+  const [documentos, setDocumentos] = useState<Record<string, DocumentoState>>(
+    {},
+  );
 
   // Estado para manejar la validación
   const [errores, setErrores] = useState<Record<string, boolean>>({
@@ -92,7 +115,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   });
 
   // Estado para errores de documentos
-  const [erroresDocumentos, setErroresDocumentos] = useState<Record<string, boolean>>({});
+  const [erroresDocumentos, setErroresDocumentos] = useState<
+    Record<string, boolean>
+  >({});
 
   const [isEditing, setIsEditing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -100,29 +125,43 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
   // Modal para confirmaciones
   const { isOpen: isOpenConfirm, onOpen, onOpenChange } = useDisclosure();
-  const [modalAction, setModalAction] = useState('');
+  const [modalAction, setModalAction] = useState("");
 
-  const editableFields = ['propietario_nombre', 'propietario_identificacion', 'modelo', 'linea', 'color', 'numero_motor', 'numero_chasis', 'numero_serie', 'vin', 'fecha_matricula'];
+  const editableFields = [
+    "propietario_nombre",
+    "propietario_identificacion",
+    "modelo",
+    "linea",
+    "color",
+    "numero_motor",
+    "numero_chasis",
+    "numero_serie",
+    "vin",
+    "fecha_matricula",
+  ];
 
   useEffect(() => {
-    if (!currentVehiculo) return
+    if (!currentVehiculo) return;
 
-    setFormData(currentVehiculo)
-  }, [currentVehiculo])
+    setFormData(currentVehiculo);
+  }, [currentVehiculo]);
 
   // Función para manejar cambios en los inputs
   const handleInputChange = (field: string, value: string) => {
     if (!editableFields.includes(field) || !currentVehiculo) return;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
 
     // Verificar si hay cambios
-    const hasChangesNow = Object.keys(formData).some(key =>
-      editableFields.includes(key) && formData[key] !== currentVehiculo[key]
-    ) || value !== currentVehiculo[field];
+    const hasChangesNow =
+      Object.keys(formData).some(
+        (key) =>
+          editableFields.includes(key) &&
+          formData[key] !== currentVehiculo[key],
+      ) || value !== currentVehiculo[field];
 
     setHasChanges(hasChangesNow);
   };
@@ -137,19 +176,19 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     const errors = [];
 
     if (!formData.propietario_nombre?.trim()) {
-      errors.push('El nombre del propietario es obligatorio');
+      errors.push("El nombre del propietario es obligatorio");
     }
 
     if (!formData.propietario_identificacion?.trim()) {
-      errors.push('La identificación del propietario es obligatoria');
+      errors.push("La identificación del propietario es obligatoria");
     }
 
     if (!formData.modelo?.trim()) {
-      errors.push('El modelo es obligatorio');
+      errors.push("El modelo es obligatorio");
     }
 
     if (!formData.fecha_matricula?.trim()) {
-      errors.push('La fecha de matrícula es obligatoria');
+      errors.push("La fecha de matrícula es obligatoria");
     }
 
     return errors;
@@ -159,12 +198,14 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     if (isEditing) {
       // Guardar cambios
       const errors = validateData();
+
       if (errors.length > 0) {
-        alert('Errores de validación:\n' + errors.join('\n'));
+        alert("Errores de validación:\n" + errors.join("\n"));
+
         return;
       }
 
-      setModalAction('guardar');
+      setModalAction("guardar");
       onOpen();
     } else {
       // Activar modo edición
@@ -176,18 +217,20 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     if (isEditing && hasChanges) {
       // Si está en modo edición con cambios, primero guardar
       const errors = validateData();
+
       if (errors.length > 0) {
-        alert('Errores de validación:\n' + errors.join('\n'));
+        alert("Errores de validación:\n" + errors.join("\n"));
+
         return;
       }
     }
 
-    setModalAction('confirmar');
+    setModalAction("confirmar");
     onOpen();
   };
 
   const handleCancelEdit = () => {
-    if (!currentVehiculo) return
+    if (!currentVehiculo) return;
 
     setFormData(currentVehiculo);
     setIsEditing(false);
@@ -195,7 +238,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   };
 
   const handleCancelar = () => {
-    setModalAction('cancelar');
+    setModalAction("cancelar");
     onOpen();
   };
 
@@ -205,36 +248,36 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
     try {
       switch (modalAction) {
-        case 'cancelar':
+        case "cancelar":
           // Aquí iría la llamada al backend para cancelar
-          socketService.emit('vehiculo:confirmacion:respuesta', {
+          socketService.emit("vehiculo:confirmacion:respuesta", {
             sessionId: procesamiento.sessionId,
-            accion: 'cancelar'
+            accion: "cancelar",
           });
           break;
 
-        case 'guardar':
+        case "guardar":
           setIsEditing(false);
           break;
 
-        case 'confirmar':
+        case "confirmar":
           if (hasChanges) {
-            socketService.emit('vehiculo:confirmacion:respuesta', {
+            socketService.emit("vehiculo:confirmacion:respuesta", {
               sessionId: procesamiento.sessionId,
-              accion: 'editar',
-              datosModificados: formData
+              accion: "editar",
+              datosModificados: formData,
             });
           } else {
-            socketService.emit('vehiculo:confirmacion:respuesta', {
+            socketService.emit("vehiculo:confirmacion:respuesta", {
               sessionId: procesamiento.sessionId,
-              accion: 'confirmar'
+              accion: "confirmar",
             });
           }
           break;
       }
     } catch (error) {
-      console.error('Error ejecutando acción:', error);
-      alert('Error al procesar la solicitud');
+      console.error("Error ejecutando acción:", error);
+      alert("Error al procesar la solicitud");
     } finally {
       setIsLoading(false);
     }
@@ -259,19 +302,22 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     });
     setDocumentos({});
     setErroresDocumentos({});
-    setProcesamiento(initialProcesamientoState)
+    setProcesamiento(initialProcesamientoState);
   };
 
-
   // ✅ Función para cargar documentos existentes desde vehiculoEditar
-  const cargarDocumentosExistentes = (documentosExistentes: DocumentoExistente[]) => {
+  const cargarDocumentosExistentes = (
+    documentosExistentes: DocumentoExistente[],
+  ) => {
     const documentosState: Record<string, DocumentoState> = {};
 
-    documentosExistentes.forEach(doc => {
+    documentosExistentes.forEach((doc) => {
       documentosState[doc.categoria] = {
         existente: doc,
         esNuevo: false,
-        fecha_vigencia: doc.fecha_vigencia ? new Date(doc.fecha_vigencia) : undefined
+        fecha_vigencia: doc.fecha_vigencia
+          ? new Date(doc.fecha_vigencia)
+          : undefined,
       };
     });
 
@@ -363,6 +409,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       // Si hay errores, no continuar
       if (Object.values(nuevosErrores).some((error) => error)) {
         setLoading(false);
+
         return;
       }
     }
@@ -370,25 +417,29 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     // Validar documentos requeridos si está habilitado
     if (subirDocumentos) {
       const missingDocs = validateRequiredDocuments();
+
       if (missingDocs.length > 0) {
         addToast({
           title: `Falta documentación!`,
-          description: `Faltan documentos requeridos: ${missingDocs.join(', ')}`,
+          description: `Faltan documentos requeridos: ${missingDocs.join(", ")}`,
           color: "danger",
         });
         setLoading(false);
+
         return;
       }
 
       // Validar fechas de vigencia requeridas
       const missingVigencias = validateRequiredVigencias();
+
       if (missingVigencias.length > 0) {
         addToast({
           title: `Falta documentación!`,
-          description: `Faltan fechas de vigencia requeridas para: ${missingVigencias.join(', ')}`,
+          description: `Faltan fechas de vigencia requeridas para: ${missingVigencias.join(", ")}`,
           color: "danger",
         });
         setLoading(false);
+
         return;
       }
     }
@@ -396,11 +447,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     // Preparar datos completos incluyendo documentos
     const datosCompletos = {
       ...formData,
-      documentos: subirDocumentos ? preparearDocumentosParaEnvio() : null
+      documentos: subirDocumentos ? preparearDocumentosParaEnvio() : null,
     };
 
     try {
-      await onSave(datosCompletos as CrearVehiculoRequest | (CrearVehiculoRequest & { id: string }));
+      await onSave(
+        datosCompletos as
+          | CrearVehiculoRequest
+          | (CrearVehiculoRequest & { id: string }),
+      );
     } finally {
       setLoading(false);
     }
@@ -412,20 +467,25 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
     Object.keys(documentos).forEach((key) => {
       const documento = documentos[key];
+
       if (documento) {
         if (documento.esNuevo && documento.file) {
           // Documento nuevo
           documentosParaEnvio[key] = {
             file: documento.file,
-            ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia }),
-            tipo: 'nuevo'
+            ...(documento.fecha_vigencia && {
+              fecha_vigencia: documento.fecha_vigencia,
+            }),
+            tipo: "nuevo",
           };
         } else if (!documento.esNuevo && documento.existente) {
           // Documento existente (solo enviar si se cambió la fecha de vigencia)
           documentosParaEnvio[key] = {
             id: documento.existente.id,
-            ...(documento.fecha_vigencia && { fecha_vigencia: documento.fecha_vigencia }),
-            tipo: 'existente'
+            ...(documento.fecha_vigencia && {
+              fecha_vigencia: documento.fecha_vigencia,
+            }),
+            tipo: "existente",
           };
         }
       }
@@ -447,6 +507,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       if (!checked) {
         setDocumentos({});
       }
+
       return;
     }
   };
@@ -503,31 +564,39 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   ];
 
   // ✅ Manejar cambio de documento (actualizado)
-  const handleDocumentChange = (docKey: string, file: File, fecha_vigencia?: Date) => {
-    setDocumentos(prev => {
+  const handleDocumentChange = (
+    docKey: string,
+    file: File,
+    fecha_vigencia?: Date,
+  ) => {
+    setDocumentos((prev) => {
       const prevDoc = prev[docKey];
       // Only update if file or fecha_vigencia actually changed
       const isSameFile = prevDoc?.file === file;
       const isSameVigencia =
         (!prevDoc?.fecha_vigencia && !fecha_vigencia) ||
-        (prevDoc?.fecha_vigencia && fecha_vigencia && prevDoc.fecha_vigencia.getTime() === fecha_vigencia.getTime());
+        (prevDoc?.fecha_vigencia &&
+          fecha_vigencia &&
+          prevDoc.fecha_vigencia.getTime() === fecha_vigencia.getTime());
+
       if (isSameFile && isSameVigencia) {
         return prev;
       }
+
       return {
         ...prev,
         [docKey]: {
           file,
           fecha_vigencia,
           uploadedAt: new Date(),
-          esNuevo: true // Marcar como nuevo documento
-        }
+          esNuevo: true, // Marcar como nuevo documento
+        },
       };
     });
 
     // Limpiar error al cambiar documento
     if (erroresDocumentos[docKey]) {
-      setErroresDocumentos(prev => ({
+      setErroresDocumentos((prev) => ({
         ...prev,
         [docKey]: false,
       }));
@@ -536,9 +605,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
   // ✅ Manejar eliminación de documento (actualizado)
   const handleDocumentRemove = (docKey: string) => {
-    setDocumentos(prev => {
+    setDocumentos((prev) => {
       const newDocs = { ...prev };
+
       delete newDocs[docKey];
+
       return newDocs;
     });
   };
@@ -546,14 +617,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   // ✅ Validar documentos requeridos (actualizado)
   const validateRequiredDocuments = () => {
     const missingDocs = documentTypes
-      .filter(doc => {
+      .filter((doc) => {
         if (!doc.required) return false;
 
         const documento = documentos[doc.key];
+
         // Un documento existe si es nuevo con file o existente
         return !(documento && (documento.file || documento.existente));
       })
-      .map(doc => doc.label);
+      .map((doc) => doc.label);
 
     return missingDocs;
   };
@@ -563,7 +635,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     const nuevosErroresDocumentos: Record<string, boolean> = {};
     const missingVigencias: string[] = [];
 
-    documentTypes.forEach(doc => {
+    documentTypes.forEach((doc) => {
       if (doc.required && doc.vigencia) {
         const documento = documentos[doc.key];
 
@@ -578,6 +650,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     });
 
     setErroresDocumentos(nuevosErroresDocumentos);
+
     return missingVigencias;
   };
 
@@ -595,9 +668,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   }
 
   const handleClose = () => {
-    onClose()
-    resetForm()
-  }
+    onClose();
+    resetForm();
+  };
 
   return (
     <Modal
@@ -621,13 +694,15 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
             <ModalBody>
               <div className="space-y-6">
-
                 {!procesamiento.mensaje && !currentVehiculo && (
                   <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
                     <div>
-                      <span className="font-medium">Registrar con documentación</span>
+                      <span className="font-medium">
+                        Registrar con documentación
+                      </span>
                       <p className="text-sm text-gray-500">
-                        Marque esta opción si adjuntara documentación del vehículo
+                        Marque esta opción si adjuntara documentación del
+                        vehículo
                       </p>
                     </div>
                     <Switch
@@ -641,23 +716,25 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                 )}
 
                 {/* Alert para mostrar el estado del procesamiento */}
-                {procesamiento.mensaje !== '' && procesamiento.mensaje.length > 0 && (
-                  <div>
-                    <Alert
-                      color={
-                        procesamiento.error !== '' || procesamiento.estado === "error"
-                          ? "danger"
-                          : procesamiento.estado === "completado"
-                            ? "success"
-                            : "primary"
-                      }
-                      variant="faded"
-                      className="w-full"
-                    >
-                      {procesamiento.error || procesamiento.mensaje}
-                    </Alert>
-                  </div>
-                )}
+                {procesamiento.mensaje !== "" &&
+                  procesamiento.mensaje.length > 0 && (
+                    <div>
+                      <Alert
+                        className="w-full"
+                        color={
+                          procesamiento.error !== "" ||
+                          procesamiento.estado === "error"
+                            ? "danger"
+                            : procesamiento.estado === "completado"
+                              ? "success"
+                              : "primary"
+                        }
+                        variant="faded"
+                      >
+                        {procesamiento.error || procesamiento.mensaje}
+                      </Alert>
+                    </div>
+                  )}
 
                 {currentVehiculo && (
                   <div className="max-w-4xl mx-auto space-y-6">
@@ -666,13 +743,16 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       <CardHeader className="flex justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col">
-                            <p className="text-lg font-semibold">Datos Extraídos del Vehículo</p>
+                            <p className="text-lg font-semibold">
+                              Datos Extraídos del Vehículo
+                            </p>
                             <p className="text-sm text-default-500">
-                              Información obtenida mediante OCR de la tarjeta de propiedad
+                              Información obtenida mediante OCR de la tarjeta de
+                              propiedad
                             </p>
                           </div>
                         </div>
-                        <Chip color="success" variant="flat" size="sm">
+                        <Chip color="success" size="sm" variant="flat">
                           OCR Completado
                         </Chip>
                       </CardHeader>
@@ -683,7 +763,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       <CardHeader>
                         <div className="flex items-center gap-2">
                           <Car className="h-5 w-5 text-emerald-600" />
-                          <h3 className="text-lg font-semibold">Información del Vehículo</h3>
+                          <h3 className="text-lg font-semibold">
+                            Información del Vehículo
+                          </h3>
                         </div>
                       </CardHeader>
                       <Divider />
@@ -691,217 +773,249 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Placa */}
                           <Input
-                            label="Placa"
-                            value={formData.placa}
                             isReadOnly
-                            variant="flat"
                             classNames={{
                               input: "text-lg font-semibold",
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
+                            label="Placa"
                             startContent={
                               <div className="pointer-events-none flex items-center">
-                                <span className="text-default-400 text-small">🚗</span>
+                                <span className="text-default-400 text-small">
+                                  🚗
+                                </span>
                               </div>
                             }
+                            value={formData.placa}
+                            variant="flat"
                           />
 
                           {/* Marca */}
                           <Input
+                            isReadOnly
+                            classNames={{
+                              label: "text-default-600 font-medium",
+                            }}
                             label="Marca"
                             value={formData.marca}
-                            isReadOnly
                             variant="flat"
-                            classNames={{
-                              label: "text-default-600 font-medium"
-                            }}
                           />
 
                           {/* Marca */}
                           <Input
+                            isReadOnly
+                            classNames={{
+                              label: "text-default-600 font-medium",
+                            }}
                             label="Clase Vehículo"
                             value={formData.clase_vehiculo}
-                            isReadOnly
                             variant="flat"
-                            classNames={{
-                              label: "text-default-600 font-medium"
-                            }}
                           />
 
                           {/* Modelo (Año) */}
                           <Input
-                            label="Modelo (Año)"
-                            value={formData.modelo}
-                            isReadOnly={!isFieldEditable('modelo')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Calendar className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('modelo') && (
+                              isFieldEditable("modelo") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('modelo', e.target.value)}
+                            isReadOnly={!isFieldEditable("modelo")}
+                            label="Modelo (Año)"
+                            startContent={
+                              <Calendar className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.modelo}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("modelo", e.target.value)
+                            }
                           />
 
                           {/* Línea */}
                           <Input
-                            label="Línea"
-                            value={formData.linea}
-                            isReadOnly={!isFieldEditable('linea')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
                             endContent={
-                              isFieldEditable('modelo') && (
+                              isFieldEditable("modelo") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('linea', e.target.value)}
+                            isReadOnly={!isFieldEditable("linea")}
+                            label="Línea"
+                            value={formData.linea}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("linea", e.target.value)
+                            }
                           />
 
                           {/* Color */}
                           <Input
-                            label="Color"
-                            value={formData.color}
-                            isReadOnly={!isFieldEditable('color')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Hash className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('color') && (
+                              isFieldEditable("color") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('color', e.target.value)}
+                            isReadOnly={!isFieldEditable("color")}
+                            label="Color"
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.color}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("color", e.target.value)
+                            }
                           />
 
                           {/* Tipo Carroceria */}
                           <Input
-                            label="Tipo Carroceria"
-                            value={formData.tipo_carroceria}
-                            isReadOnly={!isFieldEditable('tipo_carroceria')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Car className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('tipo_carroceria') && (
+                              isFieldEditable("tipo_carroceria") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('tipo_carroceria', e.target.value)}
+                            isReadOnly={!isFieldEditable("tipo_carroceria")}
+                            label="Tipo Carroceria"
+                            startContent={
+                              <Car className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.tipo_carroceria}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange(
+                                "tipo_carroceria",
+                                e.target.value,
+                              )
+                            }
                           />
 
                           {/* Número motor */}
                           <Input
-                            label="Número Motor"
-                            value={formData.numero_motor}
-                            isReadOnly={!isFieldEditable('numero_motor')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Hash className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('numero_motor') && (
+                              isFieldEditable("numero_motor") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('numero_motor', e.target.value)}
+                            isReadOnly={!isFieldEditable("numero_motor")}
+                            label="Número Motor"
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.numero_motor}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("numero_motor", e.target.value)
+                            }
                           />
 
                           {/* Número Serie */}
                           <Input
-                            label="Número Serie"
-                            value={formData.numero_serie}
-                            isReadOnly={!isFieldEditable('numero_serie')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Hash className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('numero_serie') && (
+                              isFieldEditable("numero_serie") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('numero_serie', e.target.value)}
+                            isReadOnly={!isFieldEditable("numero_serie")}
+                            label="Número Serie"
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.numero_serie}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("numero_serie", e.target.value)
+                            }
                           />
 
                           {/* Número Chasis */}
                           <Input
-                            label="Número Chasis"
-                            value={formData.numero_chasis}
-                            isReadOnly={!isFieldEditable('numero_chasis')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Hash className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('numero_chasis') && (
+                              isFieldEditable("numero_chasis") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('numero_chasis', e.target.value)}
+                            isReadOnly={!isFieldEditable("numero_chasis")}
+                            label="Número Chasis"
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.numero_chasis}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("numero_chasis", e.target.value)
+                            }
                           />
 
                           {/* VIN */}
                           <Input
-                            label="VIN"
-                            value={formData.vin}
-                            isReadOnly={!isFieldEditable('numero_chasis')}
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <Hash className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('numero_chasis') && (
+                              isFieldEditable("numero_chasis") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('numero_chasis', e.target.value)}
+                            isReadOnly={!isFieldEditable("numero_chasis")}
+                            label="VIN"
+                            startContent={
+                              <Hash className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.vin}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange("numero_chasis", e.target.value)
+                            }
                           />
 
                           <div className="space-x-2 space-y-2">
                             {/* Fecha de Matrícula */}
                             <Input
-                              label="Fecha de Matrícula"
-                              value={formData.fecha_matricula}
-                              isReadOnly={!isFieldEditable('fecha_matricula')}
-                              variant="flat"
                               classNames={{
-                                label: "text-default-600 font-medium"
+                                label: "text-default-600 font-medium",
                               }}
-                              type={isFieldEditable('fecha_matricula') ? 'date' : 'text'}
+                              isReadOnly={!isFieldEditable("fecha_matricula")}
+                              label="Fecha de Matrícula"
                               startContent={
                                 <Calendar className="h-4 w-4 text-default-400" />
                               }
-                              onChange={(e) => handleInputChange('fecha_matricula', e.target.value)}
+                              type={
+                                isFieldEditable("fecha_matricula")
+                                  ? "date"
+                                  : "text"
+                              }
+                              value={formData.fecha_matricula}
+                              variant="flat"
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "fecha_matricula",
+                                  e.target.value,
+                                )
+                              }
                             />
-                            <p className="italic text-gray-400">{formatearFecha(formData.fecha_matricula)}</p>
+                            <p className="italic text-gray-400">
+                              {formatearFecha(formData.fecha_matricula)}
+                            </p>
                           </div>
                         </div>
                       </CardBody>
@@ -912,7 +1026,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       <CardHeader>
                         <div className="flex items-center gap-2">
                           <User className="h-5 w-5 text-emerald-600" />
-                          <h3 className="text-lg font-semibold">Información del Propietario</h3>
+                          <h3 className="text-lg font-semibold">
+                            Información del Propietario
+                          </h3>
                         </div>
                       </CardHeader>
                       <Divider />
@@ -920,47 +1036,59 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Nombre del Propietario */}
                           <Input
-                            label="Nombre Completo"
-                            value={formData.propietario_nombre}
-                            isReadOnly={!isFieldEditable('propietario_nombre')}
-                            variant="flat"
                             classNames={{
                               label: "text-default-600 font-medium",
-                              input: "font-medium"
+                              input: "font-medium",
                             }}
-                            startContent={
-                              <User className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('propietario_nombre') && (
+                              isFieldEditable("propietario_nombre") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('propietario_nombre', e.target.value)}
-                            isRequired={isFieldEditable('propietario_nombre')}
-
+                            isReadOnly={!isFieldEditable("propietario_nombre")}
+                            isRequired={isFieldEditable("propietario_nombre")}
+                            label="Nombre Completo"
+                            startContent={
+                              <User className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.propietario_nombre}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange(
+                                "propietario_nombre",
+                                e.target.value,
+                              )
+                            }
                           />
 
                           {/* Identificación del Propietario */}
                           <Input
-                            label="Identificación"
-                            value={formData.propietario_identificacion}
-                            isReadOnly={!isFieldEditable('propietario_identificacion')}
-
-                            variant="flat"
                             classNames={{
-                              label: "text-default-600 font-medium"
+                              label: "text-default-600 font-medium",
                             }}
-                            startContent={
-                              <FileText className="h-4 w-4 text-default-400" />
-                            }
                             endContent={
-                              isFieldEditable('propietario_identificacion') && (
+                              isFieldEditable("propietario_identificacion") && (
                                 <Edit className="h-4 w-4 text-warning" />
                               )
                             }
-                            onChange={(e) => handleInputChange('propietario_identificacion', e.target.value)}
-                            isRequired={isFieldEditable('propietario_identificacion')}
+                            isReadOnly={
+                              !isFieldEditable("propietario_identificacion")
+                            }
+                            isRequired={isFieldEditable(
+                              "propietario_identificacion",
+                            )}
+                            label="Identificación"
+                            startContent={
+                              <FileText className="h-4 w-4 text-default-400" />
+                            }
+                            value={formData.propietario_identificacion}
+                            variant="flat"
+                            onChange={(e) =>
+                              handleInputChange(
+                                "propietario_identificacion",
+                                e.target.value,
+                              )
+                            }
                           />
                         </div>
                       </CardBody>
@@ -983,32 +1111,51 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               </h4>
                               <ul className="space-y-2">
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Placa:</span>
+                                  <span className="font-medium w-28">
+                                    Placa:
+                                  </span>
                                   <span>{procesamiento.vehiculo?.placa}</span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Marca:</span>
+                                  <span className="font-medium w-28">
+                                    Marca:
+                                  </span>
                                   <span>{procesamiento.vehiculo?.marca}</span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Línea:</span>
+                                  <span className="font-medium w-28">
+                                    Línea:
+                                  </span>
                                   <span>{procesamiento.vehiculo?.linea}</span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Modelo:</span>
+                                  <span className="font-medium w-28">
+                                    Modelo:
+                                  </span>
                                   <span>{procesamiento.vehiculo?.modelo}</span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Color:</span>
+                                  <span className="font-medium w-28">
+                                    Color:
+                                  </span>
                                   <span>{procesamiento.vehiculo?.color}</span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Clase:</span>
-                                  <span>{procesamiento.vehiculo?.clase_vehiculo}</span>
+                                  <span className="font-medium w-28">
+                                    Clase:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.clase_vehiculo}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Carrocería:</span>
-                                  <span>{procesamiento.vehiculo?.tipo_carroceria || "No especificada"}</span>
+                                  <span className="font-medium w-28">
+                                    Carrocería:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.tipo_carroceria ||
+                                      "No especificada"}
+                                  </span>
                                 </li>
                               </ul>
                             </div>
@@ -1022,31 +1169,66 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               <ul className="space-y-2">
                                 <li className="flex items-start">
                                   <span className="font-medium w-32">VIN:</span>
-                                  <span>{procesamiento.vehiculo?.vin || "No registrado"}</span>
+                                  <span>
+                                    {procesamiento.vehiculo?.vin ||
+                                      "No registrado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">No. Motor:</span>
-                                  <span>{procesamiento.vehiculo?.numero_motor || "No registrado"}</span>
+                                  <span className="font-medium w-32">
+                                    No. Motor:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.numero_motor ||
+                                      "No registrado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">No. Chasis:</span>
-                                  <span>{procesamiento.vehiculo?.numero_chasis || "No registrado"}</span>
+                                  <span className="font-medium w-32">
+                                    No. Chasis:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.numero_chasis ||
+                                      "No registrado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">No. Serie:</span>
-                                  <span>{procesamiento.vehiculo?.numero_serie || "No registrado"}</span>
+                                  <span className="font-medium w-32">
+                                    No. Serie:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.numero_serie ||
+                                      "No registrado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">Combustible:</span>
-                                  <span>{procesamiento.vehiculo?.combustible || "No especificado"}</span>
+                                  <span className="font-medium w-32">
+                                    Combustible:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.combustible ||
+                                      "No especificado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">Kilometraje:</span>
-                                  <span>{formatearKilometraje(procesamiento.vehiculo?.kilometraje)}</span>
+                                  <span className="font-medium w-32">
+                                    Kilometraje:
+                                  </span>
+                                  <span>
+                                    {formatearKilometraje(
+                                      procesamiento.vehiculo?.kilometraje,
+                                    )}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-32">Fecha Matricula:</span>
-                                  <span>{formatearFecha(procesamiento.vehiculo?.fecha_matricula)}</span>
+                                  <span className="font-medium w-32">
+                                    Fecha Matricula:
+                                  </span>
+                                  <span>
+                                    {formatearFecha(
+                                      procesamiento.vehiculo?.fecha_matricula,
+                                    )}
+                                  </span>
                                 </li>
                               </ul>
                             </div>
@@ -1062,12 +1244,23 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               </h4>
                               <ul className="space-y-2">
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Nombre:</span>
-                                  <span>{procesamiento.vehiculo?.propietario_nombre || "No registrado"}</span>
+                                  <span className="font-medium w-28">
+                                    Nombre:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo
+                                      ?.propietario_nombre || "No registrado"}
+                                  </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Identificación:</span>
-                                  <span>{procesamiento.vehiculo?.propietario_identificacion || "No registrado"}</span>
+                                  <span className="font-medium w-28">
+                                    Identificación:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo
+                                      ?.propietario_identificacion ||
+                                      "No registrado"}
+                                  </span>
                                 </li>
                               </ul>
                             </div>
@@ -1080,24 +1273,37 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               </h4>
                               <ul className="space-y-2">
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Creado el:</span>
+                                  <span className="font-medium w-28">
+                                    Creado el:
+                                  </span>
                                   <span>
                                     {procesamiento.vehiculo?.createdAt
-                                      ? new Date(procesamiento.vehiculo?.createdAt).toLocaleString("es-CO")
+                                      ? new Date(
+                                          procesamiento.vehiculo?.createdAt,
+                                        ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Actualizado:</span>
+                                  <span className="font-medium w-28">
+                                    Actualizado:
+                                  </span>
                                   <span>
                                     {procesamiento.vehiculo?.updatedAt
-                                      ? new Date(procesamiento.vehiculo?.updatedAt).toLocaleString("es-CO")
+                                      ? new Date(
+                                          procesamiento.vehiculo?.updatedAt,
+                                        ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
                                 <li className="flex items-start">
-                                  <span className="font-medium w-28">Conductor:</span>
-                                  <span>{procesamiento.vehiculo?.conductor_id || "No asignado"}</span>
+                                  <span className="font-medium w-28">
+                                    Conductor:
+                                  </span>
+                                  <span>
+                                    {procesamiento.vehiculo?.conductor_id ||
+                                      "No asignado"}
+                                  </span>
                                 </li>
                               </ul>
                             </div>
@@ -1109,7 +1315,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                 )}
 
                 {/* Barra de progreso - Solo mostrar si NO hay error y NO está completado */}
-                {!currentVehiculo && procesamiento.sessionId &&
+                {!currentVehiculo &&
+                  procesamiento.sessionId &&
                   !procesamiento.error &&
                   procesamiento.estado !== "error" &&
                   procesamiento.estado !== "completado" && (
@@ -1127,7 +1334,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
 
                       {procesamiento.procesados && procesamiento.total && (
                         <p className="text-sm text-gray-500 mt-1">
-                          {procesamiento.procesados} de {procesamiento.total} documentos procesados
+                          {procesamiento.procesados} de {procesamiento.total}{" "}
+                          documentos procesados
                         </p>
                       )}
                     </div>
@@ -1177,7 +1385,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         name="clase_vehiculo"
                         placeholder="Seleccione una clase"
                         selectedKeys={
-                          formData.clase_vehiculo ? [formData.clase_vehiculo] : []
+                          formData.clase_vehiculo
+                            ? [formData.clase_vehiculo]
+                            : []
                         }
                         value={formData.clase_vehiculo || ""}
                         onChange={(e) =>
@@ -1237,76 +1447,85 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   </div>
                 )}
 
-                {subirDocumentos && !procesamiento.mensaje && !currentVehiculo && (
-                  <div className="border p-4 rounded-md">
-                    <h4 className="text-md font-semibold mb-4 border-b pb-2">
-                      Documentación
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {documentTypes.map((docType) => {
-                        const documento = documentos[docType.key];
+                {subirDocumentos &&
+                  !procesamiento.mensaje &&
+                  !currentVehiculo && (
+                    <div className="border p-4 rounded-md">
+                      <h4 className="text-md font-semibold mb-4 border-b pb-2">
+                        Documentación
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {documentTypes.map((docType) => {
+                          const documento = documentos[docType.key];
 
-                        return (
-                          <SimpleDocumentUploader
-                            key={docType.key}
-                            documentKey={docType.key}
-                            label={docType.label}
-                            required={docType.required}
-                            vigencia={docType.vigencia}
-                            file={documento?.file || null}
-                            fecha_vigencia={documento?.fecha_vigencia || null}
-                            onChange={handleDocumentChange}
-                            onRemove={handleDocumentRemove}
-                            errores={erroresDocumentos}
-                            // ✅ Pasar documento existente
-                            existingDocument={documento?.existente || null}
-                            isExisting={!documento?.esNuevo && !!documento?.existente}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* ✅ Resumen de documentos cargados (actualizado) */}
-                    {Object.keys(documentos).length > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                        <h3 className="font-medium text-blue-900 mb-2">
-                          Documentos cargados ({Object.keys(documentos).length})
-                        </h3>
-                        <ul className="text-sm text-blue-800 space-y-1">
-                          {Object.entries(documentos).map(([key, doc]) => {
-                            const docType = documentTypes.find(d => d.key === key);
-                            const isNew = doc.esNuevo && doc.file;
-                            const isExisting = !doc.esNuevo && doc.existente;
-
-                            return (
-                              <li key={key} className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <span>{docType?.label}</span>
-                                  {isNew && (
-                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                      Nuevo
-                                    </span>
-                                  )}
-                                  {isExisting && (
-                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                      Existente
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-blue-600">
-                                  {doc.fecha_vigencia
-                                    ? `Vigente hasta: ${doc.fecha_vigencia.toLocaleDateString('es-ES')}`
-                                    : "✓"
-                                  }
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
+                          return (
+                            <SimpleDocumentUploader
+                              key={docType.key}
+                              documentKey={docType.key}
+                              fecha_vigencia={documento?.fecha_vigencia || null}
+                              file={documento?.file || null}
+                              isExisting={
+                                !documento?.esNuevo && !!documento?.existente
+                              }
+                              label={docType.label}
+                              required={docType.required}
+                              vigencia={docType.vigencia}
+                              onChange={handleDocumentChange}
+                              onRemove={handleDocumentRemove}
+                              errores={erroresDocumentos}
+                              // ✅ Pasar documento existente
+                              existingDocument={documento?.existente || null}
+                            />
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      {/* ✅ Resumen de documentos cargados (actualizado) */}
+                      {Object.keys(documentos).length > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                          <h3 className="font-medium text-blue-900 mb-2">
+                            Documentos cargados (
+                            {Object.keys(documentos).length})
+                          </h3>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            {Object.entries(documentos).map(([key, doc]) => {
+                              const docType = documentTypes.find(
+                                (d) => d.key === key,
+                              );
+                              const isNew = doc.esNuevo && doc.file;
+                              const isExisting = !doc.esNuevo && doc.existente;
+
+                              return (
+                                <li
+                                  key={key}
+                                  className="flex justify-between items-center"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>{docType?.label}</span>
+                                    {isNew && (
+                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                        Nuevo
+                                      </span>
+                                    )}
+                                    {isExisting && (
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                        Existente
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-blue-600">
+                                    {doc.fecha_vigencia
+                                      ? `Vigente hasta: ${doc.fecha_vigencia.toLocaleDateString("es-ES")}`
+                                      : "✓"}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
 
               {/* Modal de Confirmación */}
@@ -1315,44 +1534,74 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   {(handleClose) => (
                     <>
                       <ModalHeader className="flex flex-col gap-1">
-                        {modalAction === 'cancelar' && '🚫 Cancelar Registro'}
-                        {modalAction === 'guardar' && '💾 Guardar Cambios'}
-                        {modalAction === 'confirmar' && '✅ Confirmar Registro'}
+                        {modalAction === "cancelar" && "🚫 Cancelar Registro"}
+                        {modalAction === "guardar" && "💾 Guardar Cambios"}
+                        {modalAction === "confirmar" && "✅ Confirmar Registro"}
                       </ModalHeader>
                       <ModalBody>
-                        {modalAction === 'cancelar' && (
-                          <p>¿Está seguro que desea cancelar el registro del vehículo? Esta acción no se puede deshacer.</p>
+                        {modalAction === "cancelar" && (
+                          <p>
+                            ¿Está seguro que desea cancelar el registro del
+                            vehículo? Esta acción no se puede deshacer.
+                          </p>
                         )}
-                        {modalAction === 'guardar' && currentVehiculo && (
+                        {modalAction === "guardar" && currentVehiculo && (
                           <div>
                             <p>¿Desea guardar los siguientes cambios?</p>
                             <div className="mt-3 p-3 bg-default-100 rounded-lg">
                               {editableFields.map((field: string) => {
-                                if (formData[field] !== currentVehiculo[field]) {
+                                if (
+                                  formData[field] !== currentVehiculo[field]
+                                ) {
                                   return (
                                     <div key={field} className="text-sm">
-                                      <strong>{field}:</strong> {currentVehiculo[field]} → {formData[field]}
+                                      <strong>{field}:</strong>{" "}
+                                      {currentVehiculo[field]} →{" "}
+                                      {formData[field]}
                                     </div>
                                   );
                                 }
+
                                 return null;
                               })}
                             </div>
                           </div>
                         )}
-                        {modalAction === 'confirmar' && (
+                        {modalAction === "confirmar" && (
                           <div>
-                            <p>¿Confirma que desea registrar el vehículo con la siguiente información?</p>
+                            <p>
+                              ¿Confirma que desea registrar el vehículo con la
+                              siguiente información?
+                            </p>
                             <div className="mt-3 p-3 bg-default-100 rounded-lg">
                               <div className="text-sm space-y-1">
-                                <div><strong>Placa:</strong> {formData.placa}</div>
-                                <div><strong>Marca:</strong> {formData.marca}</div>
-                                <div><strong>Modelo:</strong> {formData.modelo}</div>
-                                <div><strong>Línea:</strong> {formData.linea}</div>
-                                <div><strong>Color:</strong> {formData.color}</div>
-                                <div><strong>Fecha Matrícula:</strong> {formData.fecha_matricula}</div>
-                                <div><strong>Propietario Nombre:</strong> {formData.propietario_nombre}</div>
-                                <div><strong>Propietario Identificación:</strong> {formData.propietario_identificacion}</div>
+                                <div>
+                                  <strong>Placa:</strong> {formData.placa}
+                                </div>
+                                <div>
+                                  <strong>Marca:</strong> {formData.marca}
+                                </div>
+                                <div>
+                                  <strong>Modelo:</strong> {formData.modelo}
+                                </div>
+                                <div>
+                                  <strong>Línea:</strong> {formData.linea}
+                                </div>
+                                <div>
+                                  <strong>Color:</strong> {formData.color}
+                                </div>
+                                <div>
+                                  <strong>Fecha Matrícula:</strong>{" "}
+                                  {formData.fecha_matricula}
+                                </div>
+                                <div>
+                                  <strong>Propietario Nombre:</strong>{" "}
+                                  {formData.propietario_nombre}
+                                </div>
+                                <div>
+                                  <strong>Propietario Identificación:</strong>{" "}
+                                  {formData.propietario_identificacion}
+                                </div>
                                 {hasChanges && (
                                   <div className="text-warning text-xs mt-2">
                                     * Se registrará con los cambios realizados
@@ -1364,16 +1613,20 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         )}
                       </ModalBody>
                       <ModalFooter>
-                        <Button color="danger" variant="light" onPress={handleClose}>
+                        <Button
+                          color="danger"
+                          variant="light"
+                          onPress={handleClose}
+                        >
                           Cancelar
                         </Button>
                         <Button
                           color="primary"
+                          isLoading={isLoading}
                           onPress={() => {
                             executeAction();
                             handleClose();
                           }}
-                          isLoading={isLoading}
                         >
                           Confirmar
                         </Button>
@@ -1387,9 +1640,17 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
             <ModalFooter>
               {!currentVehiculo ? (
                 <div className="flex items-center gap-3">
-                  {procesamiento.progreso > 0 || procesamiento.mensaje && (
-                    <Button onPress={resetForm} color="danger" variant="light" className="ml-auto">Reiniciar formulario</Button>
-                  )}
+                  {procesamiento.progreso > 0 ||
+                    (procesamiento.mensaje && (
+                      <Button
+                        className="ml-auto"
+                        color="danger"
+                        variant="light"
+                        onPress={resetForm}
+                      >
+                        Reiniciar formulario
+                      </Button>
+                    ))}
 
                   <Button
                     color="danger"
@@ -1401,9 +1662,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   </Button>
                   <Button
                     className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-                    startContent={loading ? '' : <SaveIcon className="h-4 w-4" />}
-                    onPress={handleSave}
                     isLoading={loading}
+                    startContent={
+                      loading ? "" : <SaveIcon className="h-4 w-4" />
+                    }
+                    onPress={handleSave}
                   >
                     {loading
                       ? vehiculoEditar
@@ -1420,45 +1683,49 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   <div className="flex gap-2">
                     {isEditing && hasChanges && (
                       <Button
-                        radius="sm"
                         color="default"
+                        radius="sm"
+                        startContent={<X className="h-4 w-4" />}
                         variant="flat"
                         onPress={handleCancelEdit}
-                        startContent={<X className="h-4 w-4" />}
                       >
                         Descartar cambios
                       </Button>
                     )}
 
                     <Button
-                      radius="sm"
                       color="danger"
+                      isDisabled={isLoading}
+                      radius="sm"
                       variant="flat"
                       onPress={handleCancelar}
-                      isDisabled={isLoading}
                     >
                       Cancelar
                     </Button>
 
                     <Button
-                      radius="sm"
                       color={isEditing ? "success" : "warning"}
+                      isLoading={isLoading && modalAction === "guardar"}
+                      radius="sm"
+                      startContent={
+                        isEditing ? (
+                          <Save className="h-4 w-4" />
+                        ) : (
+                          <Edit className="h-4 w-4" />
+                        )
+                      }
                       variant="flat"
                       onPress={handleEditar}
-                      isLoading={isLoading && modalAction === 'guardar'}
-                      startContent={
-                        isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />
-                      }
                     >
-                      {isEditing ? 'Guardar Cambios' : 'Editar Datos'}
+                      {isEditing ? "Guardar Cambios" : "Editar Datos"}
                     </Button>
 
                     <Button
-                      radius="sm"
                       color="primary"
+                      isLoading={isLoading && modalAction === "confirmar"}
+                      radius="sm"
                       variant="flat"
                       onPress={handleConfirmar}
-                      isLoading={isLoading && modalAction === 'confirmar'}
                     >
                       Confirmar y Registrar
                     </Button>
