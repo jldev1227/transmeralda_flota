@@ -177,7 +177,7 @@ export interface Documento {
   s3_key: string;
   filename: string;
   mimetype: string;
-  tamaño: number;
+  size: number;
   fecha_vigencia: string;
   estado: string;
   upload_date: string;

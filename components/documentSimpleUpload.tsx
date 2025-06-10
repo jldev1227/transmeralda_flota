@@ -24,7 +24,7 @@ interface DocumentoExistente {
   fecha_vigencia: string | null;
   estado: string;
   s3_key: string;
-  tamaño: number;
+  size: number;
   upload_date: string;
 }
 
@@ -176,7 +176,7 @@ const SimpleDocumentUploader = ({
   const displayName = file
     ? file.name
     : existingDocument?.nombre_original || "";
-  const displaySize = file ? file.size : existingDocument?.tamaño || 0;
+  const displaySize = file ? file.size : existingDocument?.size || 0;
 
   // OPCIÓN 3: Descarga con fetch a través del backend
   const handleDownload = async (documento: Documento | DocumentoExistente) => {

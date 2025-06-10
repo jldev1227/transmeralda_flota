@@ -576,7 +576,7 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
                                               <span>
                                                 Tamaño:{" "}
                                                 {formatearTamaño(
-                                                  documento.tamaño,
+                                                  documento.size,
                                                 )}
                                               </span>
                                             </div>
