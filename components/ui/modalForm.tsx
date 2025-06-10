@@ -63,7 +63,7 @@ interface DocumentoExistente {
   fecha_vigencia: string | null;
   estado: string;
   s3_key: string;
-  tamaño: number;
+  size: number;
   upload_date: string;
 }
 
@@ -663,7 +663,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     fecha_vigencia: string | null;
     estado: string;
     s3_key: string;
-    tamaño: number;
+    size: number;
     upload_date: string;
   }
 
