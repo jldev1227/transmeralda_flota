@@ -17,12 +17,8 @@ import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
-import { useAuth } from "@/context/AuthContext";
-import { LogoutButton } from "@/components/logout";
-import { formatDate } from "@/helpers";
 
 export default function GestionVehiculos() {
-  const { user } = useAuth();
   const {
     vehiculosState,
     sortDescriptor,
@@ -45,19 +41,25 @@ export default function GestionVehiculos() {
   } = useFlota();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Estados para búsqueda y filtros
+  // Estados para búsqueda y filtros expandidos
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filtros, setFiltros] = useState<FilterOptions>({
     estados: [],
     clases: [],
+    categoriasDocumentos: [],
+    estadosDocumentos: [],
+    fechaVencimientoDesde: undefined,
+    fechaVencimientoHasta: undefined,
+    ordenamiento: undefined,
+    diasAlerta: undefined,
   });
 
-  // Inicialización: cargar conductores
+  // Inicialización: cargar vehiculos
   useEffect(() => {
     cargarVehiculos();
   }, []);
 
-  /// Función para cargar conductores con parámetros de búsqueda/filtros
+  /// Función para cargar vehiculos con parámetros de búsqueda/filtros
   const cargarVehiculos = async (
     page: number = 1,
     searchTermParam?: string,
@@ -72,7 +74,7 @@ export default function GestionVehiculos() {
       const currentFiltros =
         filtrosParam !== undefined ? filtrosParam : filtros;
 
-      // Construir parámetros de búsqueda
+      // Construir parámetros de búsqueda básicos
       const params: BusquedaParams = {
         page,
         sort: sortDescriptor.column,
@@ -84,6 +86,7 @@ export default function GestionVehiculos() {
         params.search = currentSearchTerm;
       }
 
+      // Filtros básicos de vehículos
       if (currentFiltros.estados.length > 0) {
         params.estado = currentFiltros.estados as any;
       }
@@ -92,6 +95,70 @@ export default function GestionVehiculos() {
         params.clase = currentFiltros.clases as any;
       }
 
+      // ====== NUEVOS FILTROS DE DOCUMENTOS ======
+
+      // Filtros por categorías de documentos
+      if (
+        currentFiltros.categoriasDocumentos &&
+        currentFiltros.categoriasDocumentos.length > 0
+      ) {
+        params.categoriasDocumentos = currentFiltros.categoriasDocumentos;
+      }
+
+      // Filtros por estados de documentos
+      if (
+        currentFiltros.estadosDocumentos &&
+        currentFiltros.estadosDocumentos.length > 0
+      ) {
+        params.estadosDocumentos = currentFiltros.estadosDocumentos;
+      }
+
+      // Filtros por fechas de vencimiento
+      if (currentFiltros.fechaVencimientoDesde) {
+        params.fechaVencimientoDesde = currentFiltros.fechaVencimientoDesde;
+      }
+
+      if (currentFiltros.fechaVencimientoHasta) {
+        params.fechaVencimientoHasta = currentFiltros.fechaVencimientoHasta;
+      }
+
+      // Días de alerta personalizados
+      if (currentFiltros.diasAlerta) {
+        params.diasAlerta = currentFiltros.diasAlerta;
+      }
+
+      // Ordenamiento específico (puede sobrescribir el sort básico)
+      if (currentFiltros.ordenamiento) {
+        switch (currentFiltros.ordenamiento) {
+          case "FECHA_VENCIMIENTO_ASC":
+            params.sort = "fecha_vencimiento_proxima";
+            params.order = "ascending";
+            break;
+          case "FECHA_VENCIMIENTO_DESC":
+            params.sort = "fecha_vencimiento_proxima";
+            params.order = "descending";
+            break;
+          case "PLACA_ASC":
+            params.sort = "placa";
+            params.order = "ascending";
+            break;
+          case "PLACA_DESC":
+            params.sort = "placa";
+            params.order = "descending";
+            break;
+          case "FECHA_CREACION_DESC":
+            params.sort = "createdAt";
+            params.order = "descending";
+            break;
+          case "FECHA_CREACION_ASC":
+            params.sort = "createdAt";
+            params.order = "ascending";
+            break;
+        }
+      }
+
+      console.log("Parámetros de búsqueda enviados:", params);
+
       // Realizar la búsqueda
       await fetchVehiculos(params);
 
@@ -99,7 +166,7 @@ export default function GestionVehiculos() {
       if (searchTermParam !== undefined) setSearchTerm(searchTermParam);
       if (filtrosParam !== undefined) setFiltros(filtrosParam);
     } catch (error) {
-      console.error("Error al cargar conductores:", error);
+      console.error("Error al cargar vehiculos:", error);
     } finally {
       setLoading(false);
     }
@@ -112,14 +179,21 @@ export default function GestionVehiculos() {
 
   // Manejar los filtros
   const handleFilter = async (nuevosFiltros: FilterOptions) => {
+    console.log("Aplicando filtros:", nuevosFiltros);
     await cargarVehiculos(1, undefined, nuevosFiltros);
   };
 
   // Manejar reset de búsqueda y filtros
   const handleReset = async () => {
-    const filtrosVacios = {
+    const filtrosVacios: FilterOptions = {
       estados: [],
       clases: [],
+      categoriasDocumentos: [],
+      estadosDocumentos: [],
+      fechaVencimientoDesde: undefined,
+      fechaVencimientoHasta: undefined,
+      ordenamiento: undefined,
+      diasAlerta: undefined,
     };
 
     await cargarVehiculos(1, "", filtrosVacios);
@@ -130,7 +204,7 @@ export default function GestionVehiculos() {
     cargarVehiculos(page);
   };
 
-  // Manejar la selección de conductores
+  // Manejar la selección de vehiculos
   const handleSelectItem = (vehiculo: Vehiculo) => {
     if (selectedIds.includes(vehiculo.id)) {
       setSelectedIds(selectedIds.filter((id) => id !== vehiculo.id));
@@ -187,7 +261,7 @@ export default function GestionVehiculos() {
       // // Cerrar modal después de guardar correctamente
       // cerrarModalForm();
 
-      // Recargar la lista de conductores con los filtros actuales
+      // Recargar la lista de vehiculos con los filtros actuales
       await cargarVehiculos(vehiculosState.currentPage);
     } catch (error) {
       // Si hay un error, no hacemos nada aquí ya que los errores ya son manejados
@@ -200,42 +274,66 @@ export default function GestionVehiculos() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-emerald-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto" />
-          <p className="mt-4 text-emerald-700">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
+  // Función auxiliar para contar filtros activos
+  const contarFiltrosActivos = () => {
+    let count = 0;
+
+    count += filtros.estados.length;
+    count += filtros.clases.length;
+    count += filtros.categoriasDocumentos?.length || 0;
+    count += filtros.estadosDocumentos?.length || 0;
+    if (filtros.fechaVencimientoDesde) count++;
+    if (filtros.fechaVencimientoHasta) count++;
+    if (filtros.ordenamiento) count++;
+    if (filtros.diasAlerta) count++;
+
+    return count;
+  };
+
+  // Función para generar descripción de filtros activos
+  const generarDescripcionFiltros = () => {
+    const descripciones = [];
+
+    if (searchTerm) {
+      descripciones.push(`Búsqueda: "${searchTerm}"`);
+    }
+
+    if (filtros.estados.length > 0) {
+      descripciones.push(`Estados: ${filtros.estados.join(", ")}`);
+    }
+
+    if (filtros.clases.length > 0) {
+      descripciones.push(`Clases: ${filtros.clases.join(", ")}`);
+    }
+
+    if (
+      filtros.categoriasDocumentos &&
+      filtros.categoriasDocumentos.length > 0
+    ) {
+      descripciones.push(
+        `Documentos: ${filtros.categoriasDocumentos.length} tipo(s)`,
+      );
+    }
+
+    if (filtros.estadosDocumentos && filtros.estadosDocumentos.length > 0) {
+      descripciones.push(
+        `Estado documentos: ${filtros.estadosDocumentos.join(", ")}`,
+      );
+    }
+
+    if (filtros.fechaVencimientoDesde || filtros.fechaVencimientoHasta) {
+      descripciones.push("Filtro por fechas");
+    }
+
+    if (filtros.diasAlerta) {
+      descripciones.push(`Alerta: ${filtros.diasAlerta} días`);
+    }
+
+    return descripciones.join(" | ");
+  };
 
   return (
     <div className="container mx-auto p-5 sm:p-10 space-y-5">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-2xl font-bold shadow">
-            {user.nombre
-              .split(" ")
-              .map((name) => name[0])
-              .join("")}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-emerald-700">
-              {user.nombre}
-            </h2>
-            <p className="text-sm text-gray-500">{user.correo}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Último acceso:{" "}
-              <span className="text-emerald-600">
-                {formatDate(user.ultimo_acceso)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <LogoutButton>Cerrar sesión</LogoutButton>
-      </div>
       <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
         <Button
@@ -249,6 +347,7 @@ export default function GestionVehiculos() {
           Nuevo Vehiculo
         </Button>
       </div>
+
       <Alert
         className="py-2"
         color="success"
@@ -264,16 +363,41 @@ export default function GestionVehiculos() {
         onSearch={handleSearch}
       />
 
-      {/* Información sobre resultados filtrados */}
-      {(searchTerm || Object.values(filtros).some((f) => f.length > 0)) && (
-        <div className="bg-blue-50 p-3 rounded-md text-blue-700 text-sm">
-          Mostrando {vehiculosState.data.length} resultado(s) de{" "}
-          {vehiculosState.count} vehiculo(es) total(es)
-          {searchTerm && <span> - Búsqueda: {searchTerm}</span>}
+      {/* Información detallada sobre resultados filtrados */}
+      {(searchTerm || contarFiltrosActivos() > 0) && (
+        <div className="space-y-2">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="text-blue-700 font-medium">
+                  Resultados filtrados
+                </span>
+              </div>
+              <span className="text-blue-600 text-sm">
+                {contarFiltrosActivos()} filtro(s) activo(s)
+              </span>
+            </div>
+            <div className="mt-2">
+              <p className="text-blue-700 text-sm">
+                Mostrando{" "}
+                <span className="font-semibold">
+                  {vehiculosState.data.length}
+                </span>{" "}
+                de <span className="font-semibold">{vehiculosState.count}</span>{" "}
+                vehículo(s) total(es)
+              </p>
+              {generarDescripcionFiltros() && (
+                <p className="text-blue-600 text-xs mt-1">
+                  {generarDescripcionFiltros()}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Tabla de conductores con paginación */}
+      {/* Tabla de vehiculos con paginación */}
       <VehiculosTable
         abrirModalDetalle={abrirModalDetalle}
         abrirModalEditar={abrirModalEditar}

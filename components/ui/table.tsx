@@ -1,6 +1,6 @@
 import React from "react";
 import { useMediaQuery } from "react-responsive";
-import { Edit, Eye, Ban, Check, AlertCircle, XCircle } from "lucide-react";
+import { Check, AlertCircle, XCircle } from "lucide-react";
 import Image from "next/image";
 
 import { Vehiculo, EstadoVehiculo, Documento } from "@/context/FlotaContext";
@@ -16,10 +16,9 @@ export type VehiculoColumnKey =
   | "kilometraje"
   | "propietario"
   | "estado"
-  | "documentos"
-  | "acciones";
+  | "documentos";
 
-interface ConductoresTableProps {
+interface VehiculosTableProps {
   currentItems: Vehiculo[];
   sortDescriptor: SortDescriptor;
   onSortChange: (descriptor: SortDescriptor) => void;
@@ -37,7 +36,7 @@ interface ConductoresTableProps {
   onPageChange: (page: number) => void;
 }
 
-export default function ConductoresTable({
+export default function VehiculosTable({
   currentItems,
   sortDescriptor,
   onSortChange,
@@ -49,9 +48,9 @@ export default function ConductoresTable({
   totalPages,
   totalCount,
   onPageChange,
-  abrirModalEditar,
   abrirModalDetalle,
-}: ConductoresTableProps) {
+}: VehiculosTableProps) {
+
   // Breakpoints responsivos
   const isDesktop = useMediaQuery({ minWidth: 1024 });
   const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 });
@@ -326,56 +325,6 @@ export default function ConductoresTable({
         );
       },
     },
-    acciones: {
-      key: "acciones",
-      label: "ACCIONES",
-      allowsSorting: false,
-      renderCell: (vehiculo: Vehiculo) => (
-        <div className="flex space-x-2">
-          <button
-            className="text-emerald-600 hover:text-emerald-900 transition-colors"
-            title="Ver detalle"
-            onClick={(e) => {
-              e.stopPropagation();
-              abrirModalDetalle(vehiculo.id?.trim());
-            }}
-          >
-            <Eye className="h-5 w-5" />
-          </button>
-          <button
-            className="text-blue-600 hover:text-blue-900 transition-colors"
-            title="Editar"
-            onClick={(e) => {
-              e.stopPropagation();
-              abrirModalEditar({
-                ...vehiculo,
-                id: vehiculo.id?.trim(),
-                placa: vehiculo.placa?.trim(),
-                marca: vehiculo.marca?.trim(),
-                modelo: vehiculo.modelo?.trim(),
-                linea: vehiculo.linea?.trim(),
-                propietario_nombre: vehiculo.propietario_nombre?.trim(),
-                propietario_identificacion:
-                  vehiculo.propietario_identificacion?.trim(),
-                clase_vehiculo: vehiculo.clase_vehiculo?.trim(),
-                tipo_carroceria: vehiculo.tipo_carroceria?.trim(),
-              });
-            }}
-          >
-            <Edit className="h-5 w-5" />
-          </button>
-          <button
-            className="text-red-600 hover:text-red-900 transition-colors"
-            title="Eliminar"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <Ban className="h-5 w-5" />
-          </button>
-        </div>
-      ),
-    },
   };
 
   // Determinar qué columnas mostrar según el tamaño de la pantalla
@@ -396,20 +345,13 @@ export default function ConductoresTable({
         "propietario",
         "estado",
         "documentos",
-        "acciones",
       ];
     } else if (isTablet) {
       // Mostrar menos columnas en tablet
-      displayColumns = [
-        "vehiculo",
-        "clase_vehiculo",
-        "kilometraje",
-        "estado",
-        "acciones",
-      ];
+      displayColumns = ["vehiculo", "clase_vehiculo", "kilometraje", "estado"];
     } else {
       // Mostrar mínimo de columnas en móvil
-      displayColumns = ["vehiculo", "estado", "acciones"];
+      displayColumns = ["vehiculo", "estado"];
     }
   }
 
