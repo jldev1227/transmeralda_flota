@@ -549,7 +549,7 @@ const VehiculoDocumentUploader = ({ id }: { id?: string }) => {
     const formData = new FormData();
 
     // Añadir archivos
-    Object.entries(documentos).forEach(([docId, file]) => {
+    Object.entries(documentos).forEach(([_, file]) => {
       if (file instanceof File || file instanceof Blob) {
         // If it's already a File or Blob, append it directly
         formData.append("documentos", file);

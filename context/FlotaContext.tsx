@@ -72,6 +72,11 @@ export interface BusquedaParams {
   limit?: number;
   search?: string; // Para búsqueda general (placa, marca, modelo, linea.)
   estado?: EstadoVehiculo | EstadoVehiculo[];
+  categoriasDocumentos?: string | string[]; // ✅ Opcional
+  estadosDocumentos?: string | string[]; // ✅ Opcional
+  fechaVencimientoDesde?: string; // ✅ Opcional y string simple
+  fechaVencimientoHasta?: string; // ✅ Opcional y string simple
+  diasAlerta?: number; // ✅ Opcional
   clase?: string | string[];
   sort?: string;
   order?: "ascending" | "descending";
@@ -434,7 +439,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Prepara los parámetros básicos
       const params: any = {
         page: paramsBusqueda.page || vehiculosState.currentPage,
-        limit: paramsBusqueda.limit || 10,
+        limit: paramsBusqueda.limit || 5,
         sort: paramsBusqueda.sort || sortDescriptor.column,
         order: paramsBusqueda.order || sortDescriptor.direction,
       };
@@ -443,6 +448,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       if (paramsBusqueda.search) {
         params.search = paramsBusqueda.search;
       }
+
+      // ====== FILTROS BÁSICOS DE VEHÍCULOS ======
 
       // Añade filtros de estado
       if (paramsBusqueda.estado) {
@@ -453,13 +460,48 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         }
       }
 
-      // Añade filtros de estado
+      // Añade filtros de clase
       if (paramsBusqueda.clase) {
         if (Array.isArray(paramsBusqueda.clase)) {
           params.clase = paramsBusqueda.clase.join(",");
         } else {
           params.clase = paramsBusqueda.clase;
         }
+      }
+
+      // ====== NUEVOS FILTROS DE DOCUMENTOS ======
+
+      // Filtros por categorías de documentos
+      if (paramsBusqueda.categoriasDocumentos) {
+        if (Array.isArray(paramsBusqueda.categoriasDocumentos)) {
+          params.categoriasDocumentos =
+            paramsBusqueda.categoriasDocumentos.join(",");
+        } else {
+          params.categoriasDocumentos = paramsBusqueda.categoriasDocumentos;
+        }
+      }
+
+      // Filtros por estados de documentos
+      if (paramsBusqueda.estadosDocumentos) {
+        if (Array.isArray(paramsBusqueda.estadosDocumentos)) {
+          params.estadosDocumentos = paramsBusqueda.estadosDocumentos.join(",");
+        } else {
+          params.estadosDocumentos = paramsBusqueda.estadosDocumentos;
+        }
+      }
+
+      // Filtros por fechas de vencimiento
+      if (paramsBusqueda.fechaVencimientoDesde) {
+        params.fechaVencimientoDesde = paramsBusqueda.fechaVencimientoDesde;
+      }
+
+      if (paramsBusqueda.fechaVencimientoHasta) {
+        params.fechaVencimientoHasta = paramsBusqueda.fechaVencimientoHasta;
+      }
+
+      // Filtro por días de alerta
+      if (paramsBusqueda.diasAlerta) {
+        params.diasAlerta = paramsBusqueda.diasAlerta;
       }
 
       const response = await apiClient.get<ApiResponse<Vehiculo[]>>(
@@ -482,8 +524,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         throw new Error("Respuesta no exitosa del servidor");
       }
     } catch (err) {
-      const errorMessage = handleApiError(err, "Error al obtener conductores");
+      const errorMessage = handleApiError(err, "Error al obtener vehículos");
 
+      console.error("Error en fetchVehiculos:", errorMessage);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -606,7 +649,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         const categorias = extraerCategorias(data.documentos);
 
         if (data.documentos) {
-          Object.entries(data.documentos).forEach(([categoria, documento]) => {
+          Object.entries(data.documentos).forEach(([_, documento]) => {
             if (documento?.file) {
               formData.append("documentos", documento.file);
             }
@@ -1224,22 +1267,61 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
             vehiculo.id === data.vehiculo.id
               ? {
                   ...data.vehiculo,
-                  documentos:
-                    vehiculo.documentos?.map((docExistente) => {
-                      // Buscar si hay un documento actualizado para esta categoría
-                      const docActualizado = data.documentosActualizados.find(
-                        (docNuevo) =>
-                          docNuevo.categoria === docExistente.categoria,
-                      );
+                  documentos: (() => {
+                    // Si no hay documentos existentes, usar solo los nuevos documentos actualizados
+                    if (
+                      !vehiculo.documentos ||
+                      vehiculo.documentos.length === 0
+                    ) {
+                      return data.documentosActualizados;
+                    }
 
-                      // Si existe un documento actualizado para esta categoría, reemplazarlo
-                      return docActualizado || docExistente;
-                    }) ?? [],
+                    // Crear un mapa de documentos actualizados por categoría para búsqueda eficiente
+                    const documentosActualizadosMap = new Map(
+                      data.documentosActualizados.map((doc) => [
+                        doc.categoria,
+                        doc,
+                      ]),
+                    );
+
+                    // Actualizar documentos existentes y agregar nuevos
+                    const documentosActualizados = vehiculo.documentos.map(
+                      (docExistente) => {
+                        const docActualizado = documentosActualizadosMap.get(
+                          docExistente.categoria,
+                        );
+
+                        if (docActualizado) {
+                          // Remover del mapa para evitar duplicados
+                          documentosActualizadosMap.delete(
+                            docExistente.categoria,
+                          );
+
+                          return docActualizado;
+                        }
+
+                        return docExistente;
+                      },
+                    );
+
+                    // Agregar documentos completamente nuevos (categorías que no existían antes)
+                    const documentosNuevos = Array.from(
+                      documentosActualizadosMap.values(),
+                    );
+
+                    return [...documentosActualizados, ...documentosNuevos];
+                  })(),
                 }
               : vehiculo,
           ),
         }));
 
+        // Limpiar estados de UI
+        setCurrentVehiculo(null);
+        setModalFormOpen(false);
+        setProcesamiento(initialProcesamientoState);
+
+        // Mostrar notificación de éxito
         addToast({
           title: "Vehículo Actualizado",
           description: `Se ha actualizado la información del vehículo: ${data.vehiculo.placa}`,
@@ -1330,7 +1412,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           ...prev,
           estado: "completado",
           progreso: 100,
-          mensaje: "Vehículo creado exitosamente",
+          mensaje: data.mensaje,
           error: "",
         }));
       };
