@@ -64,7 +64,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
   getItemId,
   onSelectAll,
 }) => {
-  const { socketEventLogs } = useFlota();
+  const { socketConnected, socketEventLogs } = useFlota();
 
   const [rowAnimations, setRowAnimations] = useState<RowAnimationState>({});
 
@@ -162,6 +162,14 @@ const CustomTable: React.FC<CustomTableProps> = ({
 
   return (
     <div className={`overflow-x-auto ${className}`}>
+      {/* Indicador de conexión en tiempo real */}
+      {socketConnected && (
+        <div className="px-6 py-2 bg-green-50 text-green-700 border-b border-green-100 flex items-center text-sm">
+          <div className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
+          <span>Sincronización en tiempo real activa</span>
+        </div>
+      )}
+
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -210,11 +218,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
               return (
                 <th
                   key={column.key}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                    column.allowsSorting
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.allowsSorting
                       ? "cursor-pointer hover:bg-gray-100"
                       : ""
-                  }`}
+                    }`}
                   scope="col"
                   onClick={() => column.allowsSorting && handleSort(column.key)}
                 >
@@ -263,10 +270,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
               // Verificar si el item está seleccionado
               const isSelected = selectedItems
                 ? selectedItems.some(
-                    (selected) =>
-                      (getItemId?.(selected) || selected.id) ===
-                      (getItemId?.(item) || item.id),
-                  )
+                  (selected) =>
+                    (getItemId?.(selected) || selected.id) ===
+                    (getItemId?.(item) || item.id),
+                )
                 : false;
 
               const handleSelect = (item: any, selected: boolean) => {
@@ -293,12 +300,12 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     >
                       {column.renderCell
                         ? column.renderCell(item, {
-                            selectedItems,
-                            onSelectionChange,
-                            getItemId,
-                            selected: isSelected,
-                            onSelect: handleSelect,
-                          })
+                          selectedItems,
+                          onSelectionChange,
+                          getItemId,
+                          selected: isSelected,
+                          onSelect: handleSelect,
+                        })
                         : item[column.key]}
                     </td>
                   ))}
