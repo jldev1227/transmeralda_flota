@@ -464,11 +464,11 @@ export default function VehiculosTable({
             <p className="text-sm text-gray-700">
               Mostrando{" "}
               <span className="font-medium">
-                {currentItems.length ? (currentPage - 1) * 10 + 1 : 0}
+                {currentItems.length ? (currentPage - 1) * 5 + 1 : 0}
               </span>{" "}
               a{" "}
               <span className="font-medium">
-                {Math.min(currentPage * 10, totalCount)}
+                {Math.min(currentPage * 5, totalCount)}
               </span>{" "}
               de <span className="font-medium">{totalCount}</span> resultados
             </p>
