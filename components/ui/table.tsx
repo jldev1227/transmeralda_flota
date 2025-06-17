@@ -11,6 +11,7 @@ import CustomTable, {
 
 // Definimos todas las posibles columnas como un tipo
 export type VehiculoColumnKey =
+  | "select"
   | "vehiculo"
   | "clase_vehiculo"
   | "kilometraje"
@@ -18,16 +19,16 @@ export type VehiculoColumnKey =
   | "estado"
   | "documentos";
 
+// Actualización de la interfaz VehiculosTableProps
 interface VehiculosTableProps {
   currentItems: Vehiculo[];
   sortDescriptor: SortDescriptor;
   onSortChange: (descriptor: SortDescriptor) => void;
   selectedIds?: string[];
   onSelectItem?: (conductor: Vehiculo) => void;
+  onSelectAll?: (selected: boolean, currentItems?: Vehiculo[]) => void; // Nueva prop
   isLoading?: boolean;
-  // Opcional: columnas personalizadas que anulan la configuración responsive
   columnKeys?: VehiculoColumnKey[];
-  // Paginación
   currentPage: number;
   totalPages: number;
   totalCount: number;
@@ -36,12 +37,14 @@ interface VehiculosTableProps {
   onPageChange: (page: number) => void;
 }
 
+// Actualización del componente VehiculosTable
 export default function VehiculosTable({
   currentItems,
   sortDescriptor,
   onSortChange,
   selectedIds = [],
   onSelectItem = () => {},
+  onSelectAll = () => {}, // Nueva prop con valor por defecto
   isLoading = false,
   columnKeys,
   currentPage,
@@ -50,7 +53,6 @@ export default function VehiculosTable({
   onPageChange,
   abrirModalDetalle,
 }: VehiculosTableProps) {
-
   // Breakpoints responsivos
   const isDesktop = useMediaQuery({ minWidth: 1024 });
   const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 });
@@ -97,6 +99,31 @@ export default function VehiculosTable({
 
   // Definir todas las columnas posibles
   const allColumns: Record<VehiculoColumnKey, Column> = {
+    select: {
+      key: "select",
+      label: "", // Label vacío ya que el CustomTable se encarga del checkbox
+      allowsSorting: false,
+      // La celda individual actualizada
+      renderCell: (
+        vehiculo: Vehiculo,
+        {
+          selected = false,
+          onSelect = () => {},
+        }: {
+          selected?: boolean;
+          onSelect?: (vehiculo: Vehiculo, selected: boolean) => void;
+        } = {}, // <- This is the key addition
+      ) => (
+        <input
+          aria-label={`Seleccionar vehículo ${vehiculo.placa}`}
+          checked={selected}
+          className="accent-emerald-600 h-4 w-4 rounded border-gray-300"
+          type="checkbox"
+          onChange={(e) => onSelect?.(vehiculo, e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+    },
     vehiculo: {
       key: "vehiculo",
       label: "VEHÍCULO",
@@ -339,6 +366,7 @@ export default function VehiculosTable({
     if (isDesktop) {
       // Mostrar todas las columnas en desktop
       displayColumns = [
+        "select",
         "vehiculo",
         "clase_vehiculo",
         "kilometraje",
@@ -348,10 +376,16 @@ export default function VehiculosTable({
       ];
     } else if (isTablet) {
       // Mostrar menos columnas en tablet
-      displayColumns = ["vehiculo", "clase_vehiculo", "kilometraje", "estado"];
+      displayColumns = [
+        "select",
+        "vehiculo",
+        "clase_vehiculo",
+        "kilometraje",
+        "estado",
+      ];
     } else {
       // Mostrar mínimo de columnas en móvil
-      displayColumns = ["vehiculo", "estado"];
+      displayColumns = ["select", "vehiculo", "estado"];
     }
   }
 
@@ -430,11 +464,11 @@ export default function VehiculosTable({
             <p className="text-sm text-gray-700">
               Mostrando{" "}
               <span className="font-medium">
-                {currentItems.length ? (currentPage - 1) * 10 + 1 : 0}
+                {currentItems.length ? (currentPage - 1) * 5 + 1 : 0}
               </span>{" "}
               a{" "}
               <span className="font-medium">
-                {Math.min(currentPage * 10, totalCount)}
+                {Math.min(currentPage * 5, totalCount)}
               </span>{" "}
               de <span className="font-medium">{totalCount}</span> resultados
             </p>
@@ -534,10 +568,7 @@ export default function VehiculosTable({
         columns={columns}
         data={currentItems}
         emptyContent={
-          <div
-            className="w-full
- text-center py-10 text-gray-500"
-          >
+          <div className="w-full text-center py-10 text-gray-500">
             <div className="flex flex-col items-center justify-center">
               <svg
                 className="h-12 w-12 text-gray-400 mb-3"
@@ -553,12 +584,10 @@ export default function VehiculosTable({
                   strokeWidth={1.5}
                 />
               </svg>
-              <p className="text-lg font-medium">
-                No se encontraron conductores
-              </p>
+              <p className="text-lg font-medium">No se encontraron vehículos</p>
               <p className="text-sm mt-1">
                 Intenta con otros criterios de búsqueda o agrega un nuevo
-                conductor
+                vehículo
               </p>
             </div>
           </div>
@@ -576,6 +605,7 @@ export default function VehiculosTable({
         )}
         sortDescriptor={sortDescriptor}
         onRowClick={(conductor) => abrirModalDetalle(conductor.id)}
+        onSelectAll={onSelectAll}
         onSelectionChange={onSelectItem}
         onSortChange={onSortChange}
       />

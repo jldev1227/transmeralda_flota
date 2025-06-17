@@ -512,11 +512,23 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       );
 
       if (response.data && response.data.success) {
+        // Asume que el backend siempre retorna todos los vehículos (sin paginar)
+        const allVehiculos = response.data.data || [];
+        const totalCount = allVehiculos.length;
+        const pageSize = params.limit ? parseInt(params.limit) : 5;
+        const currentPage = params.page ? parseInt(params.page) : 1;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+        // Calcular el slice para la página actual
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = startIdx + pageSize;
+        const paginatedVehiculos = allVehiculos.slice(startIdx, endIdx);
+
         setVehiculosState({
-          data: response.data.data,
-          count: response.data.count || 0,
-          totalPages: response.data.totalPages || 1,
-          currentPage: parseInt(params.page) || 1,
+          data: paginatedVehiculos,
+          count: totalCount,
+          totalPages,
+          currentPage,
         });
 
         return;
@@ -1351,7 +1363,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
           },
         ]);
 
-        console.log(data);
         setCurrentVehiculo(data.datosVehiculo);
         setProcesamiento((prev) => ({
           ...prev,
@@ -1407,7 +1418,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       };
 
       const handleCompletado = (data: any) => {
-        console.log(data);
         setProcesamiento((prev) => ({
           ...prev,
           estado: "completado",

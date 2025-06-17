@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
-import { useFlota } from "@/context/FlotaContext";
+import { useFlota, Vehiculo } from "@/context/FlotaContext";
 
 export type SortDescriptor = {
   column: string;
@@ -12,14 +12,23 @@ export interface Column {
   key: string;
   label: string;
   allowsSorting?: boolean;
-  renderCell?: (item: any) => React.ReactNode;
+  renderCell: (
+    item: any,
+    options?: {
+      selectedItems?: any[];
+      onSelectionChange?: (item: any) => void;
+      getItemId?: (item: any) => string;
+      selected?: boolean;
+      onSelect?: (item: any, selected: boolean) => void;
+    },
+  ) => React.ReactNode;
 }
 
 interface RowAnimationState {
   [key: string]: {
     isNew: boolean;
     isUpdated: boolean;
-    eventType: string; // Añadir el tipo de evento
+    eventType: string;
     timestamp: number;
   };
 }
@@ -37,6 +46,7 @@ interface CustomTableProps {
   selectedItems?: any[];
   onSelectionChange?: (item: any) => void;
   getItemId?: (item: any) => string;
+  onSelectAll?: (selected: boolean, currentItems?: Vehiculo[]) => void;
 }
 
 const CustomTable: React.FC<CustomTableProps> = ({
@@ -49,6 +59,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
   isLoading = false,
   className = "",
   onRowClick,
+  selectedItems,
+  onSelectionChange,
+  getItemId,
+  onSelectAll,
 }) => {
   const { socketEventLogs } = useFlota();
 
@@ -152,6 +166,47 @@ const CustomTable: React.FC<CustomTableProps> = ({
         <thead className="bg-gray-50">
           <tr>
             {columns.map((column) => {
+              // Si es la columna de selección, renderizar checkbox de "seleccionar todos"
+              if (column.key === "select") {
+                // Obtener IDs de la página actual
+                const currentPageIds = data.map(
+                  (item) => getItemId?.(item) || item.id,
+                );
+
+                // Obtener IDs seleccionados (desde el componente padre via selectedItems o prop separada)
+                const selectedIds = selectedItems
+                  ? selectedItems.map((item) => getItemId?.(item) || item.id)
+                  : [];
+
+                // Verificar si todos los elementos de la página actual están seleccionados
+                const allCurrentPageSelected =
+                  data.length > 0 &&
+                  currentPageIds.every((id) => selectedIds.includes(id));
+
+                const handleSelectAllToggle = () => {
+                  if (onSelectAll) {
+                    onSelectAll(!allCurrentPageSelected);
+                  }
+                };
+
+                return (
+                  <th
+                    key={column.key}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    scope="col"
+                  >
+                    <input
+                      aria-label="Seleccionar todos"
+                      checked={allCurrentPageSelected || false}
+                      className="accent-emerald-600 h-4 w-4 rounded border-gray-300"
+                      type="checkbox"
+                      onChange={handleSelectAllToggle}
+                    />
+                  </th>
+                );
+              }
+
+              // Para todas las demás columnas, usar el comportamiento normal
               return (
                 <th
                   key={column.key}
@@ -205,6 +260,19 @@ const CustomTable: React.FC<CustomTableProps> = ({
               const isNew = animation?.isNew || false;
               const isUpdated = animation?.isUpdated || false;
 
+              // Verificar si el item está seleccionado
+              const isSelected = selectedItems
+                ? selectedItems.some(
+                    (selected) =>
+                      (getItemId?.(selected) || selected.id) ===
+                      (getItemId?.(item) || item.id),
+                  )
+                : false;
+
+              const handleSelect = (item: any, selected: boolean) => {
+                onSelectionChange?.(item);
+              };
+
               return (
                 <tr
                   key={item.id ?? rowIndex}
@@ -224,7 +292,13 @@ const CustomTable: React.FC<CustomTableProps> = ({
                       className="px-6 py-4 whitespace-nowrap"
                     >
                       {column.renderCell
-                        ? column.renderCell(item)
+                        ? column.renderCell(item, {
+                            selectedItems,
+                            onSelectionChange,
+                            getItemId,
+                            selected: isSelected,
+                            onSelect: handleSelect,
+                          })
                         : item[column.key]}
                     </td>
                   ))}
