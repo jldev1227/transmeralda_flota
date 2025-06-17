@@ -158,7 +158,7 @@ const FilterSection = ({
 
       {/* Filtros Compactos */}
       <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
           {/* Filtros Rápidos */}
           <Button
             className="w-full sm:w-auto justify-start text-xs"
@@ -312,7 +312,7 @@ const FilterSection = ({
                 variant="flat"
               >
                 <span className="text-xs truncate">
-                  Estado
+                  Estado documentación
                   {filtros.estadosDocumentos.size > 0 &&
                     ` (${filtros.estadosDocumentos.size})`}
                 </span>

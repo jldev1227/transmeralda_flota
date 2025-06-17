@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { PlusIcon } from "lucide-react";
-import { Alert } from "@heroui/alert";
+import { addToast } from "@heroui/toast";
 
 import {
   Vehiculo,
@@ -17,6 +17,7 @@ import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
+import { apiClient } from "@/config/apiClient";
 
 export default function GestionVehiculos() {
   const {
@@ -157,8 +158,6 @@ export default function GestionVehiculos() {
         }
       }
 
-      console.log("Parámetros de búsqueda enviados:", params);
-
       // Realizar la búsqueda
       await fetchVehiculos(params);
 
@@ -179,7 +178,6 @@ export default function GestionVehiculos() {
 
   // Manejar los filtros
   const handleFilter = async (nuevosFiltros: FilterOptions) => {
-    console.log("Aplicando filtros:", nuevosFiltros);
     await cargarVehiculos(1, undefined, nuevosFiltros);
   };
 
@@ -210,6 +208,24 @@ export default function GestionVehiculos() {
       setSelectedIds(selectedIds.filter((id) => id !== vehiculo.id));
     } else {
       setSelectedIds([...selectedIds, vehiculo.id]);
+    }
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    const currentPageIds = vehiculosState.data.map((vehiculo) => vehiculo.id);
+
+    if (selected) {
+      // Agregar todos los vehículos de la página actual
+      setSelectedIds((prev) => {
+        const newIds = new Set([...prev, ...currentPageIds]);
+
+        return Array.from(newIds);
+      });
+    } else {
+      // Deseleccionar solo los vehículos de la página actual
+      setSelectedIds((prev) =>
+        prev.filter((id) => !currentPageIds.includes(id)),
+      );
     }
   };
 
@@ -332,29 +348,118 @@ export default function GestionVehiculos() {
     return descripciones.join(" | ");
   };
 
+  const handleExportZipVigencias = async () => {
+    try {
+      // Configurar la petición para recibir blob
+      const response = await apiClient.post(
+        "/api/flota/reporte-vigencias",
+        {
+          vehiculoIds: selectedIds,
+        },
+        {
+          responseType: "blob", // Importante: especificar que esperamos un blob
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      // Verificar que la respuesta sea exitosa
+      if (response.status === 200) {
+        // Crear un blob con la respuesta
+        const blob = new Blob([response.data], { type: "application/zip" });
+
+        // Crear URL temporal para el blob
+        const url = window.URL.createObjectURL(blob);
+
+        // Crear elemento anchor para forzar la descarga
+        const link = document.createElement("a");
+
+        link.href = url;
+
+        // Generar nombre del archivo con timestamp
+        const timestamp = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/:/g, "-");
+
+        link.download = `reportes_vehiculos_${timestamp}.zip`;
+
+        // Agregar al DOM temporalmente y hacer click
+        document.body.appendChild(link);
+        link.click();
+
+        // Limpiar: remover el elemento y liberar la URL
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        addToast({
+          title: `${selectedIds.length} reporte${selectedIds.length > 1 ? "s" : ""} descargado${selectedIds.length > 1 ? "s" : ""}`,
+          description: `Descarga exitosa.`,
+          color: "success",
+        });
+      } else {
+        throw new Error(`Error del servidor: ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error("Error al descargar reportes:", error);
+
+      // Verificar si es un error de red o del servidor
+      if (error.response) {
+        // El servidor respondió con un status de error
+        console.error(
+          "Error del servidor:",
+          error.response.status,
+          error.response.data,
+        );
+        // toast.error(`Error del servidor: ${error.response.status}`);
+      } else if (error.request) {
+        // La petición se hizo pero no hubo respuesta
+        console.error("Sin respuesta del servidor:", error.request);
+        // toast.error('Sin respuesta del servidor. Verifica tu conexión.');
+      } else {
+        // Error en la configuración de la petición
+        console.error("Error en la petición:", error.message);
+        // toast.error('Error al procesar la petición');
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto p-5 sm:p-10 space-y-5">
-      <div className="flex gap-3 flex-col sm:flex-row w-full items-start md:items-center justify-between">
+      <div className="flex flex-col gap-4 w-full sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
-        <Button
-          className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-          color="primary"
-          isDisabled={loading}
-          radius="sm"
-          startContent={<PlusIcon />}
-          onPress={abrirModalCrear}
-        >
-          Nuevo Vehiculo
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <span className="text-sm text-gray-700">
+              {selectedIds.length > 0
+                ? selectedIds.length === 1
+                  ? `${selectedIds.length} vehículo seleccionado`
+                  : `${selectedIds.length} vehículos seleccionados`
+                : "Ningún vehículo seleccionado"}
+            </span>
+            <Button
+              className="w-full sm:w-auto"
+              color="primary"
+              isDisabled={selectedIds.length === 0}
+              radius="sm"
+              onPress={handleExportZipVigencias}
+            >
+              Exportar reporte de vigencias
+            </Button>
+          </div>
+          <Button
+            className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+            color="primary"
+            isDisabled={loading}
+            radius="sm"
+            startContent={<PlusIcon />}
+            onPress={abrirModalCrear}
+          >
+            Nuevo Vehiculo
+          </Button>
+        </div>
       </div>
-
-      <Alert
-        className="py-2"
-        color="success"
-        radius="sm"
-        title="Obteniendo cambios en tiempo real"
-        variant="faded"
-      />
 
       {/* Componente de búsqueda y filtros */}
       <BuscadorFiltrosVehiculo
@@ -408,8 +513,9 @@ export default function GestionVehiculos() {
         totalCount={vehiculosState.count}
         totalPages={vehiculosState.totalPages}
         onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
         onSelectItem={handleSelectItem}
+        onSortChange={handleSortChange}
+        onSelectAll={handleSelectAll}
         // Propiedades de paginación
         currentPage={vehiculosState.currentPage}
       />
