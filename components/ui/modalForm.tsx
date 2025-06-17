@@ -453,8 +453,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     try {
       await onSave(
         datosCompletos as
-          | CrearVehiculoRequest
-          | (CrearVehiculoRequest & { id: string }),
+        | CrearVehiculoRequest
+        | (CrearVehiculoRequest & { id: string }),
       );
     } finally {
       setLoading(false);
@@ -723,7 +723,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                         className="w-full"
                         color={
                           procesamiento.error !== "" ||
-                          procesamiento.estado === "error"
+                            procesamiento.estado === "error"
                             ? "danger"
                             : procesamiento.estado === "completado"
                               ? "success"
@@ -1279,8 +1279,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                                   <span>
                                     {procesamiento.vehiculo?.createdAt
                                       ? new Date(
-                                          procesamiento.vehiculo?.createdAt,
-                                        ).toLocaleString("es-CO")
+                                        procesamiento.vehiculo?.createdAt,
+                                      ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
@@ -1291,8 +1291,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                                   <span>
                                     {procesamiento.vehiculo?.updatedAt
                                       ? new Date(
-                                          procesamiento.vehiculo?.updatedAt,
-                                        ).toLocaleString("es-CO")
+                                        procesamiento.vehiculo?.updatedAt,
+                                      ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
@@ -1660,22 +1660,25 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                   >
                     Cancelar
                   </Button>
-                  <Button
-                    className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-                    isLoading={loading}
-                    startContent={
-                      loading ? "" : <SaveIcon className="h-4 w-4" />
-                    }
-                    onPress={handleSave}
-                  >
-                    {loading
-                      ? vehiculoEditar
-                        ? "Actualizando..."
-                        : "Guardando..."
-                      : vehiculoEditar
-                        ? "Actualizar"
-                        : "Guardar"}
-                  </Button>
+
+                  {!procesamiento.mensaje && (
+                    <Button
+                      className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+                      isLoading={loading}
+                      startContent={
+                        loading ? "" : <SaveIcon className="h-4 w-4" />
+                      }
+                      onPress={handleSave}
+                    >
+                      {loading && !procesamiento.mensaje
+                        ? vehiculoEditar
+                          ? "Actualizando..."
+                          : "Guardando..."
+                        : vehiculoEditar
+                          ? "Actualizar"
+                          : "Guardar"}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">

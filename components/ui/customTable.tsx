@@ -99,6 +99,8 @@ const CustomTable: React.FC<CustomTableProps> = ({
     const newAnimations: RowAnimationState = { ...rowAnimations };
 
     latestEvents.forEach((event) => {
+
+      console.log(event)
       // Obtener ID del vehiculo según el tipo de evento
       let vehiculoId = "";
 
@@ -117,7 +119,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
           eventType: event.eventName,
           timestamp: now,
         };
-      } else {
+      } else if(event.eventName === "vehiculo:actualizado") {
         // Para cualquier otro evento, marcar como actualizado
         newAnimations[vehiculoId] = {
           isNew: false,
