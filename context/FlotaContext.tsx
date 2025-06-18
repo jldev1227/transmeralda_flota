@@ -168,8 +168,18 @@ export interface ApiResponse<T> {
 }
 
 interface CrearVehiculoConDocumentosResponse {
+  usuarioId?: string;
+  usuarioNombre?: string;
   vehiculo: Vehiculo;
   documentos: Documento[];
+}
+
+interface ActualizarVehiculoConDocumentosResponse {
+  vehiculo: Vehiculo;
+  usuarioId?: string;
+  usuarioNombre?: string;
+  documentosActualizados: Documento[];
+  categoriasActualizadas: string[];
 }
 
 export interface Documento {
@@ -330,7 +340,7 @@ interface FlotaContextType {
   handlePageChange: (page: number) => void;
   handleSortChange: (descriptor: SortDescriptor) => void;
   clearError: () => void;
-  setCurrentVehiculo: (vehiculo: Vehiculo | null) => void;
+  setCurrentVehiculo: Dispatch<SetStateAction<Vehiculo | null>>;
 
   // Nuevas propiedades para Socket.IO
   socketConnected?: boolean;
@@ -943,7 +953,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         headers["Content-Type"] = "multipart/form-data";
       } else {
         // ✅ Sin documentos - endpoint básico con PUT
-        endpoint = `/api/flota/basico/${data.id}`;
+        endpoint = `/api/flota/${data.id}/basico`;
         const {
           documentos,
           fechasVigencia,
@@ -1251,18 +1261,57 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         setModalFormOpen(false);
         setProcesamiento(initialProcesamientoState);
 
+        // Si la clase del vehículo termina en "A", mostrar "nueva", si no, "nuevo"
+        const clase = data.vehiculo.clase_vehiculo || "";
+        const terminaEnA = clase.trim().toUpperCase().endsWith("A");
+
         addToast({
-          title: "Nuevo Vehículo",
-          description: `Se ha creado un nuevo vehículo: ${data.vehiculo.placa}`,
+          title: terminaEnA ? "Nueva Vehículo!" : "Nuevo Vehículo",
+          description: `Has creado ${terminaEnA ? "una" : "un"} ${terminaEnA ? "nueva" : "nuevo"} ${clase.charAt(0).toUpperCase() + clase.slice(1).toLowerCase()}: ${data.vehiculo.placa}`,
           color: "success",
         });
       };
 
-      const handleVehiculoActualizado = (data: {
-        vehiculo: Vehiculo;
-        documentosActualizados: Documento[];
-        categoriasActualizadas: string[];
-      }) => {
+      const handleVehiculoCreadoGlobal = (
+        data: CrearVehiculoConDocumentosResponse,
+      ) => {
+        if (data.usuarioId === user.id) return;
+
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:creado-global",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Agregar el nuevo vehículo al estado
+        setVehiculosState((prev) => ({
+          ...prev,
+          data: [
+            { ...data.vehiculo, documentos: data.documentos },
+            ...prev.data,
+          ], // Agregar al inicio del array
+          count: prev.count + 1,
+        }));
+
+        const creador = data.usuarioNombre;
+
+        // Si la clase del vehículo termina en "A", mostrar "nueva", si no, "nuevo"
+        const clase = data.vehiculo.clase_vehiculo || "";
+        const terminaEnA = clase.trim().toUpperCase().endsWith("A");
+
+        addToast({
+          title: "Nuevo Vehículo!",
+          description: `${creador} ha creado ${terminaEnA ? "una" : "un"} ${terminaEnA ? "nueva" : "nuevo"} ${clase.charAt(0).toUpperCase() + clase.slice(1).toLowerCase()}: ${data.vehiculo.placa}`,
+          color: "success",
+        });
+      };
+
+      const handleVehiculoActualizado = (
+        data: ActualizarVehiculoConDocumentosResponse,
+      ) => {
         setSocketEventLogs((prev) => [
           ...prev,
           {
@@ -1335,8 +1384,88 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
         // Mostrar notificación de éxito
         addToast({
-          title: "Vehículo Actualizado",
-          description: `Se ha actualizado la información del vehículo: ${data.vehiculo.placa}`,
+          title: "Vehículo Actualizado!",
+          description: `Has actualizado la información del vehículo: ${data.vehiculo.placa}`,
+          color: "primary",
+        });
+      };
+
+      const handleVehiculoActualizadoGlobal = (
+        data: ActualizarVehiculoConDocumentosResponse,
+      ) => {
+        if (data.usuarioId === user.id) return;
+
+        setSocketEventLogs((prev) => [
+          ...prev,
+          {
+            eventName: "vehiculo:actualizado",
+            data,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Actualizar el vehículo específico en el estado
+        setVehiculosState((prev) => ({
+          ...prev,
+          data: prev.data.map((vehiculo) =>
+            vehiculo.id === data.vehiculo.id
+              ? {
+                  ...data.vehiculo,
+                  documentos: (() => {
+                    // Si no hay documentos existentes, usar solo los nuevos documentos actualizados
+                    if (
+                      !vehiculo.documentos ||
+                      vehiculo.documentos.length === 0
+                    ) {
+                      return data.documentosActualizados;
+                    }
+
+                    // Crear un mapa de documentos actualizados por categoría para búsqueda eficiente
+                    const documentosActualizadosMap = new Map(
+                      data.documentosActualizados.map((doc) => [
+                        doc.categoria,
+                        doc,
+                      ]),
+                    );
+
+                    // Actualizar documentos existentes y agregar nuevos
+                    const documentosActualizados = vehiculo.documentos.map(
+                      (docExistente) => {
+                        const docActualizado = documentosActualizadosMap.get(
+                          docExistente.categoria,
+                        );
+
+                        if (docActualizado) {
+                          // Remover del mapa para evitar duplicados
+                          documentosActualizadosMap.delete(
+                            docExistente.categoria,
+                          );
+
+                          return docActualizado;
+                        }
+
+                        return docExistente;
+                      },
+                    );
+
+                    // Agregar documentos completamente nuevos (categorías que no existían antes)
+                    const documentosNuevos = Array.from(
+                      documentosActualizadosMap.values(),
+                    );
+
+                    return [...documentosActualizados, ...documentosNuevos];
+                  })(),
+                }
+              : vehiculo,
+          ),
+        }));
+
+        const creador = data.usuarioNombre;
+
+        // Mostrar notificación de éxito
+        addToast({
+          title: "Vehículo Actualizado!",
+          description: `${creador} ha actualizado la información del vehículo: ${data.vehiculo.placa}`,
           color: "primary",
         });
       };
@@ -1433,7 +1562,12 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
       // Registrar manejadores de eventos de vehículos
       socketService.on("vehiculo:creado", handleVehiculoCreado);
+      socketService.on("vehiculo:creado-global", handleVehiculoCreadoGlobal);
       socketService.on("vehiculo:actualizado", handleVehiculoActualizado);
+      socketService.on(
+        "vehiculo:actualizado-global",
+        handleVehiculoActualizadoGlobal,
+      );
       socketService.on(
         "vehiculo:confirmacion:requerida",
         handleConfirmarCreacion,
@@ -1453,7 +1587,9 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
 
         // Limpiar manejadores de eventos de conductores
         socketService.off("vehiculo:creado");
+        socketService.off("vehiculo:creado-global");
         socketService.off("vehiculo:actualizado");
+        socketService.off("vehiculo:actualizado-global");
         socketService.off("vehiculo:confirmacion:requerida");
         socketService.off("vehiculo:procesamiento:progreso", handleProgreso);
         socketService.off(
@@ -1475,6 +1611,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     // Datos
     vehiculosState,
     currentVehiculo,
+    setCurrentVehiculo,
     loading,
     error,
     validationErrors,
@@ -1505,7 +1642,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
     handlePageChange,
     handleSortChange,
     clearError,
-    setCurrentVehiculo,
   };
 
   return (

@@ -229,7 +229,7 @@ const SimpleDocumentUploader = ({
   return (
     <div className="border border-gray-300 rounded-lg p-4 space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between items-center">
         <h4 className="font-medium text-gray-900">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -291,16 +291,26 @@ const SimpleDocumentUploader = ({
       ) : (
         /* File Preview */
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg gap-3 sm:gap-0">
+            <div className="flex items-center sm:flex-row flex-col w-full sm:w-auto">
               <FileText
-                className={`h-5 w-5 mr-3 ${file ? "text-green-600" : "text-blue-600"}`}
+                className={`h-5 w-5 mr-0 sm:mr-3 mb-2 sm:mb-0 ${file ? "text-green-600" : "text-blue-600"}`}
               />
-              <div>
-                <p className="font-medium text-gray-900 text-sm">
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`
+                      font-medium text-gray-900 text-sm max-w-full truncate
+                      ${/* xs: 80px, sm: 180px, md: 260px, lg+: 360px */ ""}
+                      max-w-[100px]
+                      sm:max-w-[180px]
+                      md:max-w-[260px]
+                      lg:max-w-[360px]
+                    `}
+                  title={displayName}
+                >
                   {displayName}
                 </p>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   <span>{formatFileSize(displaySize)}</span>
                   {existingDocument && (
                     <span>
@@ -314,7 +324,7 @@ const SimpleDocumentUploader = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-row sm:flex-row gap-2 w-full sm:w-auto justify-center">
               {/* ✅ Botón de descarga para documentos existentes */}
               {existingDocument && !file && (
                 <Button
