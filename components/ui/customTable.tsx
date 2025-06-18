@@ -99,8 +99,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
     const newAnimations: RowAnimationState = { ...rowAnimations };
 
     latestEvents.forEach((event) => {
-
-      console.log(event)
       // Obtener ID del vehiculo según el tipo de evento
       let vehiculoId = "";
 
@@ -119,7 +117,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
           eventType: event.eventName,
           timestamp: now,
         };
-      } else if(event.eventName === "vehiculo:actualizado") {
+      } else if (event.eventName === "vehiculo:actualizado") {
         // Para cualquier otro evento, marcar como actualizado
         newAnimations[vehiculoId] = {
           isNew: false,
@@ -220,10 +218,11 @@ const CustomTable: React.FC<CustomTableProps> = ({
               return (
                 <th
                   key={column.key}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.allowsSorting
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    column.allowsSorting
                       ? "cursor-pointer hover:bg-gray-100"
                       : ""
-                    }`}
+                  }`}
                   scope="col"
                   onClick={() => column.allowsSorting && handleSort(column.key)}
                 >
@@ -272,10 +271,10 @@ const CustomTable: React.FC<CustomTableProps> = ({
               // Verificar si el item está seleccionado
               const isSelected = selectedItems
                 ? selectedItems.some(
-                  (selected) =>
-                    (getItemId?.(selected) || selected.id) ===
-                    (getItemId?.(item) || item.id),
-                )
+                    (selected) =>
+                      (getItemId?.(selected) || selected.id) ===
+                      (getItemId?.(item) || item.id),
+                  )
                 : false;
 
               const handleSelect = (item: any, selected: boolean) => {
@@ -302,12 +301,12 @@ const CustomTable: React.FC<CustomTableProps> = ({
                     >
                       {column.renderCell
                         ? column.renderCell(item, {
-                          selectedItems,
-                          onSelectionChange,
-                          getItemId,
-                          selected: isSelected,
-                          onSelect: handleSelect,
-                        })
+                            selectedItems,
+                            onSelectionChange,
+                            getItemId,
+                            selected: isSelected,
+                            onSelect: handleSelect,
+                          })
                         : item[column.key]}
                     </td>
                   ))}

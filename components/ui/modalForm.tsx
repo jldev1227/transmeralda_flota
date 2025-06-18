@@ -85,7 +85,12 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   vehiculoEditar = null,
   titulo = "Registrar Nuevo Vehículo",
 }) => {
-  const { procesamiento, setProcesamiento, currentVehiculo } = useFlota();
+  const {
+    procesamiento,
+    setProcesamiento,
+    currentVehiculo,
+    setCurrentVehiculo,
+  } = useFlota();
 
   // Estado para almacenar los datos del formulario
   const [formData, setFormData] = useState<Partial<Vehiculo>>({
@@ -254,6 +259,10 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
             sessionId: procesamiento.sessionId,
             accion: "cancelar",
           });
+
+          onClose();
+          setProcesamiento(initialProcesamientoState);
+          setCurrentVehiculo(null);
           break;
 
         case "guardar":
@@ -302,6 +311,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     });
     setDocumentos({});
     setErroresDocumentos({});
+    setCurrentVehiculo(null);
     setProcesamiento(initialProcesamientoState);
   };
 
@@ -453,9 +463,11 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
     try {
       await onSave(
         datosCompletos as
-        | CrearVehiculoRequest
-        | (CrearVehiculoRequest & { id: string }),
+          | CrearVehiculoRequest
+          | (CrearVehiculoRequest & { id: string }),
       );
+    } catch (error) {
+      console.log("Error en handleSave:", error);
     } finally {
       setLoading(false);
     }
@@ -559,7 +571,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
       key: "CERTIFICADO_GPS",
       label: "Certificado GPS",
       required: false,
-      vigencia: true,
+      vigencia: false,
     },
   ];
 
@@ -675,9 +687,9 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
   return (
     <Modal
       backdrop={"blur"}
+      className="max-w-[1200px]"
       isOpen={isOpen}
       scrollBehavior="inside"
-      size="5xl"
       onClose={handleClose}
     >
       <ModalContent>
@@ -687,43 +699,53 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
               <div className="flex items-center space-x-2">
                 <TruckIcon className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-lg font-semibold">
-                  {vehiculoEditar ? "Editar Vehículo" : titulo}
+                  {vehiculoEditar
+                    ? `Editar vehículo de placa: ${vehiculoEditar?.placa}`
+                    : titulo}
                 </h3>
               </div>
             </ModalHeader>
 
             <ModalBody>
               <div className="space-y-6">
-                {!procesamiento.mensaje && !currentVehiculo && (
-                  <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
-                    <div>
-                      <span className="font-medium">
-                        Registrar con documentación
-                      </span>
-                      <p className="text-sm text-gray-500">
-                        Marque esta opción si adjuntara documentación del
-                        vehículo
-                      </p>
+                {/* Mostrar sección de documentación solo si NO hay documentos existentes, NO hay mensaje de procesamiento y NO hay vehículo actual */}
+                {(!vehiculoEditar?.documentos ||
+                  vehiculoEditar.documentos.length === 0) &&
+                  !procesamiento.mensaje &&
+                  !currentVehiculo && (
+                    <div className="flex items-center justify-between border p-3 rounded-md bg-gray-50">
+                      <div>
+                        <span className="font-medium">
+                          Registrar con documentación
+                        </span>
+                        <p className="text-sm text-gray-500">
+                          Marque esta opción si adjuntara documentación del
+                          vehículo
+                        </p>
+                      </div>
+                      <Switch
+                        color="success"
+                        isSelected={subirDocumentos}
+                        onChange={(e) =>
+                          handleSwitchChange(
+                            "subirDocumentos",
+                            e.target.checked,
+                          )
+                        }
+                      />
                     </div>
-                    <Switch
-                      color="success"
-                      isSelected={subirDocumentos}
-                      onChange={(e) =>
-                        handleSwitchChange("subirDocumentos", e.target.checked)
-                      }
-                    />
-                  </div>
-                )}
+                  )}
 
                 {/* Alert para mostrar el estado del procesamiento */}
-                {procesamiento.mensaje !== "" &&
+                {procesamiento.error &&
+                  procesamiento.mensaje !== "" &&
                   procesamiento.mensaje.length > 0 && (
                     <div>
                       <Alert
                         className="w-full"
                         color={
                           procesamiento.error !== "" ||
-                            procesamiento.estado === "error"
+                          procesamiento.estado === "error"
                             ? "danger"
                             : procesamiento.estado === "completado"
                               ? "success"
@@ -736,8 +758,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                     </div>
                   )}
 
-                {currentVehiculo && (
-                  <div className="max-w-4xl mx-auto space-y-6">
+                {currentVehiculo && procesamiento.estado !== "error" && (
+                  <div className="space-y-6">
                     {/* Header */}
                     <Card>
                       <CardHeader className="flex justify-between gap-3">
@@ -1279,8 +1301,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                                   <span>
                                     {procesamiento.vehiculo?.createdAt
                                       ? new Date(
-                                        procesamiento.vehiculo?.createdAt,
-                                      ).toLocaleString("es-CO")
+                                          procesamiento.vehiculo?.createdAt,
+                                        ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
@@ -1291,8 +1313,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                                   <span>
                                     {procesamiento.vehiculo?.updatedAt
                                       ? new Date(
-                                        procesamiento.vehiculo?.updatedAt,
-                                      ).toLocaleString("es-CO")
+                                          procesamiento.vehiculo?.updatedAt,
+                                        ).toLocaleString("es-CO")
                                       : "No disponible"}
                                   </span>
                                 </li>
@@ -1454,7 +1476,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       <h4 className="text-md font-semibold mb-4 border-b pb-2">
                         Documentación
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {documentTypes.map((docType) => {
                           const documento = documentos[docType.key];
 
@@ -1462,6 +1484,8 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                             <SimpleDocumentUploader
                               key={docType.key}
                               documentKey={docType.key}
+                              errores={erroresDocumentos}
+                              existingDocument={documento?.existente || null}
                               fecha_vigencia={documento?.fecha_vigencia || null}
                               file={documento?.file || null}
                               isExisting={
@@ -1472,22 +1496,19 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               vigencia={docType.vigencia}
                               onChange={handleDocumentChange}
                               onRemove={handleDocumentRemove}
-                              errores={erroresDocumentos}
-                              // ✅ Pasar documento existente
-                              existingDocument={documento?.existente || null}
                             />
                           );
                         })}
                       </div>
 
-                      {/* ✅ Resumen de documentos cargados (actualizado) */}
+                      {/* Resumen de documentos cargados (responsive) */}
                       {Object.keys(documentos).length > 0 && (
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                           <h3 className="font-medium text-blue-900 mb-2">
                             Documentos cargados (
                             {Object.keys(documentos).length})
                           </h3>
-                          <ul className="text-sm text-blue-800 space-y-1">
+                          <ul className="text-sm text-blue-800 space-y-2">
                             {Object.entries(documentos).map(([key, doc]) => {
                               const docType = documentTypes.find(
                                 (d) => d.key === key,
@@ -1498,7 +1519,7 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                               return (
                                 <li
                                   key={key}
-                                  className="flex justify-between items-center"
+                                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1"
                                 >
                                   <div className="flex items-center gap-2">
                                     <span>{docType?.label}</span>
@@ -1513,11 +1534,6 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-blue-600">
-                                    {doc.fecha_vigencia
-                                      ? `Vigente hasta: ${doc.fecha_vigencia.toLocaleDateString("es-ES")}`
-                                      : "✓"}
-                                  </span>
                                 </li>
                               );
                             })}
@@ -1638,20 +1654,20 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
             </ModalBody>
 
             <ModalFooter>
+              {procesamiento.progreso > 0 ||
+                (procesamiento.estado === "error" && (
+                  <Button
+                    className="ml-auto"
+                    color="danger"
+                    variant="light"
+                    onPress={resetForm}
+                  >
+                    Reiniciar formulario
+                  </Button>
+                ))}
+
               {!currentVehiculo ? (
                 <div className="flex items-center gap-3">
-                  {procesamiento.progreso > 0 ||
-                    (procesamiento.mensaje && (
-                      <Button
-                        className="ml-auto"
-                        color="danger"
-                        variant="light"
-                        onPress={resetForm}
-                      >
-                        Reiniciar formulario
-                      </Button>
-                    ))}
-
                   <Button
                     color="danger"
                     radius="sm"
@@ -1706,32 +1722,37 @@ const ModalFormVehiculo: React.FC<ModalFormVehiculoProps> = ({
                       Cancelar
                     </Button>
 
-                    <Button
-                      color={isEditing ? "success" : "warning"}
-                      isLoading={isLoading && modalAction === "guardar"}
-                      radius="sm"
-                      startContent={
-                        isEditing ? (
-                          <Save className="h-4 w-4" />
-                        ) : (
-                          <Edit className="h-4 w-4" />
-                        )
-                      }
-                      variant="flat"
-                      onPress={handleEditar}
-                    >
-                      {isEditing ? "Guardar Cambios" : "Editar Datos"}
-                    </Button>
+                    {procesamiento.estado !== "error" && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          color={isEditing ? "success" : "warning"}
+                          isLoading={isLoading && modalAction === "guardar"}
+                          radius="sm"
+                          startContent={
+                            isEditing ? (
+                              <Save className="h-4 w-4" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )
+                          }
+                          variant="flat"
+                          onPress={handleEditar}
+                        >
+                          {isEditing ? "Guardar Cambios" : "Editar Datos"}
+                        </Button>
 
-                    <Button
-                      color="primary"
-                      isLoading={isLoading && modalAction === "confirmar"}
-                      radius="sm"
-                      variant="flat"
-                      onPress={handleConfirmar}
-                    >
-                      Confirmar y Registrar
-                    </Button>
+                        <Button
+                          color="primary"
+                          isLoading={isLoading && modalAction === "confirmar"}
+                          radius="sm"
+                          variant="flat"
+                          onPress={handleConfirmar}
+                        >
+                          Confirmar{" "}
+                          {vehiculoEditar?.id ? "Actualización" : "Registro"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

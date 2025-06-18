@@ -524,7 +524,9 @@ export default function GestionVehiculos() {
       <ModalForm
         isOpen={modalFormOpen}
         titulo={
-          vehiculoParaEditar ? "Editar Vehiculo" : "Registrar Nuevo Vehiculo"
+          vehiculoParaEditar
+            ? `Editar Vehículo ${vehiculoParaEditar.placa}`
+            : "Registrar Nuevo Vehiculo"
         }
         vehiculoEditar={vehiculoParaEditar}
         onClose={cerrarModalForm}
