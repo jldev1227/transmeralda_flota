@@ -449,7 +449,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Prepara los parámetros básicos
       const params: any = {
         page: paramsBusqueda.page || vehiculosState.currentPage,
-        limit: paramsBusqueda.limit || 5,
+        limit: paramsBusqueda.limit || 10,
         sort: paramsBusqueda.sort || sortDescriptor.column,
         order: paramsBusqueda.order || sortDescriptor.direction,
       };
@@ -525,7 +525,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         // Asume que el backend siempre retorna todos los vehículos (sin paginar)
         const allVehiculos = response.data.data || [];
         const totalCount = allVehiculos.length;
-        const pageSize = params.limit ? parseInt(params.limit) : 5;
+        const pageSize = params.limit ? parseInt(params.limit) : 10;
         const currentPage = params.page ? parseInt(params.page) : 1;
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
