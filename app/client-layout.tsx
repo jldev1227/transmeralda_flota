@@ -1,9 +1,7 @@
 // client-layout.tsx
 "use client";
 
-import { LogoutButton } from "@/components/logout";
 import DynamicTitle from "@/components/ui/dynamicTitle";
-import FlotaNavBar from "@/components/ui/flotaNavbar";
 import { useAuth } from "@/context/AuthContext";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +21,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex flex-col h-[100dvh]">
       <DynamicTitle />
-      <FlotaNavBar LogoutButton={LogoutButton} user={user} />
       <main className="bg-gray-50 flex-grow overflow-auto">{children}</main>
     </div>
   );

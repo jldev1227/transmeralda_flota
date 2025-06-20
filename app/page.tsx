@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@heroui/button";
-import { PlusIcon } from "lucide-react";
+import { BrushIcon, PlusIcon, SearchIcon, BrushCleaning, X, UserIcon, SquareCheck, FileText, PlusCircleIcon, ListOrderedIcon, ArrowUp01Icon, ArrowUpDownIcon } from "lucide-react";
 import { addToast } from "@heroui/toast";
 
 import {
@@ -18,10 +18,21 @@ import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
 import { apiClient } from "@/config/apiClient";
+import { Alert } from "@heroui/alert";
+import { useMediaQuery } from "react-responsive";
+import { Input } from "@heroui/input";
+import { Tooltip } from "@heroui/tooltip";
+import { RadioGroup, Radio } from "@heroui/radio";
+import { LogoutButton } from "@/components/logout";
+import { Link } from '@heroui/link'
+import { useAuth } from "@/context/AuthContext";
+import { Card, CardBody } from "@heroui/card";
+import VehiculoCard from "@/components/ui/vehiculoCard";
 
 export default function GestionVehiculos() {
   const {
     vehiculosState,
+    socketConnected,
     sortDescriptor,
     loading,
     modalDetalleOpen,
@@ -40,7 +51,34 @@ export default function GestionVehiculos() {
     setProcesamiento,
     setLoading,
   } = useFlota();
+
+  const { user } = useAuth()
+
+  const isMobile = useMediaQuery({ maxWidth: 1024 });
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const handleClosePanel = useCallback(() => {
+    if (isPanelOpen && isMobile) {
+      const panel = document.querySelector(".animate-bottomToTop");
+
+      if (panel) {
+        panel.classList.remove("animate-bottomToTop");
+        panel.classList.add("animate-topToBottom");
+        // Espera la duración de la animación antes de cerrar el panel
+        setTimeout(() => {
+          setIsPanelOpen(false);
+          // Limpia la clase de animación para futuras aperturas
+          panel.classList.remove("animate-topToBottom");
+          panel.classList.add("animate-bottomToTop");
+        }, 400); // Ajusta este valor si cambias la duración de la animación en CSS
+      } else {
+        setIsPanelOpen(false);
+      }
+    } else {
+      setIsPanelOpen(true);
+    }
+  }, [isPanelOpen, isMobile]);
 
   // Estados para búsqueda y filtros expandidos
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -426,132 +464,168 @@ export default function GestionVehiculos() {
   };
 
   return (
-    <div className="container mx-auto p-5 sm:p-10 space-y-5">
-      <div className="flex flex-col gap-4 w-full sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl sm:text-2xl font-bold">Gestión de Vehículos</h1>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 w-full sm:w-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <span className="text-sm text-gray-700">
-              {selectedIds.length > 0
-                ? selectedIds.length === 1
-                  ? `${selectedIds.length} vehículo seleccionado`
-                  : `${selectedIds.length} vehículos seleccionados`
-                : "Ningún vehículo seleccionado"}
-            </span>
-            <Button
-              className="w-full sm:w-auto"
-              color="primary"
-              isDisabled={selectedIds.length === 0}
-              radius="sm"
-              onPress={handleExportZipVigencias}
-            >
-              Exportar reporte de vigencias
-            </Button>
-          </div>
-          <Button
-            className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-            color="primary"
-            isDisabled={loading}
-            radius="sm"
-            startContent={<PlusIcon />}
-            onPress={abrirModalCrear}
-          >
-            Nuevo Vehiculo
-          </Button>
-        </div>
-      </div>
-
-      {/* Componente de búsqueda y filtros */}
-      <BuscadorFiltrosVehiculo
-        onFilter={handleFilter}
-        onReset={handleReset}
-        onSearch={handleSearch}
-      />
-
-      {/* Información detallada sobre resultados filtrados */}
-      {(searchTerm || contarFiltrosActivos() > 0) && (
-        <div className="space-y-2">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
-                <span className="text-blue-700 font-medium">
-                  Resultados filtrados
-                </span>
-              </div>
-              <span className="text-blue-600 text-sm">
-                {contarFiltrosActivos()} filtro(s) activo(s)
-              </span>
-            </div>
-            <div className="mt-2">
-              <p className="text-blue-700 text-sm">
-                Mostrando{" "}
-                <span className="font-semibold">
-                  {vehiculosState.data.length}
-                </span>{" "}
-                de <span className="font-semibold">{vehiculosState.count}</span>{" "}
-                vehículo(s) total(es)
-              </p>
-              {generarDescripcionFiltros() && (
-                <p className="text-blue-600 text-xs mt-1">
-                  {generarDescripcionFiltros()}
-                </p>
+    <div className="flex h-screen relative overflow-hidden">
+      <div
+        aria-modal="true"
+        className="absolute lg:relative z-50 w-full lg:max-w-[30rem] animate-bottomToTop"
+        role="dialog"
+      >
+        <div className="bg-white p-3 md:px-4 border-b flex items-center justify-between sticky top-0">
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg md:text-xl font-bold">Gestion de Flota</h2>
+              {isPanelOpen && isMobile && (
+                <Button
+                  isIconOnly
+                  color="danger"
+                  size="sm"
+                  onPress={handleClosePanel}
+                >
+                  <X className="w-6 h-6" />
+                </Button>
               )}
             </div>
+            {socketConnected ? (
+              <Alert
+                className="py-2"
+                color="success"
+                radius="sm"
+                title="Obteniendo cambios en tiempo real"
+                variant="faded"
+              />
+            ) : (
+              <Alert
+                className="py-2"
+                color="danger"
+                radius="sm"
+                title="Desconectado de conexión en tiempo real"
+                variant="faded"
+              />
+            )}
           </div>
         </div>
-      )}
 
-      {/* Tabla de vehiculos con paginación */}
-      <VehiculosTable
-        abrirModalDetalle={abrirModalDetalle}
-        abrirModalEditar={abrirModalEditar}
-        currentItems={vehiculosState.data}
-        isLoading={loading}
-        selectedIds={selectedIds}
-        sortDescriptor={sortDescriptor}
-        totalCount={vehiculosState.count}
-        totalPages={vehiculosState.totalPages}
-        onPageChange={handlePageChange}
-        onSelectItem={handleSelectItem}
-        onSortChange={handleSortChange}
-        onSelectAll={handleSelectAll}
-        // Propiedades de paginación
-        currentPage={vehiculosState.currentPage}
-      />
+        {/* Panel content with scrolling */}
+        <div className="bg-white h-[calc(100vh-56px)] relative flex flex-col overflow-y-auto">
+          {/* Filters */}
+          <div className="p-4 md:p-4">
+            <div className="mb-3">
+              <h3 className="font-semibold mb-4">Filtros y Busqueda</h3>
+              <form
+                autoComplete="off"
+                className="grid grid-cols-1 gap-3 md:gap-4"
+                onSubmit={(e) => e.preventDefault()}
+              >
+                {/* Busqueda */}
+                <div>
+                  <Input startContent={<SearchIcon className="text-gray-300" />} radius="sm" type="text" placeholder="Busca por placa, marca, modelo, línea o propietario..." />
+                </div>
 
-      {/* Modal de formulario (crear/editar) */}
-      <ModalForm
-        isOpen={modalFormOpen}
-        titulo={
-          vehiculoParaEditar
-            ? `Editar Vehículo ${vehiculoParaEditar.placa}`
-            : "Registrar Nuevo Vehiculo"
-        }
-        vehiculoEditar={vehiculoParaEditar}
-        onClose={cerrarModalForm}
-        onSave={guardarVehiculo}
-      />
+                {/* Clase Vehiculo */}
+                <div className="space-y-4">
+                  <label className="font-semibold" htmlFor="clase_vehiculo">Clase de vehículo</label>
+                  <RadioGroup id="clase_vehiculo" size="sm" color="success">
+                    <Radio value="Camioneta">Camioneta</Radio>
+                    <Radio value="Bus">Bus</Radio>
+                    <Radio value="Buseta">Buseta</Radio>
+                    <Radio value="Microbus">Microbus</Radio>
+                  </RadioGroup>
+                </div>
 
-      {/* Modal de detalle */}
-      <ModalDetalleVehiculo
-        isOpen={modalDetalleOpen}
-        vehiculo={
-          vehiculosState.data.find(
-            (vehiculo) => vehiculo.id === selectedVehiculoId,
-          ) || null
-        }
-        onClose={cerrarModalDetalle}
-        onEdit={() => {
-          setModalDetalleOpen(false);
-          setModalFormOpen(true);
-          setVehiculoParaEditar(
-            vehiculosState.data.find(
-              (vehiculo) => vehiculo.id === selectedVehiculoId,
-            ) || null,
-          );
-        }}
-      />
+                {/* Estado Documentos */}
+                <div className="space-y-4">
+                  <label className="font-semibold" htmlFor="documentos">Estado Documentos</label>
+                  <RadioGroup id="documentos" size="sm" color="success">
+                    <Radio value="vencidos">Vencidos</Radio>
+                    <Radio value="por vencer">Por vencer</Radio>
+                    <Radio value="sin documentos">Sin documentos</Radio>
+                    <Radio value="vigentes">Vigentes</Radio>
+                  </RadioGroup>
+                </div>
+
+                {/* Estado */}
+                <div className="space-y-4">
+                  <label className="font-semibold" htmlFor="estados">Estado</label>
+                  <RadioGroup id="estados" size="sm" color="success">
+                    <Radio value="servicio">En servicio</Radio>
+                    <Radio value="disponible">Disponible</Radio>
+                    <Radio value="mantenimiento">En mantenimiento</Radio>
+                    <Radio value="desvinculado">Desvinculado</Radio>
+                  </RadioGroup>
+                </div>
+
+                <Button type="reset" startContent={<BrushCleaning />} variant="flat" radius="sm" color="primary" className="mt-5">Limpiar Filtros y Busqueda</Button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+      {/* Header: Responsive layout for vehicle count, logout, and user name */}
+      <div className="h-full w-full relative py-4 px-10 space-y-6 ">
+        <div className="space-y-6">
+          {/* Welcome message (for all devices) */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Tooltip color="danger" content="Cerrar sesión" radius="sm">
+                <div>
+                  <LogoutButton />
+                </div>
+              </Tooltip>
+              <Link href={process.env.NEXT_PUBLIC_AUTH_SYSTEM} className="inline-flex items-center gap-2 text-sm font-medium bg-white bg-opacity-90 p-2 rounded-md shadow all">
+                <UserIcon className="w-5 h-5" />
+                Bienvenido! {user?.nombre}
+              </Link>
+            </div>
+            <div className="flex items-center gap-5">
+              <p className="text-foreground-500">{selectedIds.length} seleccionados</p>
+              <Button startContent={<SquareCheck className="w-6 h-6" />} variant="flat" radius="sm" color="primary">Activar selección</Button>
+              <Button startContent={<FileText className="w-6 h-6" />} variant="flat" radius="sm" color="warning">Exportar reportes vigencias</Button>
+              <Button startContent={<PlusCircleIcon className="w-6 h-6" />} variant="flat" radius="sm" color="success">Nuevo vehículo</Button>
+            </div>
+          </div>
+
+          {/* Graph de estados */}
+          <div className="flex items-center justify-between gap-5">
+            <div className="w-full bg-success-50 p-2.5 rounded-md">
+              <p className="items-center justify-center text-success text-center">En servicio ({vehiculosState.data.filter(vehiculo => vehiculo.estado.toLowerCase() === 'servicio').length})</p>
+            </div>
+            <div className="w-full bg-danger-50 p-2.5 rounded-md">
+              <p className="items-center justify-center text-danger text-center">Disponible ({vehiculosState.data.filter(vehiculo => vehiculo.estado.toLowerCase() === 'disponible').length})</p>
+            </div>
+            <div className="w-full bg-primary-50 p-2.5 rounded-md">
+              <p className="items-center justify-center text-primary text-center">En mantenimiento ({vehiculosState.data.filter(vehiculo => vehiculo.estado.toLowerCase() === 'mantenimiento').length})</p>
+            </div>
+            <div className="w-full bg-gray-100 p-2.5 rounded-md">
+              <p className="items-center justify-center text-foreground-400 text-center">Desvinculados ({vehiculosState.data.filter(vehiculo => vehiculo.estado.toLowerCase() === 'desvinculado').length})</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p>Mostrando ({vehiculosState.count} vehículos)</p>
+            <div className="flex items-center gap-3">
+              <p className="text-foreground-500">Ordenar</p>
+              <Button isIconOnly>
+                <ArrowUpDownIcon className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Listado de vehiculos */}
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5">
+            {vehiculosState.data.length > 0 ? (
+              vehiculosState.data.map(vehiculo => (
+                <VehiculoCard item={vehiculo} />
+              ))
+            ) : (
+              <p>No hay vehiculos registrados aun</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
