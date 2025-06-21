@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@heroui/button";
-import { BrushIcon, PlusIcon, SearchIcon, BrushCleaning, X, UserIcon, SquareCheck, FileText, PlusCircleIcon, ListOrderedIcon, ArrowUp01Icon, ArrowUpDownIcon } from "lucide-react";
+import { SearchIcon, BrushCleaning, X, UserIcon, SquareCheck, FileText, PlusCircleIcon, ArrowUpDownIcon } from "lucide-react";
 import { addToast } from "@heroui/toast";
 
 import {
@@ -12,8 +12,6 @@ import {
   CrearVehiculoRequest,
   initialProcesamientoState,
 } from "@/context/FlotaContext";
-import VehiculosTable from "@/components/ui/table";
-import BuscadorFiltrosVehiculo from "@/components/ui/buscadorFiltros";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions } from "@/components/ui/buscadorFiltros";
 import ModalDetalleVehiculo from "@/components/ui/modalDetalle";
@@ -26,7 +24,6 @@ import { RadioGroup, Radio } from "@heroui/radio";
 import { LogoutButton } from "@/components/logout";
 import { Link } from '@heroui/link'
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardBody } from "@heroui/card";
 import VehiculoCard from "@/components/ui/vehiculoCard";
 
 export default function GestionVehiculos() {
@@ -467,7 +464,7 @@ export default function GestionVehiculos() {
     <div className="flex h-screen relative overflow-hidden">
       <div
         aria-modal="true"
-        className="absolute lg:relative z-50 w-full lg:max-w-[30rem] animate-bottomToTop"
+        className="absolute lg:relative z-50 w-full lg:max-w-[30rem] 2xl:max-w-[32rem] animate-bottomToTop"
         role="dialog"
       >
         <div className="bg-white p-3 md:px-4 border-b flex items-center justify-between sticky top-0">
@@ -582,7 +579,7 @@ export default function GestionVehiculos() {
               <p className="text-foreground-500">{selectedIds.length} seleccionados</p>
               <Button startContent={<SquareCheck className="w-6 h-6" />} variant="flat" radius="sm" color="primary">Activar selección</Button>
               <Button startContent={<FileText className="w-6 h-6" />} variant="flat" radius="sm" color="warning">Exportar reportes vigencias</Button>
-              <Button startContent={<PlusCircleIcon className="w-6 h-6" />} variant="flat" radius="sm" color="success">Nuevo vehículo</Button>
+              <Button onPress={abrirModalCrear} startContent={<PlusCircleIcon className="w-6 h-6" />} variant="flat" radius="sm" color="success">Nuevo vehículo</Button>
             </div>
           </div>
 
@@ -605,20 +602,23 @@ export default function GestionVehiculos() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p>Mostrando ({vehiculosState.count} vehículos)</p>
+            <p className="text-foreground-500">Mostrando ({vehiculosState.count} vehículos)</p>
             <div className="flex items-center gap-3">
               <p className="text-foreground-500">Ordenar</p>
-              <Button isIconOnly>
+              <Button isIconOnly variant="light">
                 <ArrowUpDownIcon className="w-5 h-5" />
               </Button>
             </div>
           </div>
 
           {/* Listado de vehiculos */}
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5">
+          <div
+            className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-5"
+            style={{ maxHeight: "75vh", overflowY: "auto" }}
+          >
             {vehiculosState.data.length > 0 ? (
               vehiculosState.data.map(vehiculo => (
-                <VehiculoCard item={vehiculo} />
+                <VehiculoCard key={vehiculo.id} item={vehiculo} onPress={abrirModalDetalle} />
               ))
             ) : (
               <p>No hay vehiculos registrados aun</p>
@@ -626,6 +626,39 @@ export default function GestionVehiculos() {
           </div>
         </div>
       </div>
+
+      {/* Modal de formulario (crear/editar) */}
+      <ModalForm
+        isOpen={modalFormOpen}
+        titulo={
+          vehiculoParaEditar
+            ? `Editar Vehículo ${vehiculoParaEditar.placa}`
+            : "Registrar Nuevo Vehiculo"
+        }
+        vehiculoEditar={vehiculoParaEditar}
+        onClose={cerrarModalForm}
+        onSave={guardarVehiculo}
+      />
+
+      {/* Modal de detalle */}
+      <ModalDetalleVehiculo
+        isOpen={modalDetalleOpen}
+        vehiculo={
+          vehiculosState.data.find(
+            (vehiculo) => vehiculo.id === selectedVehiculoId,
+          ) || null
+        }
+        onClose={cerrarModalDetalle}
+        onEdit={() => {
+          setModalDetalleOpen(false);
+          setModalFormOpen(true);
+          setVehiculoParaEditar(
+            vehiculosState.data.find(
+              (vehiculo) => vehiculo.id === selectedVehiculoId,
+            ) || null,
+          );
+        }}
+      />
     </div>
   );
 }
