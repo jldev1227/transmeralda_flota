@@ -449,7 +449,7 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       // Prepara los parámetros básicos
       const params: any = {
         page: paramsBusqueda.page || vehiculosState.currentPage,
-        limit: paramsBusqueda.limit || 10,
+        limit: paramsBusqueda.limit || 15,
         sort: paramsBusqueda.sort || sortDescriptor.column,
         order: paramsBusqueda.order || sortDescriptor.direction,
       };

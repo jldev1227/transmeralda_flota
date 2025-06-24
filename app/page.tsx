@@ -938,7 +938,15 @@ export default function GestionVehiculos() {
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <p className="text-foreground-500">
-              Mostrando ({vehiculosState.count} vehículos)
+              {(() => {
+                // Define manualmente el tamaño de página
+                const pageSize = 15;
+                const { currentPage, count, data } = vehiculosState;
+                if (count === 0) return "Mostrando 0 de 0 vehículos";
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = start + data.length - 1;
+                return `Mostrando ${start} al ${end} de ${count} vehículos`;
+              })()}
             </p>
           </div>
 
@@ -981,7 +989,48 @@ export default function GestionVehiculos() {
               )}
             </div>
           )}
+
+          {/* Paginador */}
+          {!loading && vehiculosState.totalPages > 1 && (
+            <div className="flex justify-end py-5">
+              <nav className="inline-flex items-center gap-1" aria-label="Paginación">
+                <Button
+                  radius="sm"
+                  color="default"
+                  variant="flat"
+                  disabled={vehiculosState.currentPage === 1 || loading}
+                  onPress={() => cargarVehiculos(vehiculosState.currentPage - 1)}
+                >
+                  Anterior
+                </Button>
+                {Array.from({ length: vehiculosState.totalPages }, (_, idx) => (
+                  <Button
+                    radius="sm"
+                    key={idx + 1}
+                    color={vehiculosState.currentPage === idx + 1 ? "primary" : "default"}
+                    variant={vehiculosState.currentPage === idx + 1 ? "flat" : "flat"}
+                    disabled={loading}
+                    onPress={() => cargarVehiculos(idx + 1)}
+                  >
+                    {idx + 1}
+                  </Button>
+                ))}
+                <Button
+                  radius="sm"
+                  color="default"
+                  variant="flat"
+                  disabled={
+                    vehiculosState.currentPage === vehiculosState.totalPages || loading
+                  }
+                  onPress={() => cargarVehiculos(vehiculosState.currentPage + 1)}
+                >
+                  Siguiente
+                </Button>
+              </nav>
+            </div>
+          )}
         </div>
+
       </main>
 
       {/* Modal de formulario (crear/editar) */}
