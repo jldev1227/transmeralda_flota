@@ -81,10 +81,6 @@ export interface FilterOptions {
   clases: string[];
   categoriasDocumentos: string[];
   estadosDocumentos: string[];
-  fechaVencimientoDesde?: string;
-  fechaVencimientoHasta?: string;
-  ordenamiento?: string;
-  diasAlerta?: number;
 }
 
 interface FilterSets {
@@ -125,10 +121,6 @@ const BuscadorFiltrosVehiculos: React.FC<BuscadorFiltrosVehiculosProps> = ({
       clases: Array.from(filtros.clases),
       categoriasDocumentos: Array.from(filtros.categoriasDocumentos),
       estadosDocumentos: Array.from(filtros.estadosDocumentos),
-      fechaVencimientoDesde: fechaVencimientoDesde || undefined,
-      fechaVencimientoHasta: fechaVencimientoHasta || undefined,
-      ordenamiento: ordenamiento || undefined,
-      diasAlerta: diasAlerta || undefined,
     };
 
     onFilter(filtrosArray);

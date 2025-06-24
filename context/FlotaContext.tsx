@@ -460,44 +460,33 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       }
 
       // ====== FILTROS BÁSICOS DE VEHÍCULOS ======
-
-      // Añade filtros de estado
       if (paramsBusqueda.estado) {
-        if (Array.isArray(paramsBusqueda.estado)) {
-          params.estado = paramsBusqueda.estado.join(",");
-        } else {
-          params.estado = paramsBusqueda.estado;
-        }
+        params.estado = Array.isArray(paramsBusqueda.estado)
+          ? paramsBusqueda.estado.join(",")
+          : paramsBusqueda.estado;
       }
 
-      // Añade filtros de clase
       if (paramsBusqueda.clase) {
-        if (Array.isArray(paramsBusqueda.clase)) {
-          params.clase = paramsBusqueda.clase.join(",");
-        } else {
-          params.clase = paramsBusqueda.clase;
-        }
+        params.clase = Array.isArray(paramsBusqueda.clase)
+          ? paramsBusqueda.clase.join(",")
+          : paramsBusqueda.clase;
       }
 
-      // ====== NUEVOS FILTROS DE DOCUMENTOS ======
-
-      // Filtros por categorías de documentos
+      // ====== FILTROS DE DOCUMENTOS ======
       if (paramsBusqueda.categoriasDocumentos) {
-        if (Array.isArray(paramsBusqueda.categoriasDocumentos)) {
-          params.categoriasDocumentos =
-            paramsBusqueda.categoriasDocumentos.join(",");
-        } else {
-          params.categoriasDocumentos = paramsBusqueda.categoriasDocumentos;
-        }
+        params.categoriasDocumentos = Array.isArray(
+          paramsBusqueda.categoriasDocumentos,
+        )
+          ? paramsBusqueda.categoriasDocumentos.join(",")
+          : paramsBusqueda.categoriasDocumentos;
       }
 
-      // Filtros por estados de documentos
       if (paramsBusqueda.estadosDocumentos) {
-        if (Array.isArray(paramsBusqueda.estadosDocumentos)) {
-          params.estadosDocumentos = paramsBusqueda.estadosDocumentos.join(",");
-        } else {
-          params.estadosDocumentos = paramsBusqueda.estadosDocumentos;
-        }
+        params.estadosDocumentos = Array.isArray(
+          paramsBusqueda.estadosDocumentos,
+        )
+          ? paramsBusqueda.estadosDocumentos.join(",")
+          : paramsBusqueda.estadosDocumentos;
       }
 
       // Filtros por fechas de vencimiento
@@ -514,6 +503,8 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
         params.diasAlerta = paramsBusqueda.diasAlerta;
       }
 
+      console.log("Parámetros finales enviados al API:", params);
+
       const response = await apiClient.get<ApiResponse<Vehiculo[]>>(
         "/api/flota",
         {
@@ -522,7 +513,6 @@ export const FlotaProvider: React.FC<FlotaProviderProps> = ({ children }) => {
       );
 
       if (response.data && response.data.success) {
-        // Asume que el backend siempre retorna todos los vehículos (sin paginar)
         const allVehiculos = response.data.data || [];
         const totalCount = allVehiculos.length;
         const pageSize = params.limit ? parseInt(params.limit) : 10;

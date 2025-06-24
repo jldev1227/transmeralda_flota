@@ -10,7 +10,7 @@ import { apiClient } from "@/config/apiClient";
 import socketService from "@/services/socketServices";
 
 // Lista de tipos de documentos requeridos
-const DOCUMENTOS_REQUERIDOS = [
+export const DOCUMENTOS_REQUERIDOS = [
   {
     id: "TARJETA_DE_PROPIEDAD",
     nombre: "Tarjeta de Propiedad",

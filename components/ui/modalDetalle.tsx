@@ -268,443 +268,567 @@ const ModalDetalleVehiculo: React.FC<ModalDetalleVehiculoProps> = ({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Truck className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-lg font-semibold">Detalle del Vehículo</h3>
+            <ModalHeader className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Truck className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Detalle del Vehículo
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Placa: {vehiculo.placa}
+                  </p>
+                </div>
               </div>
-              <Chip className={`${estadoColor.badge} px-3 py-1`}>
+              <Chip className={`${estadoColor.badge} px-4 py-2 font-medium`}>
                 {getEstadoLabel(vehiculo.estado)}
               </Chip>
             </ModalHeader>
 
-            <ModalBody>
-              {/* Encabezado con la información principal */}
-              <div className="flex flex-col items-center sm:flex-row border-b pb-6 mb-6">
-                <div className="mb-4 sm:mb-0 sm:mr-6">
-                  <Image
-                    alt={`${vehiculo.placa} ${vehiculo.modelo}`}
-                    className="h-32 w-32 rounded-full mr-3"
-                    height={128}
-                    src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
-                    width={128}
-                  />
+            <ModalBody className="p-0">
+              {/* Encabezado horizontal mejorado */}
+              <div className="flex items-start gap-8 p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+                {/* Imagen grande a la izquierda */}
+                <div className="flex-shrink-0 -mx-1">
+                  <div className="relative">
+                    <Image
+                      alt={`${vehiculo.placa} ${vehiculo.modelo}`}
+                      className="h-40 w-40 rounded-2xl object-cover shadow-lg border-4 border-white"
+                      height={160}
+                      src={`/assets/${vehiculo.clase_vehiculo.toLowerCase() === "camioneta" ? "car.jpg" : "bus.jpg"}`}
+                      style={{
+                        transform: "scaleX(-1)",
+                        userSelect: "none",
+                        pointerEvents: "none",
+                      }}
+                      width={160}
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg">
+                      <Car className="h-4 w-4 text-gray-600" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 text-center sm:text-left">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    {vehiculo.marca} {vehiculo.linea}
-                  </h2>
-                  <p className="text-sm text-gray-600 mb-2">
-                    Placa: <strong>{vehiculo.placa}</strong> | Modelo:{" "}
-                    {vehiculo.modelo}
-                  </p>
-                  <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4">
-                    <span className="flex items-center capitalize">
-                      <Truck className="h-4 w-4 mr-1" />
-                      {vehiculo.clase_vehiculo}
-                    </span>
-                    <span className="flex items-center">
-                      <Gauge className="h-4 w-4 mr-1" />
-                      {formatearKilometraje(vehiculo.kilometraje)}
-                    </span>
-                    <span className="flex items-center">
-                      <Fuel className="h-4 w-4 mr-1" />
-                      {vehiculo.combustible || "No especificado"}
-                    </span>
+
+                {/* Información principal */}
+                <div className="flex-1 min-w-0">
+                  <div className="mb-4">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                      {vehiculo.marca} {vehiculo.linea}
+                    </h2>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                      <span className="bg-gray-100 px-3 py-1 rounded-full font-medium">
+                        Modelo {vehiculo.modelo}
+                      </span>
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                        {vehiculo.color}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Grid de información clave horizontal */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex items-center mb-2">
+                        <Truck className="h-4 w-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Clase
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 capitalize">
+                        {vehiculo.clase_vehiculo}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex items-center mb-2">
+                        <Gauge className="h-4 w-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kilometraje
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formatearKilometraje(vehiculo.kilometraje)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex items-center mb-2">
+                        <Fuel className="h-4 w-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Combustible
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {vehiculo.combustible || "No especificado"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex items-center mb-2">
+                        <User className="h-4 w-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Propietario
+                        </span>
+                      </div>
+                      <p
+                        className="text-sm font-semibold text-gray-900 truncate"
+                        title={vehiculo.propietario_nombre || "No registrado"}
+                      >
+                        {vehiculo.propietario_nombre || "No registrado"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <Tabs
-                aria-label="Información del Vehículo"
-                className="mx-auto"
-                color="primary"
-              >
-                <Tab key="general" title="Información General">
-                  <Card shadow="sm">
-                    <CardBody className="space-y-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="px-6">
+                <Tabs
+                  aria-label="Información del Vehículo"
+                  className="w-full"
+                  color="primary"
+                  variant="underlined"
+                >
+                  <Tab key="general" title="Información General">
+                    <div className="py-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Columna izquierda */}
                         <div className="space-y-6">
                           {/* Información básica */}
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
-                              <Car className="h-4 w-4 mr-2 text-gray-500" />
-                              Información Básica
-                            </h4>
-                            <ul className="space-y-2">
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">Placa:</span>
-                                <span>{vehiculo.placa}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">Marca:</span>
-                                <span>{vehiculo.marca}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">Línea:</span>
-                                <span>{vehiculo.linea}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Modelo:
-                                </span>
-                                <span>{vehiculo.modelo}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">Color:</span>
-                                <span>{vehiculo.color}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">Clase:</span>
-                                <span>{vehiculo.clase_vehiculo}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Carrocería:
-                                </span>
-                                <span>
-                                  {vehiculo.tipo_carroceria ||
-                                    "No especificada"}
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
+                          <Card className="shadow-sm">
+                            <CardBody className="p-5">
+                              <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                                  <Car className="h-4 w-4 text-blue-600" />
+                                </div>
+                                Información Básica
+                              </h4>
+                              <div className="space-y-3">
+                                {[
+                                  { label: "Placa", value: vehiculo.placa },
+                                  { label: "Marca", value: vehiculo.marca },
+                                  { label: "Línea", value: vehiculo.linea },
+                                  { label: "Modelo", value: vehiculo.modelo },
+                                  { label: "Color", value: vehiculo.color },
+                                  {
+                                    label: "Clase",
+                                    value: vehiculo.clase_vehiculo,
+                                  },
+                                  {
+                                    label: "Carrocería",
+                                    value:
+                                      vehiculo.tipo_carroceria ||
+                                      "No especificada",
+                                  },
+                                ].map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <span className="text-sm font-medium text-gray-600">
+                                      {item.label}:
+                                    </span>
+                                    <span className="text-sm text-gray-900 font-medium">
+                                      {item.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardBody>
+                          </Card>
 
                           {/* Información técnica */}
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
-                              <PenTool className="h-4 w-4 mr-2 text-gray-500" />
-                              Información Técnica
-                            </h4>
-                            <ul className="space-y-2">
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">VIN:</span>
-                                <span>{vehiculo.vin || "No registrado"}</span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  No. Motor:
-                                </span>
-                                <span>
-                                  {vehiculo.numero_motor || "No registrado"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  No. Chasis:
-                                </span>
-                                <span>
-                                  {vehiculo.numero_chasis || "No registrado"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  No. Serie:
-                                </span>
-                                <span>
-                                  {vehiculo.numero_serie || "No registrado"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  Combustible:
-                                </span>
-                                <span>
-                                  {vehiculo.combustible || "No especificado"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  Kilometraje:
-                                </span>
-                                <span>
-                                  {formatearKilometraje(vehiculo.kilometraje)}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-32">
-                                  Fecha Matricula:
-                                </span>
-                                <span>
-                                  {formatearFecha(vehiculo.fecha_matricula)}
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
+                          <Card className="shadow-sm">
+                            <CardBody className="p-5">
+                              <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                <div className="p-2 bg-green-100 rounded-lg mr-3">
+                                  <PenTool className="h-4 w-4 text-green-600" />
+                                </div>
+                                Información Técnica
+                              </h4>
+                              <div className="space-y-3">
+                                {[
+                                  {
+                                    label: "VIN",
+                                    value: vehiculo.vin || "No registrado",
+                                  },
+                                  {
+                                    label: "No. Motor",
+                                    value:
+                                      vehiculo.numero_motor || "No registrado",
+                                  },
+                                  {
+                                    label: "No. Chasis",
+                                    value:
+                                      vehiculo.numero_chasis || "No registrado",
+                                  },
+                                  {
+                                    label: "No. Serie",
+                                    value:
+                                      vehiculo.numero_serie || "No registrado",
+                                  },
+                                  {
+                                    label: "Combustible",
+                                    value:
+                                      vehiculo.combustible || "No especificado",
+                                  },
+                                  {
+                                    label: "Kilometraje",
+                                    value: formatearKilometraje(
+                                      vehiculo.kilometraje,
+                                    ),
+                                  },
+                                  {
+                                    label: "Fecha Matrícula",
+                                    value: formatearFecha(
+                                      vehiculo.fecha_matricula,
+                                    ),
+                                  },
+                                ].map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <span className="text-sm font-medium text-gray-600">
+                                      {item.label}:
+                                    </span>
+                                    <span className="text-sm text-gray-900 font-medium text-right">
+                                      {item.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardBody>
+                          </Card>
                         </div>
 
                         {/* Columna derecha */}
                         <div className="space-y-6">
                           {/* Información del propietario */}
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
-                              <User className="h-4 w-4 mr-2 text-gray-500" />
-                              Propietario
-                            </h4>
-                            <ul className="space-y-2">
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Nombre:
-                                </span>
-                                <span>
-                                  {vehiculo.propietario_nombre ||
-                                    "No registrado"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Identificación:
-                                </span>
-                                <span>
-                                  {vehiculo.propietario_identificacion ||
-                                    "No registrado"}
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
+                          <Card className="shadow-sm">
+                            <CardBody className="p-5">
+                              <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                                  <User className="h-4 w-4 text-purple-600" />
+                                </div>
+                                Propietario
+                              </h4>
+                              <div className="space-y-3">
+                                {[
+                                  {
+                                    label: "Nombre",
+                                    value:
+                                      vehiculo.propietario_nombre ||
+                                      "No registrado",
+                                  },
+                                  {
+                                    label: "Identificación",
+                                    value:
+                                      vehiculo.propietario_identificacion ||
+                                      "No registrado",
+                                  },
+                                ].map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <span className="text-sm font-medium text-gray-600">
+                                      {item.label}:
+                                    </span>
+                                    <span className="text-sm text-gray-900 font-medium">
+                                      {item.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardBody>
+                          </Card>
 
                           {/* Información de ubicación */}
                           {(vehiculo.latitud || vehiculo.longitud) && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
-                                <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-                                Ubicación Actual
-                              </h4>
-                              <ul className="space-y-2">
-                                <li className="flex items-start">
-                                  <span className="font-medium w-28">
-                                    Latitud:
-                                  </span>
-                                  <span>
-                                    {vehiculo.latitud || "No disponible"}
-                                  </span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="font-medium w-28">
-                                    Longitud:
-                                  </span>
-                                  <span>
-                                    {vehiculo.longitud || "No disponible"}
-                                  </span>
-                                </li>
-                              </ul>
-                            </div>
+                            <Card className="shadow-sm">
+                              <CardBody className="p-5">
+                                <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                  <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                                    <MapPin className="h-4 w-4 text-orange-600" />
+                                  </div>
+                                  Ubicación Actual
+                                </h4>
+                                <div className="space-y-3">
+                                  {[
+                                    {
+                                      label: "Latitud",
+                                      value:
+                                        vehiculo.latitud || "No disponible",
+                                    },
+                                    {
+                                      label: "Longitud",
+                                      value:
+                                        vehiculo.longitud || "No disponible",
+                                    },
+                                  ].map((item, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                                    >
+                                      <span className="text-sm font-medium text-gray-600">
+                                        {item.label}:
+                                      </span>
+                                      <span className="text-sm text-gray-900 font-medium">
+                                        {item.value}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardBody>
+                            </Card>
                           )}
 
                           {/* Información adicional */}
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-semibold mb-3 flex items-center border-b pb-2">
-                              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                              Registro en el Sistema
-                            </h4>
-                            <ul className="space-y-2">
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Creado el:
-                                </span>
-                                <span>
-                                  {vehiculo.createdAt
-                                    ? new Date(
-                                        vehiculo.createdAt,
-                                      ).toLocaleString("es-CO")
-                                    : "No disponible"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Actualizado:
-                                </span>
-                                <span>
-                                  {vehiculo.updatedAt
-                                    ? new Date(
-                                        vehiculo.updatedAt,
-                                      ).toLocaleString("es-CO")
-                                    : "No disponible"}
-                                </span>
-                              </li>
-                              <li className="flex items-start">
-                                <span className="font-medium w-28">
-                                  Conductor:
-                                </span>
-                                <span>
-                                  {vehiculo.conductor_id || "No asignado"}
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
+                          <Card className="shadow-sm">
+                            <CardBody className="p-5">
+                              <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                                  <Calendar className="h-4 w-4 text-gray-600" />
+                                </div>
+                                Registro en el Sistema
+                              </h4>
+                              <div className="space-y-3">
+                                {[
+                                  {
+                                    label: "Creado el",
+                                    value: vehiculo.createdAt
+                                      ? new Date(
+                                          vehiculo.createdAt,
+                                        ).toLocaleString("es-CO")
+                                      : "No disponible",
+                                  },
+                                  {
+                                    label: "Actualizado",
+                                    value: vehiculo.updatedAt
+                                      ? new Date(
+                                          vehiculo.updatedAt,
+                                        ).toLocaleString("es-CO")
+                                      : "No disponible",
+                                  },
+                                  {
+                                    label: "Conductor",
+                                    value:
+                                      vehiculo.conductor_id || "No asignado",
+                                  },
+                                ].map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-start justify-between py-2 border-b border-gray-100 last:border-b-0"
+                                  >
+                                    <span className="text-sm font-medium text-gray-600">
+                                      {item.label}:
+                                    </span>
+                                    <span className="text-sm text-gray-900 font-medium text-right">
+                                      {item.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardBody>
+                          </Card>
                         </div>
                       </div>
-                    </CardBody>
-                  </Card>
-                </Tab>
+                    </div>
+                  </Tab>
 
-                <Tab
-                  key="documentos"
-                  title={`Documentos (${vehiculo.documentos?.length || 0})`}
-                >
-                  <Card shadow="sm">
-                    <CardBody className="space-y-6">
+                  <Tab
+                    key="documentos"
+                    title={`Documentos (${vehiculo.documentos?.length || 0})`}
+                  >
+                    <div className="py-6">
                       {vehiculo.documentos && vehiculo.documentos.length > 0 ? (
                         <div className="space-y-6">
                           {Object.entries(documentosAgrupadosOrdenados).map(
                             ([categoria, docs]) => (
-                              <div
-                                key={categoria}
-                                className="bg-gray-50 p-4 rounded-lg"
-                              >
-                                <h4 className="text-sm font-semibold mb-4 flex items-center border-b pb-2">
-                                  {getDocumentIcon(categoria)}
-                                  <span className="ml-2">
+                              <Card key={categoria} className="shadow-sm">
+                                <CardBody className="p-5">
+                                  <h4 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+                                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                                      {getDocumentIcon(categoria)}
+                                    </div>
                                     {formatearCategoria(categoria)}
-                                  </span>
-                                </h4>
-                                <div className="space-y-3">
-                                  {docs.map((documento) => (
-                                    <div
-                                      key={documento.id}
-                                      className="bg-white p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                                    >
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                          <h5 className="font-medium text-gray-900 mb-2">
-                                            {documento.nombre_original}
-                                          </h5>
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
-                                            <div className="flex items-center">
-                                              <FileText className="h-3 w-3 mr-1" />
-                                              <span>
-                                                Tamaño:{" "}
-                                                {formatearTamaño(
-                                                  documento.size,
-                                                )}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center">
-                                              <Clock className="h-3 w-3 mr-1" />
-                                              <span>
-                                                Subido:{" "}
-                                                {formatearFecha(
-                                                  documento.upload_date,
-                                                )}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center">
-                                              {(() => {
-                                                const vigencia =
-                                                  obtenerEstadoVigencia(
-                                                    documento.fecha_vigencia,
-                                                  );
-                                                let Icon;
-                                                let iconColor = "";
-
-                                                switch (vigencia.color) {
-                                                  case "success":
-                                                    Icon = CheckCircle;
-                                                    iconColor =
-                                                      "text-green-600";
-                                                    break;
-                                                  case "warning":
-                                                    Icon = AlertCircle;
-                                                    iconColor =
-                                                      "text-yellow-600";
-                                                    break;
-                                                  case "danger":
-                                                    Icon = AlertCircle;
-                                                    iconColor = "text-red-600";
-                                                    break;
-                                                  default:
-                                                    Icon = AlertCircle;
-                                                    iconColor = "text-gray-400";
-                                                    break;
-                                                }
-
-                                                return (
-                                                  <>
-                                                    <Icon
-                                                      className={`h-3 w-3 mr-1 ${iconColor}`}
-                                                    />
-                                                    <span>Estado: </span>
-                                                    <Chip
-                                                      className="ml-2"
-                                                      color={
-                                                        vigencia.color
-                                                          ? vigencia.color
-                                                          : "default"
-                                                      }
-                                                      size="sm"
-                                                      variant="flat"
-                                                    >
-                                                      {vigencia.msg}
-                                                    </Chip>
-                                                  </>
-                                                );
-                                              })()}
-                                            </div>
-                                            {documento.fecha_vigencia && (
-                                              <div className="flex items-center">
-                                                <Calendar className="h-3 w-3 mr-1" />
+                                  </h4>
+                                  <div className="space-y-4">
+                                    {docs.map((documento) => (
+                                      <div
+                                        key={documento.id}
+                                        className="bg-gray-50 p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm"
+                                      >
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1 min-w-0">
+                                            <h5 className="font-semibold text-gray-900 mb-3 text-base">
+                                              {documento.nombre_original}
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              <div className="flex items-center text-sm text-gray-600">
+                                                <div className="p-1.5 bg-white rounded-lg mr-2">
+                                                  <FileText className="h-3 w-3" />
+                                                </div>
                                                 <span>
-                                                  Vigencia:{" "}
-                                                  {formatearFecha(
-                                                    documento.fecha_vigencia,
+                                                  Tamaño:{" "}
+                                                  {formatearTamaño(
+                                                    documento.size,
                                                   )}
                                                 </span>
                                               </div>
-                                            )}
+                                              <div className="flex items-center text-sm text-gray-600">
+                                                <div className="p-1.5 bg-white rounded-lg mr-2">
+                                                  <Clock className="h-3 w-3" />
+                                                </div>
+                                                <span>
+                                                  Subido:{" "}
+                                                  {formatearFecha(
+                                                    documento.upload_date,
+                                                  )}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center">
+                                                {(() => {
+                                                  const vigencia =
+                                                    obtenerEstadoVigencia(
+                                                      documento.fecha_vigencia,
+                                                    );
+                                                  let Icon;
+                                                  let iconColor = "";
+
+                                                  switch (vigencia.color) {
+                                                    case "success":
+                                                      Icon = CheckCircle;
+                                                      iconColor =
+                                                        "text-green-600";
+                                                      break;
+                                                    case "warning":
+                                                      Icon = AlertCircle;
+                                                      iconColor =
+                                                        "text-yellow-600";
+                                                      break;
+                                                    case "danger":
+                                                      Icon = AlertCircle;
+                                                      iconColor =
+                                                        "text-red-600";
+                                                      break;
+                                                    default:
+                                                      Icon = AlertCircle;
+                                                      iconColor =
+                                                        "text-gray-400";
+                                                      break;
+                                                  }
+
+                                                  return (
+                                                    <>
+                                                      <div className="p-1.5 bg-white rounded-lg mr-2">
+                                                        <Icon
+                                                          className={`h-3 w-3 ${iconColor}`}
+                                                        />
+                                                      </div>
+                                                      <span className="text-sm text-gray-600 mr-2">
+                                                        Estado:
+                                                      </span>
+                                                      <Chip
+                                                        className="font-medium"
+                                                        color={
+                                                          vigencia.color
+                                                            ? vigencia.color
+                                                            : "default"
+                                                        }
+                                                        size="sm"
+                                                        variant="flat"
+                                                      >
+                                                        {vigencia.msg}
+                                                      </Chip>
+                                                    </>
+                                                  );
+                                                })()}
+                                              </div>
+                                              {documento.fecha_vigencia && (
+                                                <div className="flex items-center text-sm text-gray-600">
+                                                  <div className="p-1.5 bg-white rounded-lg mr-2">
+                                                    <Calendar className="h-3 w-3" />
+                                                  </div>
+                                                  <span>
+                                                    Vigencia:{" "}
+                                                    {formatearFecha(
+                                                      documento.fecha_vigencia,
+                                                    )}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="flex space-x-2 ml-4 flex-shrink-0">
+                                            <Button
+                                              isIconOnly
+                                              className="rounded-lg"
+                                              color="primary"
+                                              size="sm"
+                                              variant="flat"
+                                              onPress={() =>
+                                                handleView(documento)
+                                              }
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              isIconOnly
+                                              className="rounded-lg"
+                                              color="secondary"
+                                              size="sm"
+                                              variant="flat"
+                                              onPress={() =>
+                                                handleDownload(documento)
+                                              }
+                                            >
+                                              <Download className="h-4 w-4" />
+                                            </Button>
                                           </div>
                                         </div>
-                                        <div className="flex space-x-2 ml-4">
-                                          <Button
-                                            isIconOnly
-                                            color="primary"
-                                            size="sm"
-                                            variant="flat"
-                                            onPress={() =>
-                                              handleView(documento)
-                                            }
-                                          >
-                                            <Eye className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            isIconOnly
-                                            color="secondary"
-                                            size="sm"
-                                            variant="flat"
-                                            onPress={() =>
-                                              handleDownload(documento)
-                                            }
-                                          >
-                                            <Download className="h-4 w-4" />
-                                          </Button>
-                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                                    ))}
+                                  </div>
+                                </CardBody>
+                              </Card>
                             ),
                           )}
                         </div>
                       ) : (
-                        <div className="text-center py-8">
-                          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <div className="text-center py-12">
+                          <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <FileText className="h-8 w-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No hay documentos
+                          </h3>
                           <p className="text-gray-500">
                             No hay documentos registrados para este vehículo
                           </p>
                         </div>
                       )}
-                    </CardBody>
-                  </Card>
-                </Tab>
-              </Tabs>
+                    </div>
+                  </Tab>
+                </Tabs>
+              </div>
             </ModalBody>
 
-            <ModalFooter>
-              <div className="flex space-x-2">
+            <ModalFooter className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center text-sm text-gray-500">
+                <Clock className="h-4 w-4 mr-2" />
+                Última actualización:{" "}
+                {vehiculo.updatedAt
+                  ? new Date(vehiculo.updatedAt).toLocaleString("es-CO")
+                  : "No disponible"}
+              </div>
+              <div className="flex space-x-3">
                 <Button
+                  className="font-medium"
                   color="danger"
-                  radius="sm"
+                  radius="lg"
                   variant="light"
                   onPress={onClose}
                 >
