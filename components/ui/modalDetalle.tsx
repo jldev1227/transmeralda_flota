@@ -44,12 +44,12 @@ interface ModalDetalleVehiculoProps {
 // Función para obtener el color de estado del vehículo
 const getEstadoColor = (estado: string) => {
   switch (estado) {
-    case "INACTIVO":
+    case "DESVINCULADO":
       return { badge: "bg-gray-100 text-gray-800" };
     case "DISPONIBLE":
-      return { badge: "bg-green-100 text-green-800" };
-    case "NO DISPONIBLE":
       return { badge: "bg-danger-100 text-danger-800" };
+    case "SERVICIO":
+      return { badge: "bg-green-100 text-green-800" };
     case "MANTENIMIENTO":
       return { badge: "bg-warning-100 text-warning-800" };
     default:
