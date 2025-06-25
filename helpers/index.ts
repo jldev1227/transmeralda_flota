@@ -21,7 +21,19 @@ export const formatDate = (dateString?: string) => {
 export const formatearFecha = (fecha?: string) => {
   if (!fecha) return "No especificada";
 
-  return new Date(fecha).toLocaleDateString("es-CO", {
+  // Si el formato es YYYY-MM-DD, crear la fecha manualmente para evitar desfase por zona horaria
+  const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  let dateObj: Date;
+
+  if (match) {
+    const [_, year, month, day] = match;
+
+    dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+  } else {
+    dateObj = new Date(fecha);
+  }
+
+  return dateObj.toLocaleDateString("es-CO", {
     year: "numeric",
     month: "long",
     day: "numeric",
