@@ -739,16 +739,19 @@ export default function GestionVehiculos() {
             <div className="p-4 space-y-6">
               <div>
                 <h3 className="font-semibold mb-2">Filtros y Búsqueda</h3>
-                <Input
-                  className="mb-3"
-                  placeholder="Busca por placa, marca, modelo, línea o propietario..."
-                  radius="sm"
-                  startContent={<SearchIcon className="text-gray-300" />}
-                  type="text"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  onKeyDown={handleKeyPress}
-                />
+                <div className="flex justify-between items-center gap-2">
+                  <Input
+                    placeholder="Busca por placa, marca, modelo, línea o propietario..."
+                    radius="sm"
+                    type="text"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    onKeyDown={handleKeyPress}
+                  />
+                  <Button onPress={aplicarBusqueda} size="md" isIconOnly variant="light">
+                    <SearchIcon className="text-primary"/>
+                  </Button>
+                </div>
               </div>
               <div>
                 <label
