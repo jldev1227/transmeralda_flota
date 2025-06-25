@@ -27,6 +27,7 @@ import {
   CrearVehiculoRequest,
   initialProcesamientoState,
   EstadoVehiculo,
+  Vehiculo,
 } from "@/context/FlotaContext";
 import ModalForm from "@/components/ui/modalForm";
 import { FilterOptions as OriginalFilterOptions } from "@/components/ui/buscadorFiltros";
@@ -390,21 +391,38 @@ export default function GestionVehiculos() {
     }
   };
 
-  const handleSelectAll = (selected: boolean) => {
-    const currentPageIds = vehiculosState.data.map((vehiculo) => vehiculo.id);
-
+  const handleSelectAll = async (selected: boolean) => {
     if (selected) {
-      // Agregar todos los vehículos de la página actual
-      setSelectedIds((prev) => {
-        const newIds = new Set([...prev, ...currentPageIds]);
+      // Seleccionar TODOS los vehículos (no solo los de la página actual)
+      try {
+        setLoading(true);
+        // Obtener todos los IDs de vehículos desde el backend
+        const response = await apiClient.get("/api/flota/basicos");
 
-        return Array.from(newIds);
-      });
+        console.log(response.data.data);
+        if (response.status === 200 && Array.isArray(response.data.data)) {
+          setSelectedIds(
+            response.data.data.map((vehiculo: Vehiculo) => vehiculo.id),
+          );
+        } else {
+          addToast({
+            title: "Error al seleccionar todos",
+            description: "No se pudieron obtener todos los vehículos.",
+            color: "danger",
+          });
+        }
+      } catch (error) {
+        addToast({
+          title: "Error al seleccionar todos",
+          description: "No se pudieron obtener todos los vehículos.",
+          color: "danger",
+        });
+      } finally {
+        setLoading(false);
+      }
     } else {
-      // Deseleccionar solo los vehículos de la página actual
-      setSelectedIds((prev) =>
-        prev.filter((id) => !currentPageIds.includes(id)),
-      );
+      // Deseleccionar todos
+      setSelectedIds([]);
     }
   };
 
@@ -671,7 +689,7 @@ export default function GestionVehiculos() {
           aria-modal="true"
           className={`
         fixed z-40 top-0 left-0 w-full h-full bg-white shadow-lg transition-transform duration-400
-        lg:static lg:w-[22rem] xl:w-[26rem] 2xl:w-[30rem] lg:h-auto
+        lg:static lg:w-[28rem] 2xl:w-[30rem] lg:h-auto
         ${isMobile ? (isPanelOpen ? "animate-bottomToTop" : "animate-topToBottom") : ""}
         `}
           role="dialog"
@@ -942,12 +960,25 @@ export default function GestionVehiculos() {
                 // Define manualmente el tamaño de página
                 const pageSize = 15;
                 const { currentPage, count, data } = vehiculosState;
+
                 if (count === 0) return "Mostrando 0 de 0 vehículos";
                 const start = (currentPage - 1) * pageSize + 1;
                 const end = start + data.length - 1;
+
                 return `Mostrando ${start} al ${end} de ${count} vehículos`;
               })()}
             </p>
+
+            {isSelect && (
+              <Button
+                color="primary"
+                variant="light"
+                onPress={() => handleSelectAll(isSelect)}
+              >
+                <p>Seleccionar todos</p>
+                <SquareCheck className="text-primary" />
+              </Button>
+            )}
           </div>
 
           {/* Filtros seleccionados */}
@@ -993,36 +1024,50 @@ export default function GestionVehiculos() {
           {/* Paginador */}
           {!loading && vehiculosState.totalPages > 1 && (
             <div className="flex justify-end py-5">
-              <nav className="inline-flex items-center gap-1" aria-label="Paginación">
+              <nav
+                aria-label="Paginación"
+                className="inline-flex items-center gap-1"
+              >
                 <Button
-                  radius="sm"
                   color="default"
-                  variant="flat"
                   disabled={vehiculosState.currentPage === 1 || loading}
-                  onPress={() => cargarVehiculos(vehiculosState.currentPage - 1)}
+                  radius="sm"
+                  variant="flat"
+                  onPress={() =>
+                    cargarVehiculos(vehiculosState.currentPage - 1)
+                  }
                 >
                   Anterior
                 </Button>
                 {Array.from({ length: vehiculosState.totalPages }, (_, idx) => (
                   <Button
-                    radius="sm"
                     key={idx + 1}
-                    color={vehiculosState.currentPage === idx + 1 ? "primary" : "default"}
-                    variant={vehiculosState.currentPage === idx + 1 ? "flat" : "flat"}
+                    color={
+                      vehiculosState.currentPage === idx + 1
+                        ? "primary"
+                        : "default"
+                    }
                     disabled={loading}
+                    radius="sm"
+                    variant={
+                      vehiculosState.currentPage === idx + 1 ? "flat" : "flat"
+                    }
                     onPress={() => cargarVehiculos(idx + 1)}
                   >
                     {idx + 1}
                   </Button>
                 ))}
                 <Button
-                  radius="sm"
                   color="default"
-                  variant="flat"
                   disabled={
-                    vehiculosState.currentPage === vehiculosState.totalPages || loading
+                    vehiculosState.currentPage === vehiculosState.totalPages ||
+                    loading
                   }
-                  onPress={() => cargarVehiculos(vehiculosState.currentPage + 1)}
+                  radius="sm"
+                  variant="flat"
+                  onPress={() =>
+                    cargarVehiculos(vehiculosState.currentPage + 1)
+                  }
                 >
                   Siguiente
                 </Button>
@@ -1030,7 +1075,6 @@ export default function GestionVehiculos() {
             </div>
           )}
         </div>
-
       </main>
 
       {/* Modal de formulario (crear/editar) */}
