@@ -813,13 +813,6 @@ export default function GestionVehiculos() {
               <Button
                 className="mt-4 w-full"
                 color="primary"
-                disabled={
-                  searchTerm === "" &&
-                  Array.from(filtros.estados).length === 0 &&
-                  Array.from(filtros.clases).length === 0 &&
-                  Array.from(filtros.categoriasDocumentos).length === 0 &&
-                  Array.from(filtros.estadosDocumentos).length === 0
-                }
                 radius="sm"
                 startContent={<BrushCleaning className="w-5 h-5" />}
                 variant="flat"
